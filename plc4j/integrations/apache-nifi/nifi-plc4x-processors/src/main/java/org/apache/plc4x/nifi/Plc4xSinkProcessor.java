@@ -18,6 +18,8 @@
  */
 package org.apache.plc4x.nifi;
 
+import java.util.stream.Collectors;
+
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.ReadsAttribute;
 import org.apache.nifi.annotation.behavior.ReadsAttributes;
@@ -28,9 +30,9 @@ import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.exception.ProcessException;
-import org.apache.plc4x.java.api.PlcConnection;
-import org.apache.plc4x.java.api.messages.PlcWriteRequest;
 import org.apache.plc4x.java.api.messages.PlcWriteResponse;
+import org.apache.plc4x.java.api.types.PlcResponseCode;
+import org.apache.plc4x.nifi.service.api.Plc4xControllerService;
 
 @TriggerSerially
 @Tags({"plc4x-sink"})
@@ -49,26 +51,22 @@ public class Plc4xSinkProcessor extends BasePlc4xProcessor {
         }
 
         // Get an instance of a component able to write to a PLC.
-        try(PlcConnection connection = getDriverManager().getConnection(getConnectionString())) {
-            if (!connection.getMetadata().canWrite()) {
-                throw new ProcessException("Writing not supported by connection");
-            }
-
-            // Prepare the request.
-            PlcWriteRequest.Builder builder = connection.writeRequestBuilder();
-            flowFile.getAttributes().forEach((tag, value) -> {
-                String address = getAddress(tag);
-                if (address != null) {
-                    // TODO: Convert the String into the right type ...
-                    builder.addTagAddress(tag, address, Boolean.valueOf(value));
-                }
-            });
-            PlcWriteRequest writeRequest = builder.build();
-
-            // Send the request to the PLC.
+        Plc4xControllerService plc4xControllerService = context.getProperty(PLC_CONNECTION_MANAGER)
+                .asControllerService(Plc4xControllerService.class);
+        try {
+            PlcWriteResponse plcWriteResponse = plc4xControllerService.getWriteResponse(flowFile, addressMap,
+                    flowFile.getAttributes().entrySet().stream().collect(Collectors.toMap(
+                        value -> value.getKey(), 
+                        value -> value.getValue())
+                        ));
+                        
+            PlcResponseCode code = null;
             try {
-                final PlcWriteResponse plcWriteResponse = writeRequest.execute().get();
-                // TODO: Evaluate the response and create flow files for successful and unsuccessful updates
+                for (String tag : plcWriteResponse.getTagNames()) {
+                    code = plcWriteResponse.getResponseCode(tag);
+                    if (!code.equals(PlcResponseCode.OK))
+                        throw new Exception(code.toString());
+                }
                 session.transfer(flowFile, REL_SUCCESS);
             } catch (Exception e) {
                 flowFile = session.putAttribute(flowFile, "exception", e.getLocalizedMessage());

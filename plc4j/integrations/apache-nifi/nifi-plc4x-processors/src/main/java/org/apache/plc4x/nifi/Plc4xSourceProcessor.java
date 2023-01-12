@@ -20,7 +20,6 @@ package org.apache.plc4x.nifi;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.WritesAttribute;
@@ -31,9 +30,8 @@ import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.exception.ProcessException;
-import org.apache.plc4x.java.api.PlcConnection;
-import org.apache.plc4x.java.api.messages.PlcReadRequest;
 import org.apache.plc4x.java.api.messages.PlcReadResponse;
+import org.apache.plc4x.nifi.service.api.Plc4xControllerService;
 
 @Tags({"plc4x-source"})
 @InputRequirement(InputRequirement.Requirement.INPUT_FORBIDDEN)
@@ -44,38 +42,26 @@ public class Plc4xSourceProcessor extends BasePlc4xProcessor {
     @Override
     public void onTrigger(final ProcessContext context, final ProcessSession session) throws ProcessException {
         // Get an instance of a component able to read from a PLC.
-        try(PlcConnection connection = getDriverManager().getConnection(getConnectionString())) {
-
-            // Prepare the request.
-            if (!connection.getMetadata().canRead()) {
-                throw new ProcessException("Writing not supported by connection");
+        Plc4xControllerService plc4xControllerService = context.getProperty(PLC_CONNECTION_MANAGER)
+                .asControllerService(Plc4xControllerService.class);
+        try {
+            FlowFile flowFile = session.get();
+            if (flowFile == null) {
+                flowFile = session.create();
             }
+            final FlowFile originalFlowFile = flowFile;
 
-            FlowFile flowFile = session.create();
-            try {
-                PlcReadRequest.Builder builder = connection.readRequestBuilder();
-                getTags().forEach(tag -> {
-                    String address = getAddress(tag);
-                    if (address != null) {
-                        builder.addTagAddress(tag, address);
-                    }
-                });
-                PlcReadRequest readRequest = builder.build();
-                PlcReadResponse response = readRequest.execute().get();
-                Map<String, String> attributes = new HashMap<>();
-                for (String tagName : response.getTagNames()) {
-                    for (int i = 0; i < response.getNumberOfValues(tagName); i++) {
-                        Object value = response.getObject(tagName, i);
-                        attributes.put(tagName, String.valueOf(value));
-                    }
+            PlcReadResponse response = plc4xControllerService.getReadResponse(originalFlowFile, addressMap);
+
+            Map<String, String> attributes = new HashMap<>();
+            for (String tagName : response.getTagNames()) {
+                for (int i = 0; i < response.getNumberOfValues(tagName); i++) {
+                    Object value = response.getObject(tagName, i);
+                    attributes.put(tagName, String.valueOf(value));
                 }
-                flowFile = session.putAllAttributes(flowFile, attributes);   
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new ProcessException(e);
-            } catch (ExecutionException e) {
-                throw new ProcessException(e);
             }
+            flowFile = session.putAllAttributes(originalFlowFile, attributes);
+
             session.transfer(flowFile, REL_SUCCESS);
         } catch (ProcessException e) {
             throw e;

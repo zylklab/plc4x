@@ -28,18 +28,31 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import org.apache.plc4x.nifi.service.Plc4xConnectionController;
+import org.apache.plc4x.nifi.service.util.ConnectionControllerProperties;
+
 public class Plc4xSourceRecordProcessorTest {
 	
     private TestRunner testRunner;
     private static int NUMBER_OF_CALLS = 5;
+
+	private final Plc4xConnectionController plcConnectionService = new Plc4xConnectionController();
     
     @BeforeEach
     public void init() throws InitializationException {
     	testRunner = TestRunners.newTestRunner(Plc4xSourceRecordProcessor.class);
     	testRunner.setIncomingConnection(false);
     	testRunner.setValidateExpressionUsage(false);
-    	testRunner.setProperty(Plc4xSourceRecordProcessor.PLC_READ_FUTURE_TIMEOUT_MILISECONDS, "100");
-    	testRunner.setProperty(Plc4xSourceRecordProcessor.PLC_CONNECTION_STRING, "simulated://127.0.0.1");
+
+		testRunner.addControllerService("plc-connection-manager", plcConnectionService);
+		testRunner.setProperty(plcConnectionService, ConnectionControllerProperties.CONNECTION_STRING_STRATEGY, ConnectionControllerProperties.CONSTANT_STRING_CONNECTION);
+        testRunner.setProperty(plcConnectionService, ConnectionControllerProperties.CONSTANT_STRING_CONNECTION_PROPERTY, "simulated://127.0.0.1");
+        testRunner.setProperty(plcConnectionService, ConnectionControllerProperties.PLC_FUTURE_TIMEOUT_MILISECONDS, "100");
+        testRunner.enableControllerService(plcConnectionService);
+
+		testRunner.setProperty(Plc4xSourceRecordProcessor.PLC_CONNECTION_MANAGER.getName(), "plc-connection-manager");
+        testRunner.assertValid(plcConnectionService);
+
     	testRunner.setProperty("var1", "STATE/foo1:BOOL");
     	testRunner.setProperty("var2", "STATE/foo2:BOOL");
     	testRunner.setProperty("var3", "STATE/foo3:BYTE");

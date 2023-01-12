@@ -30,9 +30,6 @@ import java.util.Set;
 
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.components.ValidationContext;
-import org.apache.nifi.components.ValidationResult;
-import org.apache.nifi.components.Validator;
 import org.apache.nifi.expression.ExpressionLanguageScope;
 import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
@@ -40,17 +37,17 @@ import org.apache.nifi.processor.ProcessorInitializationContext;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
-import org.apache.plc4x.java.utils.connectionpool.PooledPlcDriverManager;
+import org.apache.plc4x.nifi.service.api.Plc4xControllerService;
 
 public abstract class BasePlc4xProcessor extends AbstractProcessor {
 
-	protected static final PropertyDescriptor PLC_CONNECTION_STRING = new PropertyDescriptor
-        .Builder().name("PLC_CONNECTION_STRING")
-        .displayName("PLC connection String")
-        .description("PLC4X connection string used to connect to a given PLC device.")
-        .required(true)
-        .addValidator(new Plc4xConnectionStringValidator())
-        .build();
+	public static final PropertyDescriptor PLC_CONNECTION_MANAGER = new PropertyDescriptor
+        .Builder().name("plc4x-connection-manager")
+        .displayName("Connection Manager")
+		.description("PLC4X connection controller used to connect to a given PLC device.")
+		.identifiesControllerService(Plc4xControllerService.class)
+		.required(true)
+		.build();
 	
     protected static final Relationship REL_SUCCESS = new Relationship.Builder()
 	    .name("success")
@@ -66,16 +63,12 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
     protected List<PropertyDescriptor> properties;
     protected Set<Relationship> relationships;
   
-    protected String connectionString;
     protected Map<String, String> addressMap;
-
-
-    private final PooledPlcDriverManager driverManager = new PooledPlcDriverManager();
 
     @Override
     protected void init(final ProcessorInitializationContext context) {
     	final List<PropertyDescriptor> properties = new ArrayList<>();
-    	properties.add(PLC_CONNECTION_STRING);
+    	properties.add(PLC_CONNECTION_MANAGER);
         this.properties = Collections.unmodifiableList(properties);
 
     	
@@ -87,10 +80,6 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
 
     public Map<String, String> getPlcAddress() {
         return addressMap;
-    }
-    
-    public String getConnectionString() {
-        return connectionString;
     }
 
     Collection<String> getTags() {
@@ -125,7 +114,6 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
 
     @OnScheduled
     public void onScheduled(final ProcessContext context) {
-		connectionString = context.getProperty(PLC_CONNECTION_STRING.getName()).getValue();
 		addressMap = new HashMap<>();
 		//variables are passed as dynamic properties
 		context.getProperties().keySet().stream().filter(PropertyDescriptor::isDynamic).forEach(
@@ -149,33 +137,11 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
         BasePlc4xProcessor that = (BasePlc4xProcessor) o;
         return Objects.equals(properties, that.properties) &&
             Objects.equals(getRelationships(), that.getRelationships()) &&
-            Objects.equals(getConnectionString(), that.getConnectionString()) &&
             Objects.equals(addressMap, that.addressMap);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), properties, getRelationships(), getConnectionString(), addressMap);
+        return Objects.hash(super.hashCode(), properties, getRelationships(), addressMap);
     }
-
-    public static class Plc4xConnectionStringValidator implements Validator {
-        @Override
-        public ValidationResult validate(String subject, String input, ValidationContext context) {
-            // TODO: Add validation here ...
-            return new ValidationResult.Builder().subject(subject).explanation("").valid(true).build();
-        }
-    }
-
-    public static class Plc4xAddressStringValidator implements Validator {
-        @Override
-        public ValidationResult validate(String subject, String input, ValidationContext context) {
-            // TODO: Add validation here ...
-            return new ValidationResult.Builder().subject(subject).explanation("").valid(true).build();
-        }
-    }
-
-    protected PooledPlcDriverManager getDriverManager() {
-        return driverManager;
-    }
-
 }

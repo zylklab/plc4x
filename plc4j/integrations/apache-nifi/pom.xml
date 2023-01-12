@@ -38,6 +38,10 @@
 	</properties>
 
 	<modules>
+		<module>nifi-plc4x-controller-service-api</module>
+		<module>nifi-plc4x-controller-service-api-nar</module>
+		<module>nifi-plc4x-controller-service</module>
+		<module>nifi-plc4x-controller-service-nar</module>
 		<module>nifi-plc4x-processors</module>
 		<module>nifi-plc4x-nar</module>
 	</modules>

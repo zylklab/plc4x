@@ -34,7 +34,6 @@ import org.apache.nifi.annotation.behavior.WritesAttribute;
 import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
-import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.flowfile.attributes.CoreAttributes;
@@ -44,16 +43,12 @@ import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.ProcessorInitializationContext;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
-import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.serialization.RecordSetWriterFactory;
 import org.apache.nifi.util.StopWatch;
-import org.apache.plc4x.java.api.PlcConnection;
-import org.apache.plc4x.java.api.exceptions.PlcConnectionException;
-import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
-import org.apache.plc4x.java.api.messages.PlcReadRequest;
 import org.apache.plc4x.java.api.messages.PlcReadResponse;
 import org.apache.plc4x.nifi.record.Plc4xWriter;
 import org.apache.plc4x.nifi.record.RecordPlc4xWriter;
+import org.apache.plc4x.nifi.service.api.Plc4xControllerService;
 
 @Tags({ "plc4x-source" })
 @InputRequirement(InputRequirement.Requirement.INPUT_ALLOWED)
@@ -74,15 +69,7 @@ public class Plc4xSourceRecordProcessor extends BasePlc4xProcessor {
 		.identifiesControllerService(RecordSetWriterFactory.class)
 		.required(true)
 		.build();
-	
-	public static final PropertyDescriptor PLC_READ_FUTURE_TIMEOUT_MILISECONDS = new PropertyDescriptor.Builder().name("plc4x-record-read-timeout").displayName("Read timeout (miliseconds)")
-		.description("Read timeout in miliseconds")
-		.defaultValue("10000")
-		.required(true)
-		.addValidator(StandardValidators.INTEGER_VALIDATOR)
-		.build();
 
-	Integer readTimeout;
 	public Plc4xSourceRecordProcessor() {
 	}
 
@@ -96,22 +83,7 @@ public class Plc4xSourceRecordProcessor extends BasePlc4xProcessor {
 		final List<PropertyDescriptor> pds = new ArrayList<>();
 		pds.addAll(super.getSupportedPropertyDescriptors());
 		pds.add(PLC_RECORD_WRITER_FACTORY);
-		pds.add(PLC_READ_FUTURE_TIMEOUT_MILISECONDS);
 		this.properties = Collections.unmodifiableList(pds);
-	}
-
-	@OnScheduled
-	@Override
-	public void onScheduled(final ProcessContext context) {
-        super.connectionString = context.getProperty(PLC_CONNECTION_STRING.getName()).getValue();
-        this.readTimeout = context.getProperty(PLC_READ_FUTURE_TIMEOUT_MILISECONDS.getName()).asInteger();
-		addressMap = new HashMap<>();
-		//variables are passed as dynamic properties
-		context.getProperties().keySet().stream().filter(PropertyDescriptor::isDynamic).forEach(
-				t -> addressMap.put(t.getName(), context.getProperty(t.getName()).getValue()));
-		if (addressMap.isEmpty()) {
-			throw new PlcRuntimeException("No address specified");
-		}	
 	}
 	
 	@Override
@@ -129,14 +101,18 @@ public class Plc4xSourceRecordProcessor extends BasePlc4xProcessor {
 			}
 		}
 		
-		Plc4xWriter plc4xWriter = new RecordPlc4xWriter(context.getProperty(PLC_RECORD_WRITER_FACTORY).asControllerService(RecordSetWriterFactory.class), fileToProcess == null ? Collections.emptyMap() : fileToProcess.getAttributes());
+		Plc4xControllerService plc4xControllerService = context.getProperty(PLC_CONNECTION_MANAGER)
+				.asControllerService(Plc4xControllerService.class);
+
+		Plc4xWriter plc4xWriter = new RecordPlc4xWriter(
+				context.getProperty(PLC_RECORD_WRITER_FACTORY).asControllerService(RecordSetWriterFactory.class),
+				fileToProcess == null ? Collections.emptyMap() : fileToProcess.getAttributes());
 		final ComponentLog logger = getLogger();
 		// Get an instance of a component able to read from a PLC.
-		// TODO: Change this to use NiFi service instead of direct connection
 		final AtomicLong nrOfRows = new AtomicLong(0L);
 		final StopWatch executeTime = new StopWatch(true);
 
-		try (PlcConnection connection = getDriverManager().getConnection(getConnectionString())) {
+		try {
 
 			String inputFileUUID = fileToProcess == null ? null : fileToProcess.getAttribute(CoreAttributes.UUID.key());
 			Map<String, String> inputFileAttrMap = fileToProcess == null ? null : fileToProcess.getAttributes();
@@ -150,19 +126,11 @@ public class Plc4xSourceRecordProcessor extends BasePlc4xProcessor {
 				resultSetFF = session.putAllAttributes(resultSetFF, inputFileAttrMap);
 			}
 
-			PlcReadRequest.Builder builder = connection.readRequestBuilder();
-			getTags().forEach(tagName -> {
-				String address = getAddress(tagName);
-				if (address != null) {
-					builder.addTagAddress(tagName, address);
-				}
-			});
-			PlcReadRequest readRequest = builder.build();
 			final FlowFile originalFlowFile = fileToProcess;
 			resultSetFF = session.write(resultSetFF, out -> {
 				try {
-					PlcReadResponse readResponse = readRequest.execute().get(this.readTimeout, TimeUnit.MILLISECONDS);
-					
+					PlcReadResponse readResponse = plc4xControllerService.getReadResponse(originalFlowFile, addressMap);
+
 					if(originalFlowFile == null) //there is no inherit attributes to use in writer service 
 						nrOfRows.set(plc4xWriter.writePlcReadResponse(readResponse, out, logger, null));
 					else 
@@ -206,9 +174,6 @@ public class Plc4xSourceRecordProcessor extends BasePlc4xProcessor {
 			}
 			session.commitAsync();
 			
-		} catch (PlcConnectionException e) {
-			logger.error("Error getting the PLC connection", e);
-			throw new ProcessException("Got an a PlcConnectionException while trying to get a connection", e);
 		} catch (Exception e) {
 			logger.error("Got an error while trying to get a connection", e);
 			throw new ProcessException("Got an error while trying to get a connection", e);
