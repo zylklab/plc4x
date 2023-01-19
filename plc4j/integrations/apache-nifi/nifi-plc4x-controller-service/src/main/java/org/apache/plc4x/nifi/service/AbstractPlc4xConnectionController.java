@@ -39,22 +39,18 @@ import static org.apache.nifi.components.ConfigVerificationResult.Outcome.FAILED
 import static org.apache.nifi.components.ConfigVerificationResult.Outcome.SUCCESSFUL;
 
 import org.apache.plc4x.java.api.PlcConnection;
+import org.apache.plc4x.java.api.authentication.PlcAuthentication;
+import org.apache.plc4x.java.api.authentication.PlcUsernamePasswordAuthentication;
 import org.apache.plc4x.java.api.exceptions.PlcConnectionException;
 import org.apache.plc4x.java.utils.connectionpool.PooledPlcDriverManager;
 import org.apache.plc4x.nifi.service.api.Plc4xControllerService;
 
-import static org.apache.plc4x.nifi.service.util.ConnectionControllerProperties.CONNECTION_STRING_STRATEGY;
-import static org.apache.plc4x.nifi.service.util.ConnectionControllerProperties.CONSTANT_STRING_CONNECTION;
-import static org.apache.plc4x.nifi.service.util.ConnectionControllerProperties.CONSTANT_STRING_CONNECTION_PROPERTY;
-import static org.apache.plc4x.nifi.service.util.ConnectionControllerProperties.ATTRIBUTE_STRING_CONNECTION;
-import static org.apache.plc4x.nifi.service.util.ConnectionControllerProperties.ATTRIBUTE_STRING_CONNECTION_PROPERTY;
-import static org.apache.plc4x.nifi.service.util.ConnectionControllerProperties.PLC_FUTURE_TIMEOUT_MILISECONDS;
+import static org.apache.plc4x.nifi.service.util.ConnectionControllerProperties.*;
+
 
 public abstract class AbstractPlc4xConnectionController extends AbstractControllerService
         implements VerifiableControllerService, Plc4xControllerService {
 
-    // plcDriverManager must be static otherwise there would be multiple pools
-    // TODO: check if plcDriverManager should be static or not.
     protected volatile PooledPlcDriverManager plcDriverManager;
     protected volatile long timeout;
     protected volatile ConfigurationContext configurationContext;
@@ -92,6 +88,10 @@ public abstract class AbstractPlc4xConnectionController extends AbstractControll
         properties.add(CONSTANT_STRING_CONNECTION_PROPERTY);
         properties.add(ATTRIBUTE_STRING_CONNECTION_PROPERTY);
         properties.add(PLC_FUTURE_TIMEOUT_MILISECONDS);
+        properties.add(PLC_AUTHENTICATION_USERNAME_CONSTANT);
+        properties.add(PLC_AUTHENTICATION_USERNAME_ATTRIBUTE);
+        properties.add(PLC_AUTHENTICATION_PASSWORD_CONSTANT);
+        properties.add(PLC_AUTHENTICATION_PASSWORD_ATTRIBUTE);
 
         return properties;
     }
@@ -147,17 +147,33 @@ public abstract class AbstractPlc4xConnectionController extends AbstractControll
     @Override
     public PlcConnection getConnection(FlowFile flowFile) throws ProcessException {
         String plcConnectionString = null;
+        PlcAuthentication plcAuthentication = null;
         String value = configurationContext.getProperty(CONNECTION_STRING_STRATEGY).getValue();
         if (CONSTANT_STRING_CONNECTION.getValue().equalsIgnoreCase(value)) {
             plcConnectionString = configurationContext.getProperty(CONSTANT_STRING_CONNECTION_PROPERTY).getValue();
+            try {
+                plcAuthentication = new PlcUsernamePasswordAuthentication(
+                    configurationContext.getProperty(PLC_AUTHENTICATION_USERNAME_CONSTANT).getValue(),
+                    configurationContext.getProperty(PLC_AUTHENTICATION_PASSWORD_CONSTANT).getValue());
+            } catch (Exception e){}
+
         } else if (ATTRIBUTE_STRING_CONNECTION.getValue().equalsIgnoreCase(value)) {
             plcConnectionString = configurationContext.getProperty(ATTRIBUTE_STRING_CONNECTION_PROPERTY)
                     .evaluateAttributeExpressions(flowFile).getValue();
+            try {
+                plcAuthentication = new PlcUsernamePasswordAuthentication(
+                    configurationContext.getProperty(PLC_AUTHENTICATION_USERNAME_ATTRIBUTE).evaluateAttributeExpressions(flowFile).getValue(),
+                    configurationContext.getProperty(PLC_AUTHENTICATION_PASSWORD_ATTRIBUTE).evaluateAttributeExpressions(flowFile).getValue());
+            } catch (Exception e){}
         }
+
         try {
+            try {
+                return plcDriverManager.getConnection(plcConnectionString, plcAuthentication);
+            } catch (PlcConnectionException e) {}
             return plcDriverManager.getConnection(plcConnectionString);
         } catch (PlcConnectionException e) {
-            throw new ProcessException(e.getMessage());
+            throw new ProcessException(e);
         }
     }
 

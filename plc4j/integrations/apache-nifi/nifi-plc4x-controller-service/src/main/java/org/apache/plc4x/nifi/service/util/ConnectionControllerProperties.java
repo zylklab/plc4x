@@ -19,6 +19,9 @@ package org.apache.plc4x.nifi.service.util;
 
 import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.components.ValidationContext;
+import org.apache.nifi.components.ValidationResult;
+import org.apache.nifi.components.Validator;
 import org.apache.nifi.expression.ExpressionLanguageScope;
 import org.apache.nifi.processor.util.StandardValidators;
 
@@ -68,4 +71,71 @@ public class ConnectionControllerProperties {
         .dependsOn(CONNECTION_STRING_STRATEGY, ATTRIBUTE_STRING_CONNECTION)
         .required(true)
         .build();
+
+    public static final PropertyDescriptor PLC_AUTHENTICATION_USERNAME_CONSTANT = new PropertyDescriptor.Builder()
+        .name("plc-authentication-username-constant")
+        .displayName("Plc Authentication Username")
+        .description("Username used for plc authentication")
+        .expressionLanguageSupported(ExpressionLanguageScope.NONE)
+        .dependsOn(CONNECTION_STRING_STRATEGY, CONSTANT_STRING_CONNECTION)
+        .addValidator(new Validator() {
+            @Override
+            public ValidationResult validate(String subject, String input, ValidationContext context) {
+                return new ValidationResult.Builder().valid(true).build();
+            }
+        })
+        .required(false)
+        .defaultValue("")
+        .build();
+
+    public static final PropertyDescriptor PLC_AUTHENTICATION_PASSWORD_CONSTANT = new PropertyDescriptor.Builder()
+        .name("plc-authentication-password-constant")
+        .displayName("Plc Authentication Password")
+        .description("Password used for plc authentication")
+        .expressionLanguageSupported(ExpressionLanguageScope.NONE)
+        .dependsOn(CONNECTION_STRING_STRATEGY, CONSTANT_STRING_CONNECTION)
+        .addValidator(new Validator() {
+            @Override
+            public ValidationResult validate(String subject, String input, ValidationContext context) {
+                return new ValidationResult.Builder().valid(true).build();
+            }
+        })
+        .sensitive(true)
+        .required(false)
+        .defaultValue("")
+        .build();
+
+    public static final PropertyDescriptor PLC_AUTHENTICATION_USERNAME_ATTRIBUTE = new PropertyDescriptor.Builder()
+        .name("plc-authentication-username-attribute")
+        .displayName("Plc Authentication Username")
+        .description("Username used for plc authentication")
+        .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
+        .dependsOn(CONNECTION_STRING_STRATEGY, ATTRIBUTE_STRING_CONNECTION)
+        .addValidator(new Validator() {
+            @Override
+            public ValidationResult validate(String subject, String input, ValidationContext context) {
+                return new ValidationResult.Builder().valid(true).build();
+            }
+        })
+        .required(false)
+        .defaultValue("${plc4x.username}")
+        .build();
+
+    public static final PropertyDescriptor PLC_AUTHENTICATION_PASSWORD_ATTRIBUTE = new PropertyDescriptor.Builder()
+        .name("plc-authentication-password-attribute")
+        .displayName("Plc Authentication Password")
+        .description("Password used for plc authentication")
+        .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
+        .dependsOn(CONNECTION_STRING_STRATEGY, ATTRIBUTE_STRING_CONNECTION)
+        .addValidator(new Validator() {
+            @Override
+            public ValidationResult validate(String subject, String input, ValidationContext context) {
+                return new ValidationResult.Builder().valid(true).build();
+            }
+        })
+        .required(false)
+        .defaultValue("${plc4x.password}")
+        .build();
+
+    
 }
