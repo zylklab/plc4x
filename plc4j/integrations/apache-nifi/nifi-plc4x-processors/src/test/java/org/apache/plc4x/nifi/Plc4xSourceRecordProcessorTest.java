@@ -18,14 +18,14 @@
  */
 package org.apache.plc4x.nifi;
 
+import java.util.Map;
+
 import org.apache.nifi.avro.AvroRecordSetWriter;
-import org.apache.nifi.json.JsonRecordSetWriter;
 import org.apache.nifi.reporting.InitializationException;
-import org.apache.nifi.serialization.record.MockRecordWriter;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
+import org.apache.plc4x.nifi.util.Plc4xCommonTest;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import org.apache.plc4x.nifi.service.Plc4xConnectionController;
@@ -60,36 +60,22 @@ public class Plc4xSourceRecordProcessorTest {
     	testRunner.setProperty("var5", "STATE/foo5:INT");
     	testRunner.addConnection(Plc4xSourceRecordProcessor.REL_SUCCESS);
     	testRunner.addConnection(Plc4xSourceRecordProcessor.REL_FAILURE);
+
+
+		for (Map.Entry<String,String> address :Plc4xCommonTest.addressMap.entrySet()) {
+			// TODO: Random generation not working with this types
+			if (address.getValue().startsWith("RANDOM/")) {
+				if (address.getValue().endsWith("BYTE") ||
+					address.getValue().endsWith("CHAR") ||
+					address.getValue().endsWith("STRING"))
+					continue;
+			}
+			testRunner.setProperty(address.getKey(), address.getValue());
+		}
     }
 
     @Test
-    public void testMockRecordWriterProcessor() throws InitializationException {
-    	final MockRecordWriter writerService = new MockRecordWriter("header", false);
-    	testRunner.addControllerService("writer", writerService);
-    	testRunner.enableControllerService(writerService);
-    	testRunner.setProperty(Plc4xSourceRecordProcessor.PLC_RECORD_WRITER_FACTORY.getName(), "writer");
-    	testRunner.run(NUMBER_OF_CALLS,true, true);
-    	//validations
-    	testRunner.assertTransferCount(Plc4xSourceRecordProcessor.REL_FAILURE, 0);
-    	testRunner.assertTransferCount(Plc4xSourceRecordProcessor.REL_SUCCESS, NUMBER_OF_CALLS);
-    }
-    
-    @Test
-    @Disabled("Disabled for now")
-    public void testJsonRecordWriterProcessor() throws InitializationException {
-    	final JsonRecordSetWriter writerService = new  JsonRecordSetWriter();
-    	testRunner.addControllerService("writer", writerService);
-    	testRunner.enableControllerService(writerService);
-    	testRunner.setProperty(Plc4xSourceRecordProcessor.PLC_RECORD_WRITER_FACTORY.getName(), "writer");
-    	testRunner.run(NUMBER_OF_CALLS,true, true);
-    	//validations
-    	testRunner.assertTransferCount(Plc4xSourceRecordProcessor.REL_FAILURE, 0);
-    	testRunner.assertTransferCount(Plc4xSourceRecordProcessor.REL_SUCCESS, NUMBER_OF_CALLS);
-    }
-    
-    @Test
-    @Disabled("Disabled for now")
-    public void testAvroRecordWriterProcessor() throws InitializationException {
+    public void testAvroRecordWriterProcessor() throws InitializationException {  	
     	final AvroRecordSetWriter writerService = new  AvroRecordSetWriter();
     	testRunner.addControllerService("writer", writerService);
     	testRunner.enableControllerService(writerService);
@@ -98,6 +84,7 @@ public class Plc4xSourceRecordProcessorTest {
     	//validations
     	testRunner.assertTransferCount(Plc4xSourceRecordProcessor.REL_FAILURE, 0);
     	testRunner.assertTransferCount(Plc4xSourceRecordProcessor.REL_SUCCESS, NUMBER_OF_CALLS);
-    }
 
+		Plc4xCommonTest.assertAvroContent(testRunner.getFlowFilesForRelationship(Plc4xSourceProcessor.REL_SUCCESS), false, true);
+    }
 }
