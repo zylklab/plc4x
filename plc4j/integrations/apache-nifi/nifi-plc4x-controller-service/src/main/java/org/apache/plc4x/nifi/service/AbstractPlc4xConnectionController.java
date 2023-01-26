@@ -39,10 +39,11 @@ import static org.apache.nifi.components.ConfigVerificationResult.Outcome.FAILED
 import static org.apache.nifi.components.ConfigVerificationResult.Outcome.SUCCESSFUL;
 
 import org.apache.plc4x.java.api.PlcConnection;
+import org.apache.plc4x.java.api.PlcConnectionManager;
 import org.apache.plc4x.java.api.authentication.PlcAuthentication;
 import org.apache.plc4x.java.api.authentication.PlcUsernamePasswordAuthentication;
 import org.apache.plc4x.java.api.exceptions.PlcConnectionException;
-import org.apache.plc4x.java.utils.connectionpool.PooledPlcDriverManager;
+import org.apache.plc4x.java.utils.cache.CachedPlcConnectionManager;
 import org.apache.plc4x.nifi.service.api.Plc4xControllerService;
 
 import static org.apache.plc4x.nifi.service.util.ConnectionControllerProperties.*;
@@ -51,7 +52,7 @@ import static org.apache.plc4x.nifi.service.util.ConnectionControllerProperties.
 public abstract class AbstractPlc4xConnectionController extends AbstractControllerService
         implements VerifiableControllerService, Plc4xControllerService {
 
-    protected volatile PooledPlcDriverManager plcDriverManager;
+    protected volatile PlcConnectionManager connectionManager = null;
     protected volatile long timeout;
     protected volatile ConfigurationContext configurationContext;
 
@@ -100,7 +101,7 @@ public abstract class AbstractPlc4xConnectionController extends AbstractControll
     public List<ConfigVerificationResult> verify(ConfigurationContext context, ComponentLog verificationLogger,
             Map<String, String> variables) {
 
-        configurePlcDriverManager();
+        configurePlcConnectionManager();
         List<ConfigVerificationResult> results = new ArrayList<>();
 
         try {
@@ -131,14 +132,14 @@ public abstract class AbstractPlc4xConnectionController extends AbstractControll
         return results;
     }
 
-    private void configurePlcDriverManager() {
-        if (plcDriverManager == null)
-            plcDriverManager = new PooledPlcDriverManager();
+    private void configurePlcConnectionManager() {
+        if (connectionManager == null)
+            connectionManager = CachedPlcConnectionManager.getBuilder().build();
     }
 
     @OnEnabled
     public void onConfigured(final ConfigurationContext context) throws InitializationException {
-        configurePlcDriverManager();
+        configurePlcConnectionManager();
 
         this.timeout = Long.valueOf(context.getProperty(PLC_FUTURE_TIMEOUT_MILISECONDS).getValue());
         this.configurationContext = context;
@@ -169,9 +170,9 @@ public abstract class AbstractPlc4xConnectionController extends AbstractControll
 
         try {
             try {
-                return plcDriverManager.getConnection(plcConnectionString, plcAuthentication);
+                return connectionManager.getConnection(plcConnectionString, plcAuthentication);
             } catch (PlcConnectionException e) {}
-            return plcDriverManager.getConnection(plcConnectionString);
+            return connectionManager.getConnection(plcConnectionString);
         } catch (PlcConnectionException e) {
             throw new ProcessException(e);
         }

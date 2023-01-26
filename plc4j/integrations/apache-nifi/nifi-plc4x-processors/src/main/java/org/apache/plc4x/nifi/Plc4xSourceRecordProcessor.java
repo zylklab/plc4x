@@ -113,7 +113,6 @@ public class Plc4xSourceRecordProcessor extends BasePlc4xProcessor {
 		final StopWatch executeTime = new StopWatch(true);
 
 		try {
-
 			String inputFileUUID = fileToProcess == null ? null : fileToProcess.getAttribute(CoreAttributes.UUID.key());
 			Map<String, String> inputFileAttrMap = fileToProcess == null ? null : fileToProcess.getAttributes();
 			FlowFile resultSetFF;

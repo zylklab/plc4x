@@ -61,22 +61,16 @@ public class Plc4xSinkProcessor extends BasePlc4xProcessor {
                         ));
                         
             PlcResponseCode code = null;
-            try {
-                for (String tag : plcWriteResponse.getTagNames()) {
-                    code = plcWriteResponse.getResponseCode(tag);
-                    if (!code.equals(PlcResponseCode.OK))
-                        throw new Exception(code.toString());
-                }
-                session.transfer(flowFile, REL_SUCCESS);
-            } catch (Exception e) {
-                flowFile = session.putAttribute(flowFile, "exception", e.getLocalizedMessage());
-                session.transfer(flowFile, REL_FAILURE);
+
+            for (String tag : plcWriteResponse.getTagNames()) {
+                code = plcWriteResponse.getResponseCode(tag);
+                if (!code.equals(PlcResponseCode.OK))
+                    throw new Exception(code.toString());
             }
-        } catch (ProcessException e) {
-            throw e;
+            session.transfer(flowFile, REL_SUCCESS);
         } catch (Exception e) {
-            throw new ProcessException("Got an error while trying to get a connection", e);
+            flowFile = session.putAttribute(flowFile, "exception", e.getLocalizedMessage());
+            session.transfer(flowFile, REL_FAILURE);
         }
     }
-
 }

@@ -20,6 +20,7 @@ package org.apache.plc4x.nifi.service;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.nifi.annotation.behavior.SupportsSensitiveDynamicProperties;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.flowfile.FlowFile;
@@ -33,6 +34,7 @@ import org.apache.plc4x.java.api.messages.PlcReadRequest;
 @Tags({ "plc-connector", "plc-read", "plc-write"})
 @CapabilityDescription("Manages connections to PLCs, allows reading and writing data into them. Connection string can be set constant or use Expression Language"
         + "to access incoming flowfile attributes, by defaults uses 'plc4x.connection_string' attribute.")
+@SupportsSensitiveDynamicProperties()
 public class Plc4xConnectionController extends AbstractPlc4xConnectionController{
 
     @Override
