@@ -25,30 +25,49 @@ Apache PLC4X provides both `Source` as well as `Sink` processors for accessing d
 
 === Setting Up NiFi
 
-Even if the documentation of NiFi states it works with any Java version above 1.8, this is not quite true.
+You can follow the link:https://nifi.apache.org/docs/nifi-docs/html/getting-started.html[Getting Started] page on NiFi documentation.
 
-I have found that NiFi only works with Java versions below 11. With `Java 1.8` you are definitely on the safe-side.
 
-When starting with newer versions the start script just terminates after logging a statement that NiFi is now starting.
-
-Other than that, I haven't encountered any other requirements.
-
-As soon as you have started NiFi using the `nifi.sh run` or `run-nifi.bat` the Web-UI of NiFi should be available at: http://localhost:8080/nifi/
-
-[NOTE]
-====
-It might take a few seconds for the Web-UI to show up ... so if you're getting errors in the browser, give it some time to start.
-====
 
 === Enabling PLC4X Processors in NiFi
 
-In order to enable `Apache PLC4X` support in `Apache NiFi` all you need to do, is to copy our `nar` archive into the Nifi installations `lib` directory.
+In order to enable `Apache PLC4X` support in `Apache NiFi` all you need to do, is to copy our `nar` archive into the NiFi installations `lib` directory.
 
 You can either build the `nar` by building PLC4X and using the version in the `plc4j/integrations/apache-nifi/nifi-plc4x-nar/target` directory.
 
-Or you can download a released version from Maven central: https://search.maven.org/search?q=plc4j-nifi-plc4x-nar
+Or you can download a released version from Maven central: https://central.sonatype.com/search?q=plc4j-nifi-plc4x-nar
 
 image::integrations/nifi/empty-nifi-flow.png[]
+
+=== PLC4X integration in NiFi
+
+The NiFi integration provides source and sink processors for attribute and record based data:
+
+
+[cols="1,1,1,1"]
+|===
+|Processor | Plc tags input | Input: values to write | Output: read values
+
+|Plc4xSourceProcessor
+|flowfile attributes or processor properties
+|-
+|flowfile attributes
+
+|Plc4xSinkProcessor
+|flowfile attributes or processor properties
+|flowfile attributes
+|-
+
+|Plc4xSourceRecordProcessor
+|flowfile attributes or processor properties
+|-
+|record
+
+|Plc4xSinkRecordProcessor
+|flowfile attributes or processor properties
+|record
+|-
+|===
 
 === Using a PLC4X Source Processor in NiFi
 
@@ -58,33 +77,33 @@ image::integrations/nifi/add-processor.png[]
 
 A popup will appear in which you are presented the list of all available processors.
 
-Enter `PLC4X` in the search field and select the `Plc4xSourceProcessor` and click `Add` (I think you can also double-click on the processor)
+Enter `PLC4X` in the search field and select the `Plc4xSourceProcessor` and click `Add` (or doble click).
 
 image::integrations/nifi/list-of-plc4x-processors.png[]
 
-[NOTE]
-====
-If you click on a Processor, it's a little hard to see it's selected as the selection is not highlighted.
-However, you can see a processor is selected as the bottom part shows the name of the selected processor.
-====
-
 As soon as your new processor is added to the canvas you need to configure it. Do this by double clicking on it (Or by right-clicking and selecting `Configure`)
 
-Here you now need to provide a `PLC4X connection string` and a `PLC resource address String`.
+Here you now need to provide a value to all bold properties:
 
-The `PLC connection String` is just a normal PLC4X connection string. Please consult the documentation on using the different types of supported connections link:https://plc4x.apache.org/users/protocols/index.html[Here]
+* `PLC connection String``: is just a normal PLC4X connection string. Please consult the documentation on using the different types of supported connections link:https://plc4x.apache.org/users/protocols/index.html[Here].
 
-The `PLC resource address String` is a `;`-separarated list of `name-value-pairs`, where each `name` is assigned a `plc4x addrress`.
+* `Address Access Strategy`: defines how the processor obtains the PLC addresses. There are 2 options:
+  - `Properties as Addresses`: each new property defined in the processor (plus sign at the top right corner) defines a plc-tag whose name is the property name and the address is the value.
+  - `'Address Text' Property`: a new property `Address Text` appears in the processor. Plc-tags (tag name - address pairs) are defined there as key-value pairs in JSON format.
+
+* `Schema Cache Size`: Each PLC4X processor has a cache for faster execution. In case no Expression Language is used for tag definitions a cache of size 1 is enogh.
 
 [NOTE]
 ====
-For information on how an address string looks for the type of driver you are using, please check the documentation for the driver you are using link:https://plc4x.apache.org/users/protocols/index.html[Here]
+For information on how an address string looks or how addresses are defined for the type of driver you are using, please check the documentation for the driver you are using link:https://plc4x.apache.org/users/protocols/index.html[Here]
 ====
 
 Example:
 
-  PLC connection String: s7://192.168.23.30
-  PLC resource address String: time-value=%DB2:8:TIME;string-value=%DB2:30.0:STRING(10)
+  PLC connection String: s7://10.105.143.7:102?remote-rack=0&remote-slot=1&controller-type=S7_1200
+  Address Access Strategy: Use Properties as Addresses
+  Schema Cache Size: 1
+  var1: %DB1:DBx0.0:BOOL
 
 image::integrations/nifi/configured-plc4x-source-processor.png[]
 
@@ -93,9 +112,9 @@ For this please change to the `Scheduling` tab and set the `Run Schedule` to let
 
 image::integrations/nifi/configure-scheduling.png[]
 
-If we don't do this, NiFi will hammer the PLC with requests and in case of my S7 it will simply start denying accepting new connections.
+If we don't do this, NiFi will hammer the PLC with requests.
 
-It will still say `Invalid` at the top, but this has nothing to do with your entries, it's much more that this processor produces two data-streams: `SUCCESS` and `FAILURE`.
+It will still say `Invalid` at the top, but this has nothing to do with your entries, it's much more that this processor produces two data-streams: `success` and `failure`.
 These need to be connected next.
 
 After that's done, click on `Apply`.
@@ -107,7 +126,7 @@ This simply logs every bit of data to the NiFi log-system.
 
 As the `LogMessage` processor creates a stream of events every time a log message is logged, we need to configure it to auto-terminate that relationship.
 Do this by double-clicking on the processor and selecting the `Settings` tab.
-Here check the checkbox labeled `SUCCESS` in the section `Automatically Terminate Relationships` and then click `Apply`.
+Here check the checkbox labeled `success` in the section `Automatically Terminate Relationships` and then click `Apply`.
 
 image::integrations/nifi/configured-log-processors.png[]
 
@@ -119,7 +138,7 @@ As soon as you release the connection there, the two processors are now connecte
 
 As soon as you release the mouse, a popup will pop up and allow you to configure the connection. You can generally select which streams you want to connect.
 
-In this case we'll simply connect the `SUCCESS` and the `FAILURE` stream to the log processor.
+In this case we'll simply connect the `success` and the `failure` stream to the log processor.
 
 image::integrations/nifi/configuring-connection.png[]
 
