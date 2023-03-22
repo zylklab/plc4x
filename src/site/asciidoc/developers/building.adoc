@@ -19,111 +19,96 @@
 
 PLC4X is built with `Apache Maven` and we have tried to make the build as simple as possible.
 
-However PLC4X aims at providing means to communicate with PLCs of multiple vendors using a shared API but also in a variety of different languages.
+However, PLC4X aims at providing means to communicate with PLCs of multiple vendors using a shared API but also in a variety of different languages.
 
-We have partitioned the build to allow selecting the parts that are of interest.
+To allow selecting only the parts that are of interest, we have divided the build into different partitions.
 This is done by selecting so-called `Maven profiles`.
 More about these later down in this manual.
 
-For your convenience we also have provided a `Maven-Wrapper`, that should allow building of PLC4X with only `Java 11` or greater as requirement.
+For your convenience, we have also provided a `Maven-Wrapper`, that should allow building of PLC4X with only `Java 11` or greater as requirement.
 
 === Requirements
 
 The only requirements to building PLC4X should be:
 
-* Java 11 JDK (or newer)
-* Git (Even if you are building the source distribution, the Kafka plugin seems to require a `git` executable being available on the systems `PATH`)
-* Apache Maven (3.6.0 or newer) *(Optional)* (See next chapter)
+* `Java 11 JDK` (or newer)
+* `Git` (Even if you are building the source distribution, the Kafka plugin seems to require a `git` executable being available on the system's `PATH`)
+* `Apache Maven` (3.6.0 or newer) *(Optional)* (See next chapter)
 
 === Using the Maven-Wrapper
 
 The so-called `Maven-Wrapper` is used by calling the Maven-Wrapper scripts `mvnw` (Mac & Linux) or `mvnw.cmd` (Windows) instead of the default Maven commands `mvn` and `mvn.cmd`.
 
 These helpers ensure Maven is available in at least the version defined in `.mvn/maven-wrapper.properties`.
-If no suitable version can be found, it is automatically downloaded and installed alongside the project (So it doesn't have to be downloaded every time and every project can have it's own Maven version)
+If a suitable version is not found, it will be automatically downloaded and installed alongside the project (so it doesn't have to be downloaded every time and every project can have it's own Maven version).
 
-After the script has ensured a suitable Maven version is available, this is used and all arguments and parameters are transparently forwarded to this.
-So simply adding the additional `w` to each of the Maven commands, there should be no difference to using a pre-installed Maven version.
+After the script has ensured a suitable Maven version is available, it uses it and forwards all arguments and parameters transparently.
+So simply add the additional `w` to each of the Maven commands, and there should be no difference to using a pre-installed Maven version.
 
 === Using Maven
 
-This document can't provide you with all the details needed to get started with `Maven` itself.
-But there is a lot of good documentation out there.
+This document can't provide you with all the details needed to get started with Maven itself, but there is a lot of good documentation out there.
 
-Justin McLean and Christofer Dutz even recorded a not quite 2 hour Maven training Video some time ago for another Apache project.
-
-It should handle all the details needed to get a general understanding of Maven and how it works.
+Justin McLean and Christofer Dutz even recorded a not quite two-hour Maven training video some time ago for another Apache project. It should handle all the details needed to get a general understanding of Maven and how it works.
 
 .Recording of a Maven Training for Apache Flex from 2016
 video::167857327[vimeo,width=640,height=420]
 
 === Building PLC4X with Maven
 
-In general all modules which are not considered production-ready are located in the `sandbox` section of the project.
+In general, all modules which are not considered production-ready are located in the `sandbox` section of the project. They are not built by default and are activated by enabling the `with-sandbox` Maven profile.
 
-They are not built per default and are enabled by enabling the `with-sandbox` Maven profile.
+As especially building the `C++` and `C#` drivers requires building some third-party artifacts and setting up third-party tools, and increases build time dramatically, we have excluded these parts from the default Maven build.
 
-As especially building the C++, and C# drivers requires building of some third party artifacts and increases build-time dramatically and requires setting up some additional third party tools, we have excluded these parts form the default Maven build.
+The following profiles are available (*they have to be enabled additionally to the `with-sandbox` profile*):
 
-The following profiles are available (*They have to be enabled additionally to the `with-sandbox` profile*):
+- `with-c`: Builds all `C`-related modules, integrations and examples
+- `with-dotnet`: Builds all `C#` and `.Net`-related modules, integrations and examples
+- `with-go`: Builds all `Go`-related modules, integrations and examples
+- `with-python`: Builds all `Python`-related modules, integrations and examples. Currently, enabling this module requires also enabling the `with-proxies` profile, but this requirement will probably change in the near future.
 
-- `with-c`: Builds all C related modules, integrations and examples
-- `with-dotnet`: Builds all C# and .Net related modules, integrations and examples
-- `with-go`: Builds all Go related modules, integrations and examples
-- `with-python`: Builds all Python related modules, integrations and examples (Also requires `with-sandbox`)
-- `with-sandbox`: Builds the modules which are not yet considered stable enough to become part of the main distribution
+WARNING: As these profiles typically require some preparation and setup on your development machine, please consider reading the link:preparing/index.html[Preparing your Computer] guide for a detailed description on this.
 
-WARNING: As these profiles typically require some preparation and setup on your development machine, please read the link:preparing/index.html[Preparing your Computer] guide for a detailed description on this.
+Beyond that, there is an additional profile `with-proxies`, which enables additional modules in each of the activated languages.
+This module uses `Apache Thrift` to generate modules for forwarding requests to an `interop server`, which runs somewhere else or on the same machine.
 
-Beyond that there is an additional profile `with-proxies` which will enable additional modules in each of the activated languages.
-This `proxies` module, uses `Apache Thrift` to generate modules for forwarding requests to an `interop server` which runs somewhere else or on the same machine.
+There are two more profiles that allow you to activate additional modules or functionality:
 
-WARNING: Currently when enabling the `with-python` module, you are required to also enable the `with-proxies` profile too as this is currently required there but will probably change in the near future.
+- `with-docker` : Some modules also provide the means to build `Docker` images. By enabling this profile, these images are automatically built too
+- `with-boost` : Builds a `C`/`{cpp}` library used by both the `Apache Thrift` build and the `C++` drivers. Unfortunately, this is an extremely intense build, so we have set up the PLC4X build to only require this profile to be activated once. If the resulting artifacts are installed in your Maven Local repository, they will be reused
 
-There are 3 more profiles that allow you to activate additional modules or functionality:
-
-- `with-docker` : Some modules also provide the means to build `Docker` images. By enabling this profile these images are automatically built too
-- `with-boost` : Builds a `C`/`C++` Library used by both the `Apache Thrift` build as well as the `C++` drivers. Unfortunately this is an extremely intense build so we have setup the PLC4X build to only require this profile to be activated once. If the resulting artifacts are installed in your `Maven-Local-Repo`, these will be re-used.
-
-The minimum Apache PLC4X build will build only the `Java` modules without any experimental modules:
+The minimum build of Apache PLC4X will include only the `Java` modules and exclude any experimental modules:
 
     mvn install
 
-If you want to skip the running of tests (even if this is not encouraged) you can skip them all together.
-
-    mvn install -DskipTests
-
-All Apache PLC4X modules are built by executing the following command:
+To build all Apache PLC4X modules execute the following command:
 
     mvn -P with-c,with-dotnet,with-go,with-python,with-sandbox install
 
-This not only builds the artifacts and creates the jar files, but also runs all unit- and integration-tests.
+This not only builds the artifacts and creates the `JAR` files, but also runs all unit and integration tests.
 
-If you want to skip the running of tests (even if this is not encouraged) you can skip them all together.
+Although it is not encouraged, you can choose to skip running all tests altogether using the flag `-DskipTests`. This will not skip the compilation of tests, however. For example:
 
-    mvn -P with-c,with-dotnet,with-go,with-python,with-sandbox install -DskipTests
+    mvn install -DskipTests
 
-This will not skip the compilation of tests, however.
+=== Building the PLC4X website with Maven
 
-=== Building the PLC4X Website with Maven
+The PLC4X website is included in the same `Git` repository as the code, and it is also built using Maven.
 
-The PLC4X Website is also part of the same GIT repository that contains the code and it is built by Maven as well.
-
-In order to build the website the following command should be sufficient:
+The following command should be sufficient to build the website:
 
     mvn site
 
-This is just a quick-start version of the site generation, for a fully detailed documentation please read the https://plc4x.apache.org/developers/infrastructure/website.html[Website] documentation page.
+This is just a quick-start version of the site generation. For a fully detailed documentation, please read the https://plc4x.apache.org/developers/infrastructure/website.html[Website] documentation page.
 
 === Some special Maven profiles
 
-Maven supports so-called `profiles` for customizing the build in special cases.
+Maven supports `profiles` for customizing the build in special cases.
 We have tried to keep the number of profiles as low as possible.
-So far there is only one profile.
 
 ==== `apache-release` profile
 
-This profile is automatically enabled on a release-build and it automatically creates some additional artifacts:
+This profile is automatically enabled in a release build and it creates some additional artifacts:
 
 - JavaDoc artifact
 - Sources artifact
@@ -131,37 +116,32 @@ This profile is automatically enabled on a release-build and it automatically cr
 - SHA512 checksum files for every artifact
 - PGP signature files for every artifact
 
-Generally it is not required to enable ths profile unless you are interested in these Artifacts.
+Generally, it is not necessary to enable this profile unless you are interested in these artifacts.
 
 ==== `debug-pom` profile
 
 Especially for Maven beginners, it might be difficult to understand why a module builds the way it does.
 Maven contains a lot of concepts to inherit and override settings.
 
-The `debug-pom` profile will generate the so-called `effective pom` in the modules `target` directory.
+The `debug-pom` profile will generate the so-called `effective pom` in the module's `target` directory. This file contains 100% of the settings Maven uses to execute. All settings are inherited and overridden, and all properties are expanded to the value Maven uses.
 
-This file contains 100% of the settings Maven uses to execute. All settings are inherited and overridden.
-All Properties are expanded to the value Maven uses.
-
-So whenever Maven doesn't behave the way you expect it to, just enable this profile and it should help you find out, what's going on.
+Whenever Maven does not behave the way you expect it to, just enable this profile and it should help you find out what is going on.
 
 ==== `development` profile
 
 This profile enables some extra strict enforcer rules. It is encouraged to activate this profile during development.
 
-In the `CI Build` this profile is enabled.
+This profile is enabled in the `CI Build`.
 
 ==== `skip-prerequisite-check` profile
 
-Some times, actually only on the build-server we have encountered random failures of the `prerequisite check` build step.
+Sometimes, specifically when building on the build server, we have experienced random failures during the `prerequisite check` build step. In order to still be able to build in such cases, activate this profile to disable those checks.
 
-In order to still be able to build in this case, activating this profile simply disables these checks.
+=== Use PLC4X with Gradle
 
-=== Use the compiled library with Gradle
+If you want to use Gradle as the build tool for your project, first compile the library with the desired modules and install the new artifact in your Maven Local repository (usually, under `~/.m2/repository` on Linux-like systems).
 
-Compiling the library as explained here add the new version in the local Maven repository (i.e. usually under `~/.m2/repository` on linux like systems), if you would like to use Gradle as Build Tool for your project you have just to use a local repository in your Gradle `build.gradle` file.
-
-Here there's an example: 
+Then you just have to declare the Maven Local repository in your `build.gradle` file. Here is an example:
 
 [source, groovy]
 :source-highlighter: prettify
