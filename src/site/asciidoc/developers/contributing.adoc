@@ -24,59 +24,51 @@ There are multiple forms in which you can become involved with the PLC4X project
 
 These usually are, but are not limited to:
 
-- Submitting Pull Requests
-- Filing Bug-Reports
+- Submitting pull requests
+- Filing bug reports
 - Active communication on our mailing lists
 - Promoting the project (articles, blog posts, talks at conferences)
 - Documentation
 
-We are a very friendly bunch and don't be afraid to step forward.
+We are a very friendly bunch, so don't be afraid to step forward.
 
-=== Pull-Requests
+=== Pull requests
 
-The simplest way to submit code changes, is via a GitHub pull-request.
+The simplest way to submit code changes is via a GitHub `pull request`. In order to do this, first create a GitHub account and sign into your account.
 
-In order to do this first create a GitHub account and sign into you account.
-
-After that's done, please to to our https://github.com/apache/plc4x[GitHub site] and create a so-called `Fork`.
+After that is done, please go to our https://github.com/apache/plc4x[GitHub site] and create a so-called `Fork`.
 
 image::contributing-github-fork.png[]
 
-What happens now, is that GitHub creates a full copy of the PLC4X repo in your account. Only you can commit to this.
+What happens now is that GitHub creates a full copy of the PLC4X repo in your account, which only you can commit to.
 
-Now ideally you check-out your cloned repository:
+Now, ideally you check out your cloned repository:
 
     git clone https://github.com/{your-user-id}/plc4x.git
 
-Now you have a copy of PLC4X on your computer and you can change whatever you want and as it's your copy, you can even commit these changes without any danger of breaking things.
+Now you have a copy of PLC4X on your computer and you can change whatever you want and as it is your copy. You can even commit these changes without any danger of breaking things.
 
-As soon as you're finished with your changes and want us to have a look, it's time to create a so-called `Pull-Request`.
+As soon as you are finished with your changes and want us to have a look, it is time to create a pull request. You do that by going to your forked repository page on GitHub.
 
-You do that by going to your forked repository page on GitHub.
-
-Every forked repository has an additional button called "New Pull Request":
+Every forked repository has an additional button called "New pull request":
 
 image::contributing-github-create-pull-request.png[]
 
 If you click on this, we will receive a notification on your changes and can review them.
-We also can discuss your changes and have you perfect your pull request before we accept and merge it into PLC4X.
+We can also discuss your changes and have you perfect your pull request before we accept and merge it into PLC4X.
 
 ==== Keeping your fork up to date
 
-As we are continuously working on PLC4X and you created a copy of our repo, this will become out-of-date pretty soon.
-
-In order get the changes we introduced in the official repo you have to tell git about that.
+As we are continuously working on PLC4X and you created a copy of our repo, this will be out of date pretty soon. In order get the changes we introduced in the official repo, you have to tell `git` about that.
 
 You do this locally by adding a new so-called `remote`.
-Per default the remote you cloned from is called `origin`.
+By default, the remote you cloned from is called `origin`. Usually you will call the second remote `upstream` but in general you can call it whatever you like.
 
-Usually you will call the second remote `upstream` but in general you can call it whatever you like.
-
-Add the remote on the commandline (or your git gui of choice):
+Add the remote on the command line (or your git GUI of choice):
 
     git remote add upstream https://github.com/apache/plc4x.git
 
-If you list all your remotes, with the following command:
+You can list all your remotes with the following command:
 
     git remote -v
 
@@ -87,52 +79,48 @@ It should output something like this:
     upstream    https://github.com/apache/plc4x.git (fetch)
     upstream    https://github.com/apache/plc4x.git (push)
 
-If that's so, you're fine to continue, if not ... well you could ask for assistance on our dev-list.
+If that is so, you are fine to continue, if not... well, you could ask for assistance on our dev-list.
 
-In order to get all changes of our upstream-repository, just execute the following command:
+To get all changes of our upstream repository, just execute the following command:
 
     git pull upstream
 
-This will get all changed from upstream and merge them locally. In order to update your GitHub version, you have to push things back to `origin`.
+This will get all changes from upstream and merge them locally. In order to update your GitHub version, you have to push things back to `origin`.
 You can do this by executing the following command:
 
     git push
 
-(If no remote is provided, git will use `origin` per default)
+(If no remote is provided, git will use `origin` by default.)
 
 ===  Bug Reports
 
-We use https://issues.apache.org/jira/projects/PLC4X[JIRA] as our Bug & Issue Tracker.
+We use https://issues.apache.org/jira/projects/PLC4X[JIRA] as our Bug & Issue Tracker. Feel free to submit `feature requests`, `bug reports`, `patches`, `comments on issues`...
 
-Feel free to submit `feature requests`, `bug reports`, `patches`, `comment on issues`, ...
+In order to be able to do so, you need to create an account first. Currently, Apache has a separate login system for JIRA and all other services. This might change in the future, but right now it is the way things are.
 
-In order to be able to do so, you need to create an account first.
+So if you are considering to contribute more than just a one-time patch, please choose a username that has not been used by an existing http://people.apache.org/committer-index.html[Apache committer] as this will simplify things if we invite you to become part of the team.
 
-Currently Apache has a separate login system for JIRA and all other services, this might change in the future, but right now it's the way things are.
-
-So if you are considering to contribute more than just a one-time-patch, please choose a username that hasn't been used by an existing http://people.apache.org/committer-index.html[Apache committer] as this will simplify things if we invite you to become part of the team.
-
-If you want to be assigned to an issue because you want to work on it, please request to be added to the JIRA groups on our http://plc4x.apache.org/mailing-lists.html[developers mailing list]
+If you want to be assigned to an issue because you want to work on it, please request to be added to the JIRA groups on our http://plc4x.apache.org/mailing-lists.html[developers mailing list].
 
 === Documentation
 
-As our documentation and website are generated as a side-product of our build, contributing to this technically the same as contributing to the code.
+As our documentation and website are generated as a side-product of our build, contributing to this is technically the same as contributing to the code.
 
 All our content is written in Asciidoctor and is located in `src/site/asciidoc` directories.
-For a reference of the Asciidoctor syntax please have a look at the https://asciidoctor.org/docs/user-manual/#introduction-to-asciidoctor[Asciidoctor documentation].
+For a reference of the Asciidoctor syntax, please have a look at the https://asciidoctor.org/docs/user-manual/#introduction-to-asciidoctor[Asciidoctor documentation].
 
 === Branching model
 
 The PLC4X project uses the following branching model.
 
-The same model is used for a wide variety of other projects, so it should be pretty straight forward.
+The same model is used for a wide variety of other projects, so it should be pretty straightforward.
 
-- `release` contains the latest released state.
-- Development is performed on the `develop` branch.
-- Features are developed in Feature-Branches with a prefix `feature/`
+- `release` contains the latest released state
+- Development is performed on the `develop` branch
+- Features are developed in feature branches with a prefix `feature/`
 - Each minor release has a corresponding release branch `rel/{major-version}.{minor-version}`
 - A release branch is spawned from `develop` only
-- Bugfix releases don't have a dedicated release branch, they are just performed on the corresponding minor versions release branch
+- Bugfix releases do not have a dedicated release branch, they are just performed on the corresponding minor versions release branch
 
 // Use http://www.webgraphviz.com/ for online editiing this ...
 [graphviz, plc4x-branching-model, png]
