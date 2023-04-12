@@ -18,20 +18,20 @@
 
 == Using JQAssistant
 
-In PLC4X we are using a tool called `https://jqassistant.org/[JQAssistant]` for enforcing quality assurance rules.
+In PLC4X, we use a tool called `https://jqassistant.org/[JQAssistant]` to enforce quality assurance rules.
 
 `JQAssistant` can be thought of as a set of two components:
 
-- A set of scanners that analyse a project and stores the gathered information in for of linked graphs in a Neo4j database.
-- An engine that executes defined rules against the graph created during the scan phase of the build
+- A set of scanners that analyse a project and store the gathered information in the form of linked graphs in a Neo4j database.
+- An engine that executes defined rules against the graph created during the scan phase of the build.
 
-These rules can produce either reports and tables or they are used to enforce rules.
+These rules can produce either reports and tables or they can be used to enforce rules.
 
-If a pre-defined rule is violated the failed checks can be marked as `warning` or `error` that breaks the build.
+If a pre-defined rule is violated, the failed checks can be marked as `warning` or `error`, which breaks the build.
 
-In contrast to using the `maven-enforcer-plugin` doing cross-domain checks is really simple as all information is available in one big graph.
+Unlike using the `maven-enforcer-plugin`, doing cross-domain checks is really simple, as all information is available in one big graph.
 
-Currently the following scanners are active:
+The following scanners are currently active:
 
 - CDI
 - Common
@@ -54,20 +54,21 @@ Currently the following scanners are active:
 - XML
 - YAML
 
-These rules that are automatically checked during the build are defined in `src/jjqassistant`.
+The rules that are automatically checked during the build are defined in `src/jqassistant`.
 If defined in a reactor project, the rules apply to all modules of that (sub-)reactor.
-So if they are defined in the root module of the project, it applies to all modules.
+Therefore, if they are defined in the root module of the project, they apply to all modules.
+
+The scan and analysis are automatically performed during a normal Maven build.
 
 === Defining JQAssistant rules
 
-TODO: Finish this "little detail" ...
+TODO: Complete this section.
 
 === Using the Web-UI
 
-The scan and analysis is automatically performed during a normal Maven build.
-In order to do ad-hoc queries against the project or develop new rules, the Web-UI is very helpful.
+The Web-UI is very helpful for making ad hoc queries against the project or developing new rules.
 
-To start the Web-UI, all you need to do, is run the following command (after a build):
+To start the Web-UI, you only need to run the following command (after a build):
 
    mvn jqassistant:server
 
@@ -89,38 +90,36 @@ This will start a Neo4j server with web console.
    [INFO] Running server for module org.apache.plc4x:plc4x-parent:0.0.1-SNAPSHOT
    [INFO] Press <Enter> to finish.
 
-So when visiting the anounced url with a browser, you can use the pretty useful neo4j web console.
+So, if you visit the announced URL with a browser, you will be able to use the pretty useful Neo4j web console.
 
 image::neo4j-web-console.png[Neo4j Web Console]
 
-=== Using IntelliJ Idea
+=== Using IntelliJ IDEA
 
-IntelliJ comes with some interesting Neo4J support. Unfortunately this only supports `Neo4j 3`.
+IntelliJ IDEA comes with some interesting `Neo4J` support, for `Neo4J 3` and higher.
 
-Unfortunately the process of enabling this toolset is a little less comfortable than the Web-UI version.
+Unfortunately, the process of enabling this toolset is a little less comfortable than the Web-UI version.
 
-Even if JQAssistant uses `Neo4j 2` per default, we can force it to use `Neo4j 3` by providing an additional commandline parameter.
+Even if JQAssistant uses `Neo4j 2` by default, we can force it to use `Neo4j 3` by providing an additional command-line parameter.
 
     mvn -Djqassistant.neo4jVersion=3 clean install
 
-JQAssistant uses Neo4j 3 and the resulting data directory is then in Neo4j 3 format.
+Now, JQAssistant uses `Neo4j 3`, and the resulting data directory is then in `Neo4j 3` format.
 
-In this case the server has to be started with the same parameter:
+In this case, the server has to be started with the same parameter:
 
    mvn -Djqassistant.neo4jVersion=3 jqassistant:server
 
 As soon as the server is started, we can connect from the IntelliJ plugin.
 
-Note: The connection settings also contain a username and a password.
+Note: the connection settings also contain a username and a password. However, it appears that this fields can be left empty or can contain random values.
 
 image::neo4j-intellij-settings.png[width=800]
-
-It appears that this can simply be left empty of can contain random values.
 
 After creating the connection, the `Graph Neo4j` view should list the new connection.
 
 image::neo4j-intellij-database-connections-view.png[width=300]
 
-You can now use this to perform queries
+You can now use this to perform queries.
 
 image::neo4j-intellij-query-results.png[width=800]
