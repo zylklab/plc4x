@@ -19,14 +19,13 @@
 
 == Tools
 
-In order to be able to work on PLC4X some tools have kindly been made available to Apache PLC4X committers.
+In order to be able to work on PLC4X, some tools have been kindly made available to Apache PLC4X committers.
 
-Jetbrains offers Licenses to IntelliJ to Apache Committers for free
+JetBrains offers IntelliJ licenses to Apache Committers for free.
 
-EJ-Technologies have also kindly provided us with JProfiler licenses in order to track down some concurrency and memory usage problems.
+ej-technologies has also kindly provided us with JProfiler licenses in order to track down some concurrency and memory usage problems.
 
 [link=https://www.ej-technologies.com/products/jprofiler/overview.html]
 image::https://www.ej-technologies.com/images/product_banners/jprofiler_large.png[JProfiler^,opts=nofollow]
 
 Thank you to all.
-
