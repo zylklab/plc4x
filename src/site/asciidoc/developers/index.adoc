@@ -19,41 +19,34 @@
 
 == Developer Section
 
-This part of the Apache PLC4X dedicated to provide information to people wanting to build PLC4X and hopefully also start contributing to this awesome project.
+This part of the Apache PLC4X is dedicated to providing information to people wanting to build PLC4X and hopefully also start contributing to this awesome project.
 
 === Getting Started
 
-We have tried to make the PLC4X build experience as smooth as possible and have tried to reduce the number of required third party tools to an absolute minimum.
+We have tried to make the PLC4X build experience as smooth as possible and reduced the number of required third-party tools to an absolute minimum.
 
-The full PLC4X build however builds not only `Java` libraries, but also `C++`, `Python` and `C#` libraries as well as builds `Docker` images on `Linux`, `Mac` and `Windows`.
+The full PLC4X build, however, includes not only the `Java` libraries, but also the `C++`, `Python` and `C#` libraries as well as `Docker` images on `Linux`, `Mac` and `Windows`.
 
-As a start, you will basically need a `Java VM` of at least `Java 11`.
+As a starting point, you will basically need a `Java VM` of at least `Java 11`.
 
-Using the `Maven-Wrapper` you don't even need a `Maven` installation. The build will automatically fetch the right version for you.
+If you use the `Maven-Wrapper` you don't even need to install `Maven`. The build will automatically fetch the right version for you.
 
-As part of the build we have an initial build step that will do a `prerequisite check`. Depending on the activated modules, it will check if all preconditions are met and tell you what's missing.
+As part of the build process, we have an initial step that will perform a `prerequisite check`. Depending on the activated modules, it will check if all preconditions are met and tell you what is missing.
 
-For details please have a look at the link:preparing/index.html[Preparing your Computer] page.
+For more details, please have a look at the link:preparing/index.html[Preparing your Computer] page.
 
 === Building PLC4X
 
-We have a dedicated page on link:building.html[Building PLC4X].
-
-Please read this page on information about how to build Apache PLC4X.
+We have a dedicated page on link:building.html[Building PLC4X]. Please read this page for information about how to build Apache PLC4X.
 
 === Contributing
 
-If you want to work on Apache PLC4X in order to `fix things`, `add things` and start `contributing` in general, please have a look at our link:contributing.html[Contributing] page. It should contain all the information you need.
+If you want to work on Apache PLC4X to fix bugs, add features or start contributing in general, please have a look at our link:contributing.html[Contributing] page. It should contain all the information you need.
 
 === Getting Help
 
-The primary source for getting help definitely is our project mailing list dev@plc4x.apache.org.
+The primary source for getting help is definitely our project mailing list dev@plc4x.apache.org.
 
 You can search previous content in our link:++https://lists.apache.org/list.html?dev@plc4x.apache.org++[Mail Archive]
 
-In order to post to the list you first need to subscribe. This can be done by sending an empty Email to dev-subscribe@plc4x.apache.org.
-
-
-
-
-
+To post to the list, you must first subscribe by sending an empty email to dev-subscribe@plc4x.apache.org.
