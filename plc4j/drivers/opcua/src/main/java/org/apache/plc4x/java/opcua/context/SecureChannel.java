@@ -18,18 +18,6 @@
  */
 package org.apache.plc4x.java.opcua.context;
 
-import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.lang3.RandomUtils;
-import org.apache.plc4x.java.api.exceptions.PlcConnectionException;
-import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
-import org.apache.plc4x.java.opcua.config.OpcuaConfiguration;
-import org.apache.plc4x.java.opcua.readwrite.*;
-import org.apache.plc4x.java.spi.ConversationContext;
-import org.apache.plc4x.java.spi.context.DriverContext;
-import org.apache.plc4x.java.spi.generation.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -51,6 +39,22 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.RandomUtils;
+import org.apache.plc4x.java.api.exceptions.PlcConnectionException;
+import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
+import org.apache.plc4x.java.opcua.config.OpcuaConfiguration;
+import org.apache.plc4x.java.opcua.readwrite.*;
+import org.apache.plc4x.java.spi.ConversationContext;
+import org.apache.plc4x.java.spi.context.DriverContext;
+import org.apache.plc4x.java.spi.generation.ParseException;
+import org.apache.plc4x.java.spi.generation.ReadBuffer;
+import org.apache.plc4x.java.spi.generation.ReadBufferByteBased;
+import org.apache.plc4x.java.spi.generation.SerializationException;
+import org.apache.plc4x.java.spi.generation.WriteBufferByteBased;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SecureChannel {
 
@@ -111,6 +115,7 @@ public class SecureChannel {
     private final PascalByteString publicCertificate;
     private final PascalByteString thumbprint;
     private final boolean isEncrypted;
+    private boolean isAsymmetryc = true;
     private byte[] senderCertificate = null;
     private byte[] senderNonce = null;
     private PascalByteString certificateThumbprint = null;
@@ -146,6 +151,7 @@ public class SecureChannel {
             try {
                 this.publicCertificate = new PascalByteString(ckp.getCertificate().getEncoded().length, ckp.getCertificate().getEncoded());
                 this.isEncrypted = true;
+                this.certificateThumbprint = new PascalByteString(ckp.getCertificate().getSignature().length, ckp.getCertificate().getSignature());
             } catch (CertificateEncodingException e) {
                 throw new PlcRuntimeException("Failed to encode the certificate");
             }
@@ -181,12 +187,12 @@ public class SecureChannel {
             tokenId.get(),
             transactionId,
             transactionId,
-            buffer.getData());
+            buffer.getBytes());
 
         final OpcuaAPU apu;
         try {
             if (this.isEncrypted) {
-                apu = OpcuaAPU.staticParse(encryptionHandler.encodeMessage(messageRequest, buffer.getData()), false);
+                apu = OpcuaAPU.staticParse(encryptionHandler.encodeMessage(messageRequest, buffer.getBytes(), isAsymmetryc), false);
             } else {
                 apu = new OpcuaAPU(messageRequest);
             }
@@ -201,7 +207,7 @@ public class SecureChannel {
                     .expectResponse(OpcuaAPU.class, REQUEST_TIMEOUT)
                     .onTimeout(onTimeout)
                     .onError(error)
-                    .unwrap(encryptionHandler::decodeMessage)
+                    .unwrap(m -> encryptionHandler.decodeMessage(m, isAsymmetryc))
                     .unwrap(OpcuaAPU::getMessage)
                     .check(OpcuaMessageResponse.class::isInstance)
                     .unwrap(OpcuaMessageResponse.class::cast)
@@ -312,19 +318,19 @@ public class SecureChannel {
                 this.thumbprint,
                 transactionId,
                 transactionId,
-                buffer.getData());
+                buffer.getBytes());
 
             final OpcuaAPU apu;
 
             if (this.isEncrypted) {
-                apu = OpcuaAPU.staticParse(encryptionHandler.encodeMessage(openRequest, buffer.getData()), false);
+                apu = OpcuaAPU.staticParse(encryptionHandler.encodeMessage(openRequest, buffer.getBytes(), isAsymmetryc), false);
             } else {
                 apu = new OpcuaAPU(openRequest);
             }
 
             Consumer<Integer> requestConsumer = t -> context.sendRequest(apu)
                 .expectResponse(OpcuaAPU.class, REQUEST_TIMEOUT)
-                .unwrap(apuMessage -> encryptionHandler.decodeMessage(apuMessage))
+                .unwrap(apuMessage -> encryptionHandler.decodeMessage(apuMessage, isAsymmetryc))
                 .check(p -> p.getMessage() instanceof OpcuaOpenResponse)
                 .unwrap(p -> (OpcuaOpenResponse) p.getMessage())
                 .check(p -> p.getRequestId() == transactionId)
@@ -344,6 +350,9 @@ public class SecureChannel {
                                 OpenSecureChannelResponse openSecureChannelResponse = (OpenSecureChannelResponse) message.getBody();
                                 tokenId.set((int) ((ChannelSecurityToken) openSecureChannelResponse.getSecurityToken()).getTokenId());
                                 channelId.set((int) ((ChannelSecurityToken) openSecureChannelResponse.getSecurityToken()).getChannelId());
+                                senderNonce = openSecureChannelResponse.getServerNonce().getStringValue();
+                                encryptionHandler.setSecretSymmetricKeys(clientNonce, senderNonce);
+                                isAsymmetryc = false;
                                 onConnectCreateSessionRequest(context);
                             } catch (PlcConnectionException e) {
                                 LOGGER.error("Error occurred while connecting to OPC UA server", e);
@@ -361,7 +370,6 @@ public class SecureChannel {
     }
 
     public void onConnectCreateSessionRequest(ConversationContext<OpcuaAPU> context) throws PlcConnectionException {
-
         RequestHeader requestHeader = new RequestHeader(new NodeId(authenticationToken),
             getCurrentDateTime(),
             0L,
@@ -395,7 +403,7 @@ public class SecureChannel {
             this.endpoint,
             new PascalString(sessionName),
             new PascalByteString(clientNonce.length, clientNonce),
-            NULL_BYTE_STRING,
+            this.publicCertificate, //TODO: check if this is correct
             120000L,
             0L);
 
@@ -470,8 +478,10 @@ public class SecureChannel {
     private void onConnectActivateSessionRequest(ConversationContext<OpcuaAPU> context, CreateSessionResponse opcuaMessageResponse, CreateSessionResponse sessionResponse) throws PlcConnectionException, ParseException {
 
         senderCertificate = sessionResponse.getServerCertificate().getStringValue();
+        senderNonce = sessionResponse.getServerNonce().getStringValue();
+
         encryptionHandler.setServerCertificate(EncryptionHandler.getCertificateX509(senderCertificate));
-        this.senderNonce = sessionResponse.getServerNonce().getStringValue();
+        
         String[] endpoints = new String[3];
         try {
             InetAddress address = InetAddress.getByName(this.configuration.getHost());
@@ -482,6 +492,7 @@ public class SecureChannel {
             e.printStackTrace();
         }
 
+        // TODO: Not sure what this function purpose is
         selectEndpoint(sessionResponse);
 
         if (this.policyId == null) {
@@ -499,8 +510,19 @@ public class SecureChannel {
             NULL_STRING,
             REQUEST_TIMEOUT_LONG,
             NULL_EXTENSION_OBJECT);
+        
+        byte[] signature = new byte[senderCertificate.length + senderNonce.length];
+        System.arraycopy(senderCertificate, 0, signature, 0, senderCertificate.length);
+        System.arraycopy(senderNonce, 0, signature, senderCertificate.length, senderNonce.length);
+        byte[] encryptedSignature = encryptionHandler.sign(signature, true);
+        SignatureData clientSignature = new SignatureData(new PascalString(this.securityPolicy), new PascalByteString(encryptedSignature.length, encryptedSignature));
 
-        SignatureData clientSignature = new SignatureData(NULL_STRING, NULL_BYTE_STRING);
+        
+
+        // TODO: I will stop working here. Session is created, symmetric keys are created and can be used.
+        // I have checked the keys and are correct. That is not a problem.
+        // I have been able to "activate" the session: returns an error of
+        //       Unsupported case for discriminated type parameters [VariantType=0 arrayLengthSpecified=false
 
         ActivateSessionRequest activateSessionRequest = new ActivateSessionRequest(
             requestHeader,
@@ -776,7 +798,7 @@ public class SecureChannel {
                 NULL_BYTE_STRING,
                 transactionId,
                 transactionId,
-                buffer.getData());
+                buffer.getBytes());
 
             Consumer<Integer> requestConsumer = t -> context.sendRequest(new OpcuaAPU(openRequest))
                 .expectResponse(OpcuaAPU.class, REQUEST_TIMEOUT)
@@ -1014,14 +1036,14 @@ public class SecureChannel {
                         final OpcuaAPU apu;
 
                         if (this.isEncrypted) {
-                            apu = OpcuaAPU.staticParse(encryptionHandler.encodeMessage(openRequest, buffer.getData()), false);
+                            apu = OpcuaAPU.staticParse(encryptionHandler.encodeMessage(openRequest, buffer.getBytes(), isAsymmetryc), false);
                         } else {
                             apu = new OpcuaAPU(openRequest);
                         }
 
                         Consumer<Integer> requestConsumer = t -> context.sendRequest(apu)
                             .expectResponse(OpcuaAPU.class, REQUEST_TIMEOUT)
-                            .unwrap(apuMessage -> encryptionHandler.decodeMessage(apuMessage))
+                            .unwrap(apuMessage -> encryptionHandler.decodeMessage(apuMessage, isAsymmetryc))
                             .check(p -> p.getMessage() instanceof OpcuaOpenResponse)
                             .unwrap(p -> (OpcuaOpenResponse) p.getMessage())
                             .check(p -> p.getRequestId() == transactionId)
@@ -1102,6 +1124,7 @@ public class SecureChannel {
      * @throws PlcRuntimeException - If no endpoint with a compatible policy is found raise and error.
      */
     private void selectEndpoint(CreateSessionResponse sessionResponse) throws PlcRuntimeException {
+        // TODO: is this meant to return an endpoint???
         List<String> returnedEndpoints = new ArrayList<String>();
 
         // Get a list of the endpoints which match ours.
