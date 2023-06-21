@@ -42,9 +42,8 @@ func (d *DefaultPlcConsumerRegistration) SerializeWithWriteBuffer(ctx context.Co
 	if err := writeBuffer.PushContext("PlcConsumerRegistration"); err != nil {
 		return err
 	}
-	_value := fmt.Sprintf("%v", d.consumerId)
 
-	if err := writeBuffer.WriteString("consumerId", uint32(len(_value)*8), "UTF-8", _value); err != nil {
+	if err := writeBuffer.WriteInt64("consumerId", 64, int64(d.consumerId)); err != nil {
 		return err
 	}
 

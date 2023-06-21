@@ -21,6 +21,7 @@ package model
 
 import (
 	"context"
+	"runtime/debug"
 	"time"
 
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
@@ -114,13 +115,17 @@ func (d *DefaultPlcReadRequest) Execute() <-chan apiModel.PlcReadRequestResult {
 }
 
 func (d *DefaultPlcReadRequest) ExecuteWithContext(ctx context.Context) <-chan apiModel.PlcReadRequestResult {
-	// Shortcut, if no interceptor is defined
-	if d.readRequestInterceptor == nil {
-		return d.reader.Read(ctx, d)
+	if d.readRequestInterceptor != nil {
+		return d.ExecuteWithContextAndInterceptor(ctx)
 	}
 
+	return d.reader.Read(ctx, d)
+}
+
+func (d *DefaultPlcReadRequest) ExecuteWithContextAndInterceptor(ctx context.Context) <-chan apiModel.PlcReadRequestResult {
 	// Split the requests up into multiple ones.
 	readRequests := d.readRequestInterceptor.InterceptReadRequest(ctx, d)
+
 	// Shortcut for single-request-requests
 	if len(readRequests) == 1 {
 		return d.reader.Read(ctx, readRequests[0])
@@ -132,7 +137,7 @@ func (d *DefaultPlcReadRequest) ExecuteWithContext(ctx context.Context) <-chan a
 	for _, subRequest := range readRequests {
 		subResultChannels = append(subResultChannels, d.reader.Read(ctx, subRequest))
 		// TODO: Replace this with a real queueing of requests. Later on we need throttling. At the moment this avoids race condition as the read above writes to fast on the line which is a problem for the test
-		time.Sleep(time.Millisecond * 4)
+		time.Sleep(4 * time.Millisecond)
 	}
 
 	// Create a new result-channel, which completes as soon as all sub-result-channels have returned
@@ -140,7 +145,7 @@ func (d *DefaultPlcReadRequest) ExecuteWithContext(ctx context.Context) <-chan a
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				resultChannel <- NewDefaultPlcReadRequestResult(d, nil, errors.Errorf("panic-ed %v", err))
+				resultChannel <- NewDefaultPlcReadRequestResult(d, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		var subResults []apiModel.PlcReadRequestResult
@@ -159,6 +164,5 @@ func (d *DefaultPlcReadRequest) ExecuteWithContext(ctx context.Context) <-chan a
 		// Return the final result
 		resultChannel <- result
 	}()
-
 	return resultChannel
 }

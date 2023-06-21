@@ -20,7 +20,10 @@
 package bacnetip
 
 import (
+	"context"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/rs/zerolog"
 	"net"
 	"time"
 
@@ -115,6 +118,9 @@ type UDPDirector struct {
 	request    chan _PDU
 	peers      map[string]*UDPActor
 	running    bool
+
+	passLogToModel bool
+	log            zerolog.Logger
 }
 
 func NewUDPDirector(address AddressTuple[string, uint16], timeout *int, reuse *bool, sid *int, sapID *int) (*UDPDirector, error) {
@@ -256,7 +262,8 @@ func (d *UDPDirector) handleRead() {
 		sourceAddr = addr
 	}
 
-	bvlc, err := model.BVLCParse(readBytes)
+	ctxForModel := options.GetLoggerContextForModel(context.TODO(), d.log, options.WithPassLoggerToModel(d.passLogToModel))
+	bvlc, err := model.BVLCParse(ctxForModel, readBytes)
 	if err != nil {
 		// pass along to a handler
 		d.handleError(errors.Wrap(err, "error parsing bvlc"))
@@ -277,7 +284,11 @@ func (d *UDPDirector) handleRead() {
 	}
 	pdu := NewPDU(bvlc, WithPDUSource(saddr), WithPDUDestination(daddr))
 	// send the PDU up to the client
-	go d._response(pdu)
+	go func() {
+		if err := d._response(pdu); err != nil {
+			log.Debug().Err(err).Msg("errored")
+		}
+	}()
 }
 
 func (d *UDPDirector) handleError(err error) {

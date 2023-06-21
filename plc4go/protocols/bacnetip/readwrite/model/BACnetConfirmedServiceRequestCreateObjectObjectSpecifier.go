@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -115,7 +116,7 @@ func (m *_BACnetConfirmedServiceRequestCreateObjectObjectSpecifier) GetObjectTyp
 	_ = rawObjectType
 	objectIdentifier := m.ObjectIdentifier
 	_ = objectIdentifier
-	return CastBACnetObjectType(MapBACnetObjectType((m.GetRawObjectType())))
+	return CastBACnetObjectType(MapBACnetObjectType(ctx, (m.GetRawObjectType())))
 }
 
 func (m *_BACnetConfirmedServiceRequestCreateObjectObjectSpecifier) GetIsObjectIdentifier() bool {
@@ -185,13 +186,15 @@ func (m *_BACnetConfirmedServiceRequestCreateObjectObjectSpecifier) GetLengthInB
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConfirmedServiceRequestCreateObjectObjectSpecifierParse(theBytes []byte, tagNumber uint8) (BACnetConfirmedServiceRequestCreateObjectObjectSpecifier, error) {
-	return BACnetConfirmedServiceRequestCreateObjectObjectSpecifierParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber)
+func BACnetConfirmedServiceRequestCreateObjectObjectSpecifierParse(ctx context.Context, theBytes []byte, tagNumber uint8) (BACnetConfirmedServiceRequestCreateObjectObjectSpecifier, error) {
+	return BACnetConfirmedServiceRequestCreateObjectObjectSpecifierParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber)
 }
 
 func BACnetConfirmedServiceRequestCreateObjectObjectSpecifierParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8) (BACnetConfirmedServiceRequestCreateObjectObjectSpecifier, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConfirmedServiceRequestCreateObjectObjectSpecifier"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConfirmedServiceRequestCreateObjectObjectSpecifier")
 	}
@@ -221,7 +224,7 @@ func BACnetConfirmedServiceRequestCreateObjectObjectSpecifierParseWithBuffer(ctx
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(0), BACnetDataType_ENUMERATED)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'rawObjectType' field of BACnetConfirmedServiceRequestCreateObjectObjectSpecifier")
@@ -239,7 +242,7 @@ func BACnetConfirmedServiceRequestCreateObjectObjectSpecifierParseWithBuffer(ctx
 	_ = isObjectType
 
 	// Virtual field
-	_objectType := MapBACnetObjectType((rawObjectType))
+	_objectType := MapBACnetObjectType(ctx, (rawObjectType))
 	objectType := BACnetObjectType(_objectType)
 	_ = objectType
 
@@ -253,7 +256,7 @@ func BACnetConfirmedServiceRequestCreateObjectObjectSpecifierParseWithBuffer(ctx
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(1), BACnetDataType_BACNET_OBJECT_IDENTIFIER)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'objectIdentifier' field of BACnetConfirmedServiceRequestCreateObjectObjectSpecifier")
@@ -313,6 +316,8 @@ func (m *_BACnetConfirmedServiceRequestCreateObjectObjectSpecifier) Serialize() 
 func (m *_BACnetConfirmedServiceRequestCreateObjectObjectSpecifier) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetConfirmedServiceRequestCreateObjectObjectSpecifier"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetConfirmedServiceRequestCreateObjectObjectSpecifier")
 	}

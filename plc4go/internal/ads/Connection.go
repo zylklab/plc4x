@@ -23,6 +23,10 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/tracer"
+	"github.com/rs/zerolog"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -39,7 +43,6 @@ import (
 	"github.com/apache/plc4x/plc4go/spi/utils"
 
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 type Connection struct {
@@ -49,33 +52,40 @@ type Connection struct {
 	requestInterceptor interceptors.RequestInterceptor
 	configuration      model.Configuration
 	driverContext      *DriverContext
-	tracer             *spi.Tracer
+	tracer             tracer.Tracer
 
 	subscriptions map[uint32]apiModel.PlcSubscriptionHandle
+
+	passLogToModel bool
+	log            zerolog.Logger
 }
 
-func NewConnection(messageCodec spi.MessageCodec, configuration model.Configuration, options map[string][]string) (*Connection, error) {
+func NewConnection(messageCodec spi.MessageCodec, configuration model.Configuration, connectionOptions map[string][]string, _options ...options.WithOption) (*Connection, error) {
 	driverContext, err := NewDriverContext(configuration)
 	if err != nil {
 		return nil, err
 	}
 	connection := &Connection{
-		messageCodec:  messageCodec,
-		configuration: configuration,
-		driverContext: driverContext,
-		subscriptions: map[uint32]apiModel.PlcSubscriptionHandle{},
+		messageCodec:   messageCodec,
+		configuration:  configuration,
+		driverContext:  driverContext,
+		subscriptions:  map[uint32]apiModel.PlcSubscriptionHandle{},
+		passLogToModel: options.ExtractPassLoggerToModel(_options...),
+		log:            options.ExtractCustomLogger(_options...),
 	}
-	if traceEnabledOption, ok := options["traceEnabled"]; ok {
+	if traceEnabledOption, ok := connectionOptions["traceEnabled"]; ok {
 		if len(traceEnabledOption) == 1 {
 			// TODO: Connection Id is probably "" all the time.
-			connection.tracer = spi.NewTracer(driverContext.connectionId)
+			connection.tracer = tracer.NewTracer(driverContext.connectionId, _options...)
 		}
 	}
 	tagHandler := NewTagHandlerWithDriverContext(driverContext)
-	valueHandler := NewValueHandlerWithDriverContext(driverContext, tagHandler)
+	valueHandler := NewValueHandlerWithDriverContext(driverContext, tagHandler, _options...)
 	connection.DefaultConnection = _default.NewDefaultConnection(connection,
-		_default.WithPlcTagHandler(tagHandler),
-		_default.WithPlcValueHandler(valueHandler),
+		append(_options,
+			_default.WithPlcTagHandler(tagHandler),
+			_default.WithPlcValueHandler(valueHandler),
+		)...,
 	)
 	return connection, nil
 }
@@ -88,7 +98,7 @@ func (m *Connection) IsTraceEnabled() bool {
 	return m.tracer != nil
 }
 
-func (m *Connection) GetTracer() *spi.Tracer {
+func (m *Connection) GetTracer() tracer.Tracer {
 	return m.tracer
 }
 
@@ -97,7 +107,7 @@ func (m *Connection) GetConnection() plc4go.PlcConnection {
 }
 
 func (m *Connection) ConnectWithContext(ctx context.Context) <-chan plc4go.PlcConnectionConnectResult {
-	log.Trace().Msg("Connecting")
+	m.log.Trace().Msg("Connecting")
 	ch := make(chan plc4go.PlcConnectionConnectResult, 1)
 
 	// Reset the driver context (Actually this should not be required, but just to be on the safe side)
@@ -106,10 +116,10 @@ func (m *Connection) ConnectWithContext(ctx context.Context) <-chan plc4go.PlcCo
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				ch <- _default.NewDefaultPlcConnectionCloseResult(nil, errors.Errorf("Recovered from panic: %v", err))
+				ch <- _default.NewDefaultPlcConnectionCloseResult(nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
-		err := m.messageCodec.Connect()
+		err := m.messageCodec.ConnectWithContext(ctx)
 		if err != nil {
 			ch <- _default.NewDefaultPlcConnectionConnectResult(m, err)
 		}
@@ -163,7 +173,7 @@ func (m *Connection) setupConnection(ctx context.Context, ch chan plc4go.PlcConn
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Error().Msgf("panic-ed: %v", err)
+				m.log.Error().Msgf("panic-ed %v. Stack: %s", err, debug.Stack())
 			}
 		}()
 		for message := range defaultIncomingMessageChannel {
@@ -176,13 +186,13 @@ func (m *Connection) setupConnection(ctx context.Context, ch chan plc4go.PlcConn
 					m.handleIncomingDeviceNotificationRequest(
 						amsTCPPacket.GetUserdata().(readWriteModel.AdsDeviceNotificationRequest))
 				default:
-					log.Warn().Msgf("Got unexpected type of incoming ADS message %v", message)
+					m.log.Warn().Msgf("Got unexpected type of incoming ADS message %v", message)
 				}
 			default:
-				log.Warn().Msgf("Got unexpected type of incoming ADS message %v", message)
+				m.log.Warn().Msgf("Got unexpected type of incoming ADS message %v", message)
 			}
 		}
-		log.Info().Msg("Done waiting for messages ...")
+		m.log.Info().Msg("Done waiting for messages ...")
 	}()
 
 	// Subscribe for changes to the symbol or the offline-versions
@@ -192,10 +202,10 @@ func (m *Connection) setupConnection(ctx context.Context, ch chan plc4go.PlcConn
 			if event.GetResponseCode("offlineVersion") == apiModel.PlcResponseCode_OK {
 				newVersion := event.GetValue("offlineVersion").GetUint8()
 				if newVersion != m.driverContext.symbolVersion {
-					log.Info().Msg("detected offline version change: reloading symbol- and data-type-table.")
+					m.log.Info().Msg("detected offline version change: reloading symbol- and data-type-table.")
 					err := m.readSymbolTableAndDatatypeTable(ctx)
 					if err != nil {
-						log.Error().Err(err).Msg("error updating data-type and symbol tables")
+						m.log.Error().Err(err).Msg("error updating data-type and symbol tables")
 					}
 				}
 			}
@@ -205,10 +215,10 @@ func (m *Connection) setupConnection(ctx context.Context, ch chan plc4go.PlcConn
 			if event.GetResponseCode("onlineVersion") == apiModel.PlcResponseCode_OK {
 				newVersion := event.GetValue("onlineVersion").GetUint32()
 				if newVersion != m.driverContext.onlineVersion {
-					log.Info().Msg("detected online version change: reloading symbol- and data-type-table.")
+					m.log.Info().Msg("detected online version change: reloading symbol- and data-type-table.")
 					err := m.readSymbolTableAndDatatypeTable(ctx)
 					if err != nil {
-						log.Error().Err(err).Msg("error updating data-type and symbol tables")
+						m.log.Error().Err(err).Msg("error updating data-type and symbol tables")
 					}
 				}
 			}
@@ -253,7 +263,8 @@ func (m *Connection) readDataTypeTableAndSymbolTableSizes(ctx context.Context) (
 	}
 
 	// Parse and process the response
-	tableSizes, err := readWriteModel.AdsTableSizesParse(response.GetData())
+	ctxForModel := options.GetLoggerContextForModel(ctx, m.log, options.WithPassLoggerToModel(m.passLogToModel))
+	tableSizes, err := readWriteModel.AdsTableSizesParse(ctxForModel, response.GetData())
 	if err != nil {
 		return nil, fmt.Errorf("error parsing table: %v", err)
 	}

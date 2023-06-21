@@ -21,7 +21,9 @@ package knxnetip
 
 import (
 	"context"
+	"github.com/apache/plc4x/plc4go/spi/options"
 	"math"
+	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -30,7 +32,6 @@ import (
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	spiValues "github.com/apache/plc4x/plc4go/spi/values"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +49,7 @@ func (m *Connection) ReadGroupAddress(ctx context.Context, groupAddress []byte, 
 	result := make(chan KnxReadResult, 1)
 
 	sendResponse := func(value values.PlcValue, numItems uint8, err error) {
-		timeout := time.NewTimer(time.Millisecond * 10)
+		timeout := time.NewTimer(10 * time.Millisecond)
 		select {
 		case result <- KnxReadResult{
 			value:    value,
@@ -66,7 +67,7 @@ func (m *Connection) ReadGroupAddress(ctx context.Context, groupAddress []byte, 
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Error().Msgf("panic-ed %v", err)
+				m.log.Error().Msgf("panic-ed %v. Stack: %s", err, debug.Stack())
 			}
 		}()
 		groupAddressReadResponse, err := m.sendGroupAddressReadRequest(ctx, groupAddress)
@@ -109,7 +110,7 @@ func (m *Connection) DeviceConnect(ctx context.Context, targetAddress driverMode
 	result := make(chan KnxDeviceConnectResult, 1)
 
 	sendResponse := func(connection *KnxDeviceConnection, err error) {
-		timeout := time.NewTimer(time.Millisecond * 10)
+		timeout := time.NewTimer(10 * time.Millisecond)
 		select {
 		case result <- KnxDeviceConnectResult{
 			connection: connection,
@@ -126,7 +127,7 @@ func (m *Connection) DeviceConnect(ctx context.Context, targetAddress driverMode
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Error().Msgf("panic-ed %v", err)
+				m.log.Error().Msgf("panic-ed %v. Stack: %s", err, debug.Stack())
 			}
 		}()
 		// If we're already connected, use that connection instead.
@@ -179,14 +180,15 @@ func (m *Connection) DeviceConnect(ctx context.Context, targetAddress driverMode
 			if propertyValueResponse.GetCount() > 0 {
 				dataLength := uint8(len(propertyValueResponse.GetData()))
 				data := propertyValueResponse.GetData()
-				plcValue, err := driverModel.KnxPropertyParse(context.Background(), data,
+				ctxForModel := options.GetLoggerContextForModel(ctx, m.log, options.WithPassLoggerToModel(m.passLogToModel))
+				plcValue, err := driverModel.KnxPropertyParse(ctxForModel, data,
 					driverModel.KnxInterfaceObjectProperty_PID_DEVICE_MAX_APDULENGTH.PropertyDataType(), dataLength)
 
 				// Return the result
 				if err == nil {
 					deviceApduSize = plcValue.GetUint16()
 				} else {
-					log.Debug().Err(err).Msgf("Error parsing knx property")
+					m.log.Debug().Err(err).Msgf("Error parsing knx property")
 				}
 			}
 		}
@@ -204,7 +206,7 @@ func (m *Connection) DeviceDisconnect(ctx context.Context, targetAddress driverM
 	result := make(chan KnxDeviceDisconnectResult, 1)
 
 	sendResponse := func(connection *KnxDeviceConnection, err error) {
-		timeout := time.NewTimer(time.Millisecond * 10)
+		timeout := time.NewTimer(10 * time.Millisecond)
 		select {
 		case result <- KnxDeviceDisconnectResult{
 			connection: connection,
@@ -221,7 +223,7 @@ func (m *Connection) DeviceDisconnect(ctx context.Context, targetAddress driverM
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Error().Msgf("panic-ed %v", err)
+				m.log.Error().Msgf("panic-ed %v. Stack: %s", err, debug.Stack())
 			}
 		}()
 		if connection, ok := m.DeviceConnections[targetAddress]; ok {
@@ -243,7 +245,7 @@ func (m *Connection) DeviceAuthenticate(ctx context.Context, targetAddress drive
 	result := make(chan KnxDeviceAuthenticateResult, 1)
 
 	sendResponse := func(err error) {
-		timeout := time.NewTimer(time.Millisecond * 10)
+		timeout := time.NewTimer(10 * time.Millisecond)
 		select {
 		case result <- KnxDeviceAuthenticateResult{
 			err: err,
@@ -259,7 +261,7 @@ func (m *Connection) DeviceAuthenticate(ctx context.Context, targetAddress drive
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Error().Msgf("panic-ed %v", err)
+				m.log.Error().Msgf("panic-ed %v. Stack: %s", err, debug.Stack())
 			}
 		}()
 		// Check if there is already a connection available,
@@ -301,7 +303,7 @@ func (m *Connection) DeviceReadProperty(ctx context.Context, targetAddress drive
 	result := make(chan KnxReadResult, 1)
 
 	sendResponse := func(value values.PlcValue, numItems uint8, err error) {
-		timeout := time.NewTimer(time.Millisecond * 10)
+		timeout := time.NewTimer(10 * time.Millisecond)
 		select {
 		case result <- KnxReadResult{
 			value:    value,
@@ -319,7 +321,7 @@ func (m *Connection) DeviceReadProperty(ctx context.Context, targetAddress drive
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Error().Msgf("panic-ed %v", err)
+				m.log.Error().Msgf("panic-ed %v. Stack: %s", err, debug.Stack())
 			}
 		}()
 		// Check if there is already a connection available,
@@ -370,7 +372,8 @@ func (m *Connection) DeviceReadProperty(ctx context.Context, targetAddress drive
 
 		dataLength := uint8(len(propertyValueResponse.GetData()))
 		data := propertyValueResponse.GetData()
-		plcValue, err := driverModel.KnxPropertyParse(context.Background(), data, property.PropertyDataType(), dataLength)
+		ctxForModel := options.GetLoggerContextForModel(ctx, m.log, options.WithPassLoggerToModel(m.passLogToModel))
+		plcValue, err := driverModel.KnxPropertyParse(ctxForModel, data, property.PropertyDataType(), dataLength)
 		if err != nil {
 			sendResponse(nil, 0, err)
 		} else {
@@ -385,7 +388,7 @@ func (m *Connection) DeviceReadPropertyDescriptor(ctx context.Context, targetAdd
 	result := make(chan KnxReadResult, 1)
 
 	sendResponse := func(value values.PlcValue, numItems uint8, err error) {
-		timeout := time.NewTimer(time.Millisecond * 10)
+		timeout := time.NewTimer(10 * time.Millisecond)
 		select {
 		case result <- KnxReadResult{
 			value:    value,
@@ -403,7 +406,7 @@ func (m *Connection) DeviceReadPropertyDescriptor(ctx context.Context, targetAdd
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Error().Msgf("panic-ed %v", err)
+				m.log.Error().Msgf("panic-ed %v. Stack: %s", err, debug.Stack())
 			}
 		}()
 		// Check if there is already a connection available,
@@ -450,7 +453,7 @@ func (m *Connection) DeviceReadMemory(ctx context.Context, targetAddress driverM
 	result := make(chan KnxReadResult, 1)
 
 	sendResponse := func(value values.PlcValue, numItems uint8, err error) {
-		timeout := time.NewTimer(time.Millisecond * 10)
+		timeout := time.NewTimer(10 * time.Millisecond)
 		select {
 		case result <- KnxReadResult{
 			value:    value,
@@ -468,7 +471,7 @@ func (m *Connection) DeviceReadMemory(ctx context.Context, targetAddress driverM
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Error().Msgf("panic-ed %v", err)
+				m.log.Error().Msgf("panic-ed %v. Stack: %s", err, debug.Stack())
 			}
 		}()
 		// Set a default datatype, if none is specified

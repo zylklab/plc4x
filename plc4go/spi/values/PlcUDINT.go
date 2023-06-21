@@ -41,12 +41,16 @@ func NewPlcUDINT(value uint32) PlcUDINT {
 	}
 }
 
+func (m PlcUDINT) IsRaw() bool {
+	return true
+}
+
 func (m PlcUDINT) GetRaw() []byte {
 	theBytes, _ := m.Serialize()
 	return theBytes
 }
 
-func (m PlcUDINT) GetBoolean() bool {
+func (m PlcUDINT) GetBool() bool {
 	if m.value == 0 {
 		return false
 	}

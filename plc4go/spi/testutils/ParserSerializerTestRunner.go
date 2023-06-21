@@ -24,6 +24,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/pkg/api/config"
 	"github.com/pkg/errors"
 	"os"
 	"runtime/debug"
@@ -81,6 +82,8 @@ func (p *ParserSerializerTestsuite) Run(t *testing.T, testcase ParserSerializerT
 	if err != nil {
 		return errors.Wrap(err, "Error parsing input data")
 	}
+	t.Logf("Parsed Message(%T)", msg)
+	t.Logf("\n%s", msg)
 
 	t.Log("Try serializing")
 	{
@@ -166,7 +169,7 @@ type Parser interface {
 	Parse(typeName string, arguments []string, io utils.ReadBuffer) (any, error)
 }
 
-func RunParserSerializerTestsuite(t *testing.T, testPath string, parser Parser, options ...WithOption) {
+func RunParserSerializerTestsuite(t *testing.T, testPath string, parser Parser, options ...config.WithOption) {
 	t.Log("Extract testsuite options")
 	var rootTypeParser func(utils.ReadBufferByteBased) (any, error)
 	skippedTestCasesMap := map[string]bool{}

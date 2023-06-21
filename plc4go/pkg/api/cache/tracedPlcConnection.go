@@ -21,7 +21,7 @@ package cache
 
 import (
 	"github.com/apache/plc4x/plc4go/pkg/api"
-	"github.com/apache/plc4x/plc4go/spi"
+	"github.com/apache/plc4x/plc4go/spi/tracer"
 )
 
 type tracedPlcConnection interface {
@@ -29,5 +29,5 @@ type tracedPlcConnection interface {
 
 	GetConnectionId() string
 	IsTraceEnabled() bool
-	GetTracer() *spi.Tracer
+	GetTracer() tracer.Tracer
 }

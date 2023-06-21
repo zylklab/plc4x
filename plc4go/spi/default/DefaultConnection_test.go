@@ -29,6 +29,8 @@ import (
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
 	"github.com/apache/plc4x/plc4go/spi"
 	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/testutils"
+	"github.com/apache/plc4x/plc4go/spi/tracer"
 	"github.com/apache/plc4x/plc4go/spi/transports"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 
@@ -241,7 +243,7 @@ func TestNewDefaultPlcConnectionCloseResultWithTraces(t *testing.T) {
 	type args struct {
 		connection plc4go.PlcConnection
 		err        error
-		traces     []spi.TraceEntry
+		traces     []tracer.TraceEntry
 	}
 	tests := []struct {
 		name string
@@ -425,7 +427,6 @@ func Test_defaultConnection_BlockingClose(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -453,7 +454,6 @@ func Test_defaultConnection_BlockingClose(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -466,7 +466,6 @@ func Test_defaultConnection_BrowseRequestBuilder(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -498,7 +497,6 @@ func Test_defaultConnection_BrowseRequestBuilder(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -511,7 +509,6 @@ func Test_defaultConnection_Close(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -561,7 +558,6 @@ func Test_defaultConnection_Close(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -574,7 +570,6 @@ func Test_defaultConnection_Connect(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -608,7 +603,6 @@ func Test_defaultConnection_Connect(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -621,7 +615,6 @@ func Test_defaultConnection_ConnectWithContext(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -669,7 +662,6 @@ func Test_defaultConnection_ConnectWithContext(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -682,7 +674,6 @@ func Test_defaultConnection_GetMetadata(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -701,7 +692,6 @@ func Test_defaultConnection_GetMetadata(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -714,7 +704,6 @@ func Test_defaultConnection_GetPlcTagHandler(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -732,7 +721,6 @@ func Test_defaultConnection_GetPlcTagHandler(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -745,7 +733,6 @@ func Test_defaultConnection_GetPlcValueHandler(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -763,7 +750,6 @@ func Test_defaultConnection_GetPlcValueHandler(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -776,7 +762,6 @@ func Test_defaultConnection_GetTransportInstance(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -810,7 +795,6 @@ func Test_defaultConnection_GetTransportInstance(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -823,7 +807,6 @@ func Test_defaultConnection_GetTtl(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -841,7 +824,6 @@ func Test_defaultConnection_GetTtl(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -854,7 +836,6 @@ func Test_defaultConnection_IsConnected(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -872,7 +853,6 @@ func Test_defaultConnection_IsConnected(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -885,19 +865,19 @@ func Test_defaultConnection_Ping(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
 	tests := []struct {
 		name         string
 		fields       fields
-		mockSetup    func(t *testing.T, fields *fields)
+		setup        func(t *testing.T, fields *fields)
+		connected    bool
 		wantAsserter func(t *testing.T, results <-chan plc4go.PlcConnectionPingResult) bool
 	}{
 		{
 			name: "ping it",
-			mockSetup: func(t *testing.T, fields *fields) {
+			setup: func(t *testing.T, fields *fields) {
 				requirements := NewMockDefaultConnectionRequirements(t)
 				connection := NewMockPlcConnection(t)
 				{
@@ -920,10 +900,7 @@ func Test_defaultConnection_Ping(t *testing.T) {
 		},
 		{
 			name: "ping it connected",
-			fields: fields{
-				connected: true,
-			},
-			mockSetup: func(t *testing.T, fields *fields) {
+			setup: func(t *testing.T, fields *fields) {
 				requirements := NewMockDefaultConnectionRequirements(t)
 				connection := NewMockPlcConnection(t)
 				{
@@ -932,6 +909,7 @@ func Test_defaultConnection_Ping(t *testing.T) {
 				requirements.EXPECT().GetConnection().Return(connection)
 				fields.DefaultConnectionRequirements = requirements
 			},
+			connected: true,
 			wantAsserter: func(t *testing.T, results <-chan plc4go.PlcConnectionPingResult) bool {
 				timeout := time.NewTimer(2 * time.Second)
 				defer utils.CleanupTimer(timeout)
@@ -947,15 +925,17 @@ func Test_defaultConnection_Ping(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.mockSetup != nil {
-				tt.mockSetup(t, &tt.fields)
+			if tt.setup != nil {
+				tt.setup(t, &tt.fields)
 			}
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
+			}
+			if tt.connected {
+				d.connected.Store(true)
 			}
 			assert.Truef(t, tt.wantAsserter(t, d.Ping()), "Ping()")
 		})
@@ -966,7 +946,6 @@ func Test_defaultConnection_ReadRequestBuilder(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -991,7 +970,6 @@ func Test_defaultConnection_ReadRequestBuilder(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -1004,7 +982,6 @@ func Test_defaultConnection_SetConnected(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -1025,7 +1002,6 @@ func Test_defaultConnection_SetConnected(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -1038,7 +1014,6 @@ func Test_defaultConnection_SubscriptionRequestBuilder(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -1063,7 +1038,6 @@ func Test_defaultConnection_SubscriptionRequestBuilder(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -1076,7 +1050,6 @@ func Test_defaultConnection_UnsubscriptionRequestBuilder(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -1101,7 +1074,6 @@ func Test_defaultConnection_UnsubscriptionRequestBuilder(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -1114,7 +1086,6 @@ func Test_defaultConnection_WriteRequestBuilder(t *testing.T) {
 	type fields struct {
 		DefaultConnectionRequirements DefaultConnectionRequirements
 		defaultTtl                    time.Duration
-		connected                     bool
 		tagHandler                    spi.PlcTagHandler
 		valueHandler                  spi.PlcValueHandler
 	}
@@ -1139,7 +1110,6 @@ func Test_defaultConnection_WriteRequestBuilder(t *testing.T) {
 			d := &defaultConnection{
 				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
 				defaultTtl:                    tt.fields.defaultTtl,
-				connected:                     tt.fields.connected,
 				tagHandler:                    tt.fields.tagHandler,
 				valueHandler:                  tt.fields.valueHandler,
 			}
@@ -1152,7 +1122,7 @@ func Test_plcConnectionCloseResult_GetConnection(t *testing.T) {
 	type fields struct {
 		connection plc4go.PlcConnection
 		err        error
-		traces     []spi.TraceEntry
+		traces     []tracer.TraceEntry
 	}
 	tests := []struct {
 		name   string
@@ -1179,7 +1149,7 @@ func Test_plcConnectionCloseResult_GetErr(t *testing.T) {
 	type fields struct {
 		connection plc4go.PlcConnection
 		err        error
-		traces     []spi.TraceEntry
+		traces     []tracer.TraceEntry
 	}
 	tests := []struct {
 		name      string
@@ -1214,12 +1184,12 @@ func Test_plcConnectionCloseResult_GetTraces(t *testing.T) {
 	type fields struct {
 		connection plc4go.PlcConnection
 		err        error
-		traces     []spi.TraceEntry
+		traces     []tracer.TraceEntry
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   []spi.TraceEntry
+		want   []tracer.TraceEntry
 	}{
 		{
 			name: "get it",
@@ -1315,6 +1285,50 @@ func Test_plcConnectionPingResult_GetErr(t *testing.T) {
 				err: tt.fields.err,
 			}
 			tt.wantErr(t, d.GetErr(), fmt.Sprintf("GetErr()"))
+		})
+	}
+}
+
+func Test_defaultConnection_String(t *testing.T) {
+	type fields struct {
+		DefaultConnectionRequirements DefaultConnectionRequirements
+		defaultTtl                    time.Duration
+		tagHandler                    spi.PlcTagHandler
+		valueHandler                  spi.PlcValueHandler
+	}
+	tests := []struct {
+		name      string
+		fields    fields
+		connected bool
+		want      string
+	}{
+		{
+			name: "string it",
+			fields: fields{
+				defaultTtl: 20 * time.Hour,
+			},
+			connected: true,
+			want: `
+╔═defaultConnection═══════╗
+║╔═defaultTtl╗╔═connected╗║
+║║  20h0m0s  ║║ b1 true  ║║
+║╚═══════════╝╚══════════╝║
+╚═════════════════════════╝`[1:],
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &defaultConnection{
+				DefaultConnectionRequirements: tt.fields.DefaultConnectionRequirements,
+				defaultTtl:                    tt.fields.defaultTtl,
+				tagHandler:                    tt.fields.tagHandler,
+				valueHandler:                  tt.fields.valueHandler,
+				log:                           testutils.ProduceTestingLogger(t),
+			}
+			if tt.connected {
+				d.connected.Store(true)
+			}
+			assert.Equalf(t, tt.want, d.String(), "String()")
 		})
 	}
 }

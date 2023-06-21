@@ -109,6 +109,14 @@ public class ProfinetProtocolLogic extends Plc4xProtocolBase<Ethernet_Frame> imp
         }
     }
 
+    /**
+     * Start a PN or LLDP discovery to find PN devices on the network.
+     * We pass in a driverContext handler, that checks if an incoming response has the information needed for
+     * connecting. It just ignores the rest ...
+     *
+     * @throws InterruptedException
+     * @throws PlcConnectionException
+     */
     private void onDeviceDiscovery() throws InterruptedException, PlcConnectionException {
         ProfinetPlcDiscoverer discoverer = new ProfinetPlcDiscoverer(driverContext.getChannel());
         driverContext.getChannel().setDiscoverer(discoverer);
@@ -122,18 +130,30 @@ public class ProfinetProtocolLogic extends Plc4xProtocolBase<Ethernet_Frame> imp
         boolean discovered = false;
         int count = 0;
         while (!discovered) {
+            List<ProfinetDevice> missingDevices = new ArrayList<>();
             discovered = true;
+            // Check for each device, if there was an incoming response for an LLDP and DCP search request.
+            // It seems that we need information from both the LLDP and the DCP response, so we need
+            // to check if both have been received.
             for (Map.Entry<String, ProfinetDevice> device : devices.entrySet()) {
-                if (!device.getValue().hasLldpPdu() || !device.getValue().hasDcpPdu()) {
+                if (/*!device.getValue().hasLldpPdu() ||*/ !device.getValue().hasDcpPdu()) {
                     discovered = false;
+                    missingDevices.add(device.getValue());
                 }
             }
+            // If we've come past this more than 5 times (15 seconds), give up.
+            if (count > 5) {
+                for (ProfinetDevice missingDevice : missingDevices) {
+                    if(missingDevice.hasDcpPdu()/* && !missingDevice.hasLldpPdu()*/) {
+                        LOGGER.info("- For device {} we only managed to get a DCP discovery response, is the device possibly not connected via an LLDP enables switch?", missingDevice.getDeviceId());
+                    }
+                }
+                throw new PlcConnectionException("One device failed to respond to discovery packet");
+            }
+            // If at least one device hasn't responded yet, we'll wait for 3 more seconds and then check again.
             if (!discovered) {
                 Thread.sleep(3000L);
                 count += 1;
-            }
-            if (count > 5) {
-                throw new PlcConnectionException("One device failed to respond to discovery packet");
             }
         }
     }
@@ -168,14 +188,17 @@ public class ProfinetProtocolLogic extends Plc4xProtocolBase<Ethernet_Frame> imp
             PcapNetworkInterface devByAddress = Pcaps.getDevByAddress(localIpAddress);
             driverContext.setChannel(new ProfinetChannel(Collections.singletonList(devByAddress), devices));
             driverContext.getChannel().setConfiguredDevices(devices);
+            // Set both the network-interface and the channel for this device
+            // TODO: Find out what they are needed for ...
             for (Map.Entry<String, ProfinetDevice> entry : devices.entrySet()) {
-                entry.getValue().setNetworkInterface(new ProfinetNetworkInterface(devByAddress));
+                entry.getValue().getDeviceContext().setNetworkInterface(new ProfinetNetworkInterface(devByAddress));
                 entry.getValue().getDeviceContext().setChannel(driverContext.getChannel());
             }
         } catch (PcapNativeException | UnknownHostException e) {
             throw new RuntimeException(e);
         }
 
+        // Resolve missing information such as the remote ethernet mac address using LLDP or DCP auto-discovery.
         try {
             onDeviceDiscovery();
         } catch (PlcException | InterruptedException e) {

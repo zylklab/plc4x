@@ -23,7 +23,11 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/transactions"
+	"github.com/rs/zerolog"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -36,39 +40,42 @@ import (
 	spiValues "github.com/apache/plc4x/plc4go/spi/values"
 
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 type Reader struct {
 	messageCodec  spi.MessageCodec
-	tm            spi.RequestTransactionManager
+	tm            transactions.RequestTransactionManager
 	configuration Configuration
 	sessionHandle *uint32
+
+	log zerolog.Logger
 }
 
-func NewReader(messageCodec spi.MessageCodec, tm spi.RequestTransactionManager, configuration Configuration, sessionHandle *uint32) *Reader {
+func NewReader(messageCodec spi.MessageCodec, tm transactions.RequestTransactionManager, configuration Configuration, sessionHandle *uint32, _options ...options.WithOption) *Reader {
 	return &Reader{
 		messageCodec:  messageCodec,
 		tm:            tm,
 		configuration: configuration,
 		sessionHandle: sessionHandle,
+
+		log: options.ExtractCustomLogger(_options...),
 	}
 }
 
 func (m *Reader) Read(ctx context.Context, readRequest apiModel.PlcReadRequest) <-chan apiModel.PlcReadRequestResult {
 	// TODO: handle ctx
-	log.Trace().Msg("Reading")
+	m.log.Trace().Msg("Reading")
 	result := make(chan apiModel.PlcReadRequestResult, 1)
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				result <- spiModel.NewDefaultPlcReadRequestResult(readRequest, nil, errors.Errorf("panic-ed %v", err))
+				result <- spiModel.NewDefaultPlcReadRequestResult(readRequest, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		classSegment := readWriteModel.NewLogicalSegment(readWriteModel.NewClassID(0, 6))
 		instanceSegment := readWriteModel.NewLogicalSegment(readWriteModel.NewInstanceID(0, 1))
 		for _, tagName := range readRequest.GetTagNames() {
-			plcTag := readRequest.GetTag(tagName).(EIPPlcTag)
+			plcTag := readRequest.GetTag(tagName).(PlcTag)
 			tag := plcTag.GetTag()
 			elementsNb := uint16(1)
 			if plcTag.GetElementNb() > 1 {
@@ -88,14 +95,16 @@ func (m *Reader) Read(ctx context.Context, readRequest apiModel.PlcReadRequest) 
 			}
 			request := readWriteModel.NewCipRRData(0, 0, typeIds, *m.sessionHandle, uint32(readWriteModel.CIPStatus_Success), []byte(DefaultSenderContext), 0)
 			transaction := m.tm.StartTransaction()
-			transaction.Submit(func(transaction spi.RequestTransaction) {
-				if err := m.messageCodec.SendRequest(ctx, request,
+			transaction.Submit(func(transaction transactions.RequestTransaction) {
+				if err := m.messageCodec.SendRequest(
+					ctx,
+					request,
 					func(message spi.Message) bool {
-						eipPacket := message.(readWriteModel.EipPacket)
+						eipPacket := message.(readWriteModel.EipPacketExactly)
 						if eipPacket == nil {
 							return false
 						}
-						cipRRData := eipPacket.(readWriteModel.CipRRData)
+						cipRRData := eipPacket.(readWriteModel.CipRRDataExactly)
 						if cipRRData == nil {
 							return false
 						}
@@ -103,9 +112,10 @@ func (m *Reader) Read(ctx context.Context, readRequest apiModel.PlcReadRequest) 
 					},
 					func(message spi.Message) error {
 						cipRRData := message.(readWriteModel.CipRRData)
+						m.log.Trace().Msgf("handling:\n%s", cipRRData)
 						unconnectedDataItem := cipRRData.GetTypeIds()[1].(readWriteModel.UnConnectedDataItem)
 						// Convert the eip response into a PLC4X response
-						log.Trace().Msg("convert response to PLC4X response")
+						m.log.Trace().Msg("convert response to PLC4X response")
 						readResponse, err := m.ToPlc4xReadResponse(unconnectedDataItem.GetService(), readRequest)
 						if err != nil {
 							result <- spiModel.NewDefaultPlcReadRequestResult(
@@ -129,13 +139,17 @@ func (m *Reader) Read(ctx context.Context, readRequest apiModel.PlcReadRequest) 
 							errors.Wrap(err, "got timeout while waiting for response"),
 						)
 						return transaction.EndRequest()
-					}, time.Second*1); err != nil {
+					},
+					time.Second*1,
+				); err != nil {
 					result <- spiModel.NewDefaultPlcReadRequestResult(
 						readRequest,
 						nil,
 						errors.Wrap(err, "error sending message"),
 					)
-					_ = transaction.EndRequest()
+					if err := transaction.FailRequest(errors.Errorf("timeout after %s", time.Second*1)); err != nil {
+						m.log.Debug().Err(err).Msg("Error failing request")
+					}
 				}
 			})
 		}
@@ -190,10 +204,10 @@ func (m *Reader) ToPlc4xReadResponse(response readWriteModel.CipService, readReq
 	plcValues := map[string]values.PlcValue{}
 	responseCodes := map[string]apiModel.PlcResponseCode{}
 	switch response := response.(type) {
-	case readWriteModel.CipReadResponse: // only 1 tag
+	case readWriteModel.CipReadResponseExactly: // only 1 tag
 		cipReadResponse := response
 		tagName := readRequest.GetTagNames()[0]
-		tag := readRequest.GetTag(tagName).(EIPPlcTag)
+		tag := readRequest.GetTag(tagName).(PlcTag)
 		code := decodeResponseCode(cipReadResponse.GetStatus())
 		var plcValue values.PlcValue
 		_type := cipReadResponse.GetData().GetDataType()
@@ -207,7 +221,7 @@ func (m *Reader) ToPlc4xReadResponse(response readWriteModel.CipService, readReq
 		}
 		plcValues[tagName] = plcValue
 		responseCodes[tagName] = code
-	case readWriteModel.MultipleServiceResponse: //Multiple response
+	case readWriteModel.MultipleServiceResponseExactly: //Multiple response
 		multipleServiceResponse := response
 		nb := multipleServiceResponse.GetServiceNb()
 		arr := make([]readWriteModel.CipService, nb)
@@ -231,7 +245,7 @@ func (m *Reader) ToPlc4xReadResponse(response readWriteModel.CipService, readReq
 		}
 		services := readWriteModel.NewServices(multipleServiceResponse.GetOffsets(), arr, uint16(0))
 		for i, tagName := range readRequest.GetTagNames() {
-			tag := readRequest.GetTag(tagName).(EIPPlcTag)
+			tag := readRequest.GetTag(tagName).(PlcTag)
 			if cipReadResponse, ok := services.Services[i].(readWriteModel.CipReadResponse); ok {
 				code := decodeResponseCode(cipReadResponse.GetStatus())
 				_type := cipReadResponse.GetData().GetDataType()
@@ -256,11 +270,11 @@ func (m *Reader) ToPlc4xReadResponse(response readWriteModel.CipService, readReq
 	}
 
 	// Return the response
-	log.Trace().Msg("Returning the response")
+	m.log.Trace().Msg("Returning the response")
 	return spiModel.NewDefaultPlcReadResponse(readRequest, responseCodes, plcValues), nil
 }
 
-func parsePlcValue(tag EIPPlcTag, data utils.ReadBufferByteBased, _type readWriteModel.CIPDataTypeCode) (values.PlcValue, error) {
+func parsePlcValue(tag PlcTag, data utils.ReadBufferByteBased, _type readWriteModel.CIPDataTypeCode) (values.PlcValue, error) {
 	nb := tag.GetElementNb()
 	if nb > 1 {
 		list := make([]values.PlcValue, 0)

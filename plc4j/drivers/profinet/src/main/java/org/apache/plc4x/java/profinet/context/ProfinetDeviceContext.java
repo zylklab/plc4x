@@ -142,7 +142,7 @@ public class ProfinetDeviceContext implements DriverContext, HasConfiguration<Pr
 
     public int getAndIncrementSessionKey() {
         // Generate a new session key.
-        Integer sessionKey = sessionKeyGenerator.getAndIncrement();
+        int sessionKey = sessionKeyGenerator.getAndIncrement();
         // Reset the session key as soon as it reaches the max for a 16 bit uint
         if (sessionKeyGenerator.get() == 0xFFFF) {
             sessionKeyGenerator.set(1);
@@ -370,6 +370,7 @@ public class ProfinetDeviceContext implements DriverContext, HasConfiguration<Pr
 
     private void extractGSDFileInfo(ProfinetISO15745Profile gsdFile) throws PlcConnectionException {
 
+        // Find the DeviceAccessPoint specified by the "deviceAccess" parameter
         for (ProfinetDeviceAccessPointItem deviceAccessItem : gsdFile.getProfileBody().getApplicationProcess().getDeviceAccessPointList()) {
             if (deviceAccess.equals(deviceAccessItem.getId())) {
                 this.deviceAccessItem = deviceAccessItem;
@@ -379,6 +380,9 @@ public class ProfinetDeviceContext implements DriverContext, HasConfiguration<Pr
             throw new PlcConnectionException("Unable to find Device Access Item - " + this.deviceAccess);
         }
 
+        // The DAP itself is always slot 0 (Defined by "FixedInSlots").
+        // The PhysicalSlots therefore should always be in a format "0..x" format
+        // (Except, if the device wouldn't have any modules, which wouldn't make sense)
         Matcher matcher = RANGE_PATTERN.matcher(deviceAccessItem.getPhysicalSlots());
         if (!matcher.matches()) {
             throw new PlcConnectionException("Physical Slots Range is not in the correct format " + deviceAccessItem.getPhysicalSlots());
@@ -389,12 +393,15 @@ public class ProfinetDeviceContext implements DriverContext, HasConfiguration<Pr
         int numberOfSlots = matcher.group("to") != null ? Integer.parseInt(matcher.group("to")) : 0;
 
         this.modules = new ProfinetModule[numberOfSlots];
+        // The DAP is always in slot 0
         this.modules[deviceAccessItem.getFixedInSlots()] = new ProfinetModuleImpl(deviceAccessItem, 0, 0, deviceAccessItem.getFixedInSlots());
 
         List<ProfinetModuleItemRef> usableSubModules = this.deviceAccessItem.getUseableModules();
+        // The first slot is always 0 which is the DAP slot, so in general we'll always start with 1
         int currentSlot = deviceAccessItem.getFixedInSlots() + 1;
         int inputOffset = this.modules[deviceAccessItem.getFixedInSlots()].getInputIoPsSize();
         int outputOffset = this.modules[deviceAccessItem.getFixedInSlots()].getOutputIoCsSize();
+        // Iterate over each module.
         for (String subModule : this.subModules) {
             if (subModule.equals("")) {
                 this.modules[currentSlot] = new ProfinetEmptyModule();

@@ -33,7 +33,7 @@ import (
 )
 
 type DefaultDriverRequirements interface {
-	GetConnectionWithContext(ctx context.Context, transportUrl url.URL, transports map[string]transports.Transport, options map[string][]string) <-chan plc4go.PlcConnectionConnectResult
+	GetConnectionWithContext(ctx context.Context, transportUrl url.URL, transports map[string]transports.Transport, driverOptions map[string][]string) <-chan plc4go.PlcConnectionConnectResult
 	DiscoverWithContext(callback context.Context, event func(event apiModel.PlcDiscoveryItem), discoveryOptions ...options.WithDiscoveryOption) error
 }
 
@@ -114,6 +114,10 @@ func (d *defaultDriver) DiscoverWithContext(_ context.Context, _ func(event apiM
 
 func (d *defaultDriver) GetPlcTagHandler() spi.PlcTagHandler {
 	return d.plcTagHandler
+}
+
+func (d *defaultDriver) Close() error {
+	return nil
 }
 
 func (d *defaultDriver) String() string {

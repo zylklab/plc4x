@@ -21,6 +21,7 @@ package plc4go
 
 import (
 	"context"
+	"io"
 	"net/url"
 
 	"github.com/apache/plc4x/plc4go/pkg/api/model"
@@ -29,6 +30,7 @@ import (
 )
 
 type PlcDriver interface {
+	io.Closer
 	// GetProtocolCode Get the short code used to identify this driver (As used in the connection string)
 	GetProtocolCode() string
 	// GetProtocolName Get a human-readable name for this driver
@@ -48,7 +50,7 @@ type PlcDriver interface {
 	GetConnection(transportUrl url.URL, transports map[string]transports.Transport, options map[string][]string) <-chan PlcConnectionConnectResult
 	// GetConnectionWithContext Establishes a connection to a given PLC using the information in the connectionString
 	// FIXME: this leaks spi in the signature move to spi driver or create interfaces. Can also be done by moving spi in a proper module
-	GetConnectionWithContext(ctx context.Context, transportUrl url.URL, transports map[string]transports.Transport, options map[string][]string) <-chan PlcConnectionConnectResult
+	GetConnectionWithContext(ctx context.Context, transportUrl url.URL, transports map[string]transports.Transport, driverOptions map[string][]string) <-chan PlcConnectionConnectResult
 
 	// SupportsDiscovery returns true if this driver supports discovery
 	SupportsDiscovery() bool

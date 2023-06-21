@@ -20,22 +20,25 @@
 package test
 
 import (
-	"bufio"
-	"bytes"
-	"context"
+	"github.com/apache/plc4x/plc4go/spi/options"
 	"github.com/apache/plc4x/plc4go/spi/transports"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"math"
 	"net/url"
+
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 type Transport struct {
 	preregisteredInstances map[url.URL]transports.TransportInstance
+
+	log zerolog.Logger
 }
 
-func NewTransport() *Transport {
-	return &Transport{preregisteredInstances: map[url.URL]transports.TransportInstance{}}
+func NewTransport(_options ...options.WithOption) *Transport {
+	return &Transport{
+		preregisteredInstances: map[url.URL]transports.TransportInstance{},
+		log:                    options.ExtractCustomLogger(_options...),
+	}
 }
 
 func (m *Transport) GetTransportCode() string {
@@ -46,16 +49,16 @@ func (m *Transport) GetTransportName() string {
 	return "Test Transport"
 }
 
-func (m *Transport) CreateTransportInstance(transportUrl url.URL, options map[string][]string) (transports.TransportInstance, error) {
+func (m *Transport) CreateTransportInstance(transportUrl url.URL, options map[string][]string, _options ...options.WithOption) (transports.TransportInstance, error) {
 	if _, ok := options["failTestTransport"]; ok {
 		return nil, errors.New("test transport failed on purpose")
 	}
 	if preregisteredInstance, ok := m.preregisteredInstances[transportUrl]; ok {
-		log.Trace().Msgf("Returning pre registered instance for %v", transportUrl)
+		m.log.Trace().Msgf("Returning pre registered instance for %s", &transportUrl)
 		return preregisteredInstance, nil
 	}
-	log.Trace().Msg("create transport instance")
-	return NewTransportInstance(m), nil
+	m.log.Trace().Msg("create transport instance")
+	return NewTransportInstance(m, _options...), nil
 }
 
 func (m *Transport) AddPreregisteredInstances(transportUrl url.URL, preregisteredInstance transports.TransportInstance) error {
@@ -66,117 +69,11 @@ func (m *Transport) AddPreregisteredInstances(transportUrl url.URL, preregistere
 	return nil
 }
 
+func (m *Transport) Close() error {
+	m.log.Trace().Msg("Closing")
+	return nil
+}
+
 func (m *Transport) String() string {
 	return m.GetTransportCode() + "(" + m.GetTransportName() + ")"
-}
-
-type TransportInstance struct {
-	readBuffer       []byte
-	writeBuffer      []byte
-	connected        bool
-	transport        *Transport
-	writeInterceptor func(transportInstance *TransportInstance, data []byte)
-}
-
-func NewTransportInstance(transport *Transport) *TransportInstance {
-	return &TransportInstance{
-		readBuffer:  []byte{},
-		writeBuffer: []byte{},
-		connected:   false,
-		transport:   transport,
-	}
-}
-
-func (m *TransportInstance) Connect() error {
-	log.Trace().Msg("Connect")
-	m.connected = true
-	return nil
-}
-
-func (m *TransportInstance) ConnectWithContext(_ context.Context) error {
-	return m.Connect()
-}
-
-func (m *TransportInstance) Close() error {
-	log.Trace().Msg("Close")
-	m.connected = false
-	return nil
-}
-
-func (m *TransportInstance) IsConnected() bool {
-	return m.connected
-}
-
-func (m *TransportInstance) GetNumBytesAvailableInBuffer() (uint32, error) {
-	readableBytes := len(m.readBuffer)
-	log.Trace().Msgf("return number of readable bytes %d", readableBytes)
-	return uint32(readableBytes), nil
-}
-
-func (m *TransportInstance) FillBuffer(until func(pos uint, currentByte byte, reader *bufio.Reader) bool) error {
-	nBytes := uint32(1)
-	for {
-		_bytes, err := m.PeekReadableBytes(nBytes)
-		if err != nil {
-			return errors.Wrap(err, "Error while peeking")
-		}
-		if keepGoing := until(uint(nBytes-1), _bytes[len(_bytes)-1], bufio.NewReader(bytes.NewReader(m.readBuffer))); !keepGoing {
-			return nil
-		}
-		nBytes++
-	}
-}
-
-func (m *TransportInstance) PeekReadableBytes(numBytes uint32) ([]byte, error) {
-	availableBytes := uint32(math.Min(float64(numBytes), float64(len(m.readBuffer))))
-	log.Trace().Msgf("Peek %d readable bytes (%d available bytes)", numBytes, availableBytes)
-	var err error
-	if availableBytes != numBytes {
-		err = errors.New("not enough bytes available")
-	}
-	if availableBytes == 0 {
-		return nil, err
-	}
-	return m.readBuffer[0:availableBytes], err
-}
-
-func (m *TransportInstance) Read(numBytes uint32) ([]byte, error) {
-	log.Trace().Msgf("Read num bytes %d", numBytes)
-	data := m.readBuffer[0:int(numBytes)]
-	m.readBuffer = m.readBuffer[int(numBytes):]
-	return data, nil
-}
-
-func (m *TransportInstance) SetWriteInterceptor(writeInterceptor func(transportInstance *TransportInstance, data []byte)) {
-	m.writeInterceptor = writeInterceptor
-}
-
-func (m *TransportInstance) Write(data []byte) error {
-	if m.writeInterceptor != nil {
-		m.writeInterceptor(m, data)
-	}
-	log.Trace().Msgf("Write data %#x", data)
-	m.writeBuffer = append(m.writeBuffer, data...)
-	return nil
-}
-
-func (m *TransportInstance) FillReadBuffer(data []byte) {
-	log.Trace().Msgf("FillReadBuffer with %#x", data)
-	m.readBuffer = append(m.readBuffer, data...)
-}
-
-func (m *TransportInstance) GetNumDrainableBytes() uint32 {
-	log.Trace().Msg("get number of drainable bytes")
-	return uint32(len(m.writeBuffer))
-}
-
-func (m *TransportInstance) DrainWriteBuffer(numBytes uint32) []byte {
-	log.Trace().Msgf("Drain write buffer with number of bytes %d", numBytes)
-	data := m.writeBuffer[0:int(numBytes)]
-	m.writeBuffer = m.writeBuffer[int(numBytes):]
-	return data
-}
-
-func (m *TransportInstance) String() string {
-	return "test"
 }

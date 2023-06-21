@@ -172,6 +172,7 @@ public class ProfinetDevice implements PlcSubscriber {
     }
 
     public boolean onConnect() throws ExecutionException, InterruptedException, TimeoutException {
+        // If an explicit address is provided, the driver tries to explicitly configure the device to that address.
         if (this.setIpAddress) {
             deviceContext.setState(ProfinetDeviceState.SET_IP);
         }
@@ -191,21 +192,32 @@ public class ProfinetDevice implements PlcSubscriber {
                 while (deviceContext.getState() != ProfinetDeviceState.ABORT) {
                     try {
                         switch (deviceContext.getState()) {
+                            // If an ipAddress is specified in the device config, we use PN DCP to set the IP
+                            // address of the PN device identified by the name to that given IP address.
                             case SET_IP:
                                 ProfinetMessageDcpIp setIpMessage = new ProfinetMessageDcpIp();
                                 this.messageWrapper.sendPnioMessage(setIpMessage, deviceContext);
                                 deviceContext.setState(ProfinetDeviceState.IDLE);
                                 break;
+                            // Set up a PN-IO connection, subscribing to the stuff passed in with the connection
+                            // string and also tell the device about the data we'll be publishing.
                             case IDLE:
                                 CreateConnection createConnection = new CreateConnection();
+                                // Send the packet and process the response ...
                                 recordIdAndSend(createConnection);
+                                // Wait for it to be finished processing ...
                                 createConnection.getResponseHandled().get(timeout, TimeUnit.NANOSECONDS);
                                 break;
+                            // TODO: It seems this state is never used?
+                            // It seems that in this step we would be setting parameters in the PN device (hereby configuring it)
+                            // This should probably be done using the PLC4X Write API anyway.
                             case STARTUP:
                                 WriteParameters writeParameters = new WriteParameters();
                                 recordIdAndSend(writeParameters);
                                 writeParameters.getResponseHandled().get(timeout, TimeUnit.NANOSECONDS);
                                 break;
+                            // Send a CONTROL packet
+                            // TODO: I assume this tells the PN device that we'll be the new "master"
                             case PREMED:
                                 WriteParametersEnd writeParametersEnd = new WriteParametersEnd();
                                 recordIdAndSend(writeParametersEnd);
@@ -246,6 +258,8 @@ public class ProfinetDevice implements PlcSubscriber {
         options.put("device_id", new PlcSTRING(deviceIdentity.getDeviceID()));
         options.put("vendor_id", new PlcSTRING(deviceIdentity.getVendorId()));
         options.put("vendor_name", new PlcSTRING(deviceIdentity.getVendorName().getValue()));
+
+        // Look up the human readable text value for the given device identity
         if (deviceIdentity.getInfoText() != null && deviceIdentity.getInfoText().getTextId() != null) {
             String key = deviceIdentity.getInfoText().getTextId();
             ProfinetExternalTextList externaltextList = this.deviceContext.getGsdFile().getProfileBody().getApplicationProcess().getExternalTextList();
@@ -506,13 +520,6 @@ public class ProfinetDevice implements PlcSubscriber {
                     deviceContext.getInputIoCsApiBlocks())
             );
 
-            List<PnIoCm_IoCrBlockReqApi> outputApis = Collections.singletonList(
-                new PnIoCm_IoCrBlockReqApi(
-                    deviceContext.getOutputIoPsApiBlocks(),
-                    deviceContext.getOutputIoCsApiBlocks()
-                )
-            );
-
             deviceContext.setInputReq(new PnIoCm_Block_IoCrReq(
                 (short) 1,
                 (short) 0,
@@ -530,7 +537,7 @@ public class ProfinetDevice implements PlcSubscriber {
                 deviceContext.getConfiguration().getReductionRatio(),
                 1,
                 0,
-                0xffffffff,
+                0xffffffffL,
                 deviceContext.getConfiguration().getWatchdogFactor(),
                 deviceContext.getConfiguration().getDataHoldFactor(),
                 0xC000,
@@ -540,6 +547,13 @@ public class ProfinetDevice implements PlcSubscriber {
             ));
 
             blocks.add(deviceContext.getInputReq());
+
+            List<PnIoCm_IoCrBlockReqApi> outputApis = Collections.singletonList(
+                new PnIoCm_IoCrBlockReqApi(
+                    deviceContext.getOutputIoPsApiBlocks(),
+                    deviceContext.getOutputIoCsApiBlocks()
+                )
+            );
 
             deviceContext.setOutputReq(new PnIoCm_Block_IoCrReq(
                 (short) 1,
@@ -558,7 +572,7 @@ public class ProfinetDevice implements PlcSubscriber {
                 deviceContext.getConfiguration().getReductionRatio(),
                 1,
                 0,
-                0xffffffff,
+                0xffffffffL,
                 deviceContext.getConfiguration().getWatchdogFactor(),
                 deviceContext.getConfiguration().getDataHoldFactor(),
                 0xC000,
@@ -584,6 +598,7 @@ public class ProfinetDevice implements PlcSubscriber {
                 0,
                 id,
                 DceRpc_Operation.CONNECT,
+                (short) 0,
                 new PnIoCm_Packet_Req(ProfinetDeviceContext.DEFAULT_ARGS_MAXIMUM, ProfinetDeviceContext.DEFAULT_MAX_ARRAY_COUNT, 0, blocks)
             );
         }
@@ -595,8 +610,9 @@ public class ProfinetDevice implements PlcSubscriber {
                     if (connectResponse.getErrorCode() == 0) {
                         // TODO:- Re-enable the Write Parameters step if need be. Need a pcap of a simocode connection.
                         deviceContext.setState(ProfinetDeviceState.PREMED);
-                        responseHandled.complete(true);
+                        // Check the types of the block in the response match the expected ones.
                         for (PnIoCm_Block module : connectResponse.getBlocks()) {
+                            // TODO: Find out what a MODULE_DIFF_BLOCK is ...
                             if (module.getBlockType() == PnIoCm_BlockType.MODULE_DIFF_BLOCK) {
                                 PnIoCm_Block_ModuleDiff diffModule = (PnIoCm_Block_ModuleDiff) module;
                                 logger.error("Module is different to what is expected in slot {}", diffModule.getApis().get(0).getModules().get(0).getSlotNumber());
@@ -607,22 +623,19 @@ public class ProfinetDevice implements PlcSubscriber {
                         deviceContext.setState(ProfinetDeviceState.ABORT);
                         // TODO:- Introduce the error code lookups
                         logger.error("Error {} - {} in Response from {} ", connectResponse.getErrorCode1(), connectResponse.getErrorCode2(), deviceContext.getDeviceName());
-                        responseHandled.complete(true);
                     }
                 } else {
                     deviceContext.setState(ProfinetDeviceState.ABORT);
                     logger.error("Received Incorrect Packet Type for Create Connection Response");
-                    responseHandled.complete(true);
                 }
             } else if (dceRpc_packet.getPacketType() == DceRpc_PacketType.REJECT) {
                 deviceContext.setState(ProfinetDeviceState.ABORT);
                 logger.error("Device rejected connection request");
-                responseHandled.complete(true);
             } else {
                 deviceContext.setState(ProfinetDeviceState.ABORT);
                 logger.error("Unexpected Response");
-                responseHandled.complete(true);
             }
+            responseHandled.complete(true);
         }
     }
 
@@ -728,6 +741,7 @@ public class ProfinetDevice implements PlcSubscriber {
                 0,
                 id,
                 DceRpc_Operation.WRITE,
+                (short) 0,
                 new PnIoCm_Packet_Req(16696, 16696, 0,
                     requests)
             );
@@ -788,6 +802,7 @@ public class ProfinetDevice implements PlcSubscriber {
                 0,
                 id,
                 DceRpc_Operation.CONTROL,
+                (short) 0,
                 new PnIoCm_Packet_Req(16696, 16696, 0,
                     Collections.singletonList(
                         new PnIoCm_Control_Request(
@@ -809,27 +824,23 @@ public class ProfinetDevice implements PlcSubscriber {
                     final PnIoCm_Packet_Res connectResponse = (PnIoCm_Packet_Res) dceRpc_packet.getPayload();
                     if (connectResponse.getErrorCode() == 0) {
                         deviceContext.setState(ProfinetDeviceState.WAITAPPLRDY);
-                        responseHandled.complete(true);
                     } else {
                         deviceContext.setState(ProfinetDeviceState.ABORT);
                         // TODO:- Introduce the error code lookups
                         logger.error("Error {} - {} in Response from {} during Write Parameters End", connectResponse.getErrorCode1(), connectResponse.getErrorCode2(), deviceContext.getDeviceName());
-                        responseHandled.complete(true);
                     }
                 } else {
                     deviceContext.setState(ProfinetDeviceState.ABORT);
                     logger.error("Received Incorrect Packet Type for Write Parameters Ed Response");
-                    responseHandled.complete(true);
                 }
             } else if (dceRpc_packet.getPacketType() == DceRpc_PacketType.REJECT) {
                 deviceContext.setState(ProfinetDeviceState.ABORT);
                 logger.error("Device rejected write parameter end request");
-                responseHandled.complete(true);
             } else {
                 deviceContext.setState(ProfinetDeviceState.ABORT);
                 logger.error("Unexpected Response");
-                responseHandled.complete(true);
             }
+            responseHandled.complete(true);
         }
     }
 
@@ -867,6 +878,7 @@ public class ProfinetDevice implements PlcSubscriber {
                 0,
                 id,
                 DceRpc_Operation.CONTROL,
+                (short) 0,
                 new PnIoCm_Packet_Res(
                     (short) 0,
                     (short) 0,
@@ -875,7 +887,7 @@ public class ProfinetDevice implements PlcSubscriber {
                     ProfinetDeviceContext.DEFAULT_MAX_ARRAY_COUNT,
                     0,
                     Collections.singletonList(
-                        new PnIoCM_Block_Response(
+                        new PnIoCM_Block_ResponseConnect(
                             (short) 1,
                             (short) 0,
                             ProfinetDeviceContext.ARUUID,
@@ -926,6 +938,7 @@ public class ProfinetDevice implements PlcSubscriber {
                 0,
                 id,
                 DceRpc_Operation.CONTROL,
+                (short) 0,
                 new PnIoCm_Packet_NoCall()
             );
         }

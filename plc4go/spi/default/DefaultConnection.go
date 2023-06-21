@@ -21,16 +21,19 @@ package _default
 
 import (
 	"context"
+	"github.com/apache/plc4x/plc4go/spi/tracer"
+	"github.com/apache/plc4x/plc4go/spi/utils"
+	"github.com/rs/zerolog"
+	"runtime/debug"
+	"sync/atomic"
 	"time"
-
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 
 	"github.com/apache/plc4x/plc4go/pkg/api"
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
 	"github.com/apache/plc4x/plc4go/spi"
 	"github.com/apache/plc4x/plc4go/spi/options"
 	"github.com/apache/plc4x/plc4go/spi/transports"
+	"github.com/pkg/errors"
 )
 
 // DefaultConnectionRequirements defines the required at a implementing connection when using DefaultConnection
@@ -46,6 +49,7 @@ type DefaultConnectionRequirements interface {
 
 // DefaultConnection should be used as an embedded struct. All defined methods here have default implementations
 type DefaultConnection interface {
+	utils.Serializable
 	plc4go.PlcConnection
 	spi.TransportInstanceExposer
 	spi.HandlerExposer
@@ -93,7 +97,7 @@ func NewDefaultPlcConnectionConnectResult(connection plc4go.PlcConnection, err e
 
 type DefaultPlcConnectionCloseResult interface {
 	plc4go.PlcConnectionCloseResult
-	GetTraces() []spi.TraceEntry
+	GetTraces() []tracer.TraceEntry
 }
 
 func NewDefaultPlcConnectionCloseResult(connection plc4go.PlcConnection, err error) plc4go.PlcConnectionCloseResult {
@@ -104,7 +108,7 @@ func NewDefaultPlcConnectionCloseResult(connection plc4go.PlcConnection, err err
 	}
 }
 
-func NewDefaultPlcConnectionCloseResultWithTraces(connection plc4go.PlcConnection, err error, traces []spi.TraceEntry) plc4go.PlcConnectionCloseResult {
+func NewDefaultPlcConnectionCloseResultWithTraces(connection plc4go.PlcConnection, err error, traces []tracer.TraceEntry) plc4go.PlcConnectionCloseResult {
 	return &plcConnectionCloseResult{
 		connection: connection,
 		err:        err,
@@ -144,22 +148,25 @@ type withPlcValueHandler struct {
 	plcValueHandler spi.PlcValueHandler
 }
 
+//go:generate go run ../../tools/plc4xgenerator/gen.go -type=defaultConnection
 type defaultConnection struct {
-	DefaultConnectionRequirements
+	DefaultConnectionRequirements `ignore:"true"`
 	// defaultTtl the time to live after a close
-	defaultTtl time.Duration
+	defaultTtl time.Duration `stringer:"true"`
 	// connected indicates if a connection is connected
-	connected    bool
+	connected    atomic.Bool
 	tagHandler   spi.PlcTagHandler
 	valueHandler spi.PlcValueHandler
+
+	log zerolog.Logger `ignore:"true"`
 }
 
-func buildDefaultConnection(requirements DefaultConnectionRequirements, options ...options.WithOption) DefaultConnection {
-	defaultTtl := time.Second * 10
+func buildDefaultConnection(requirements DefaultConnectionRequirements, _options ...options.WithOption) DefaultConnection {
+	defaultTtl := 10 * time.Second
 	var tagHandler spi.PlcTagHandler
 	var valueHandler spi.PlcValueHandler
 
-	for _, option := range options {
+	for _, option := range _options {
 		switch option.(type) {
 		case withDefaultTtl:
 			defaultTtl = option.(withDefaultTtl).defaultTtl
@@ -171,11 +178,12 @@ func buildDefaultConnection(requirements DefaultConnectionRequirements, options 
 	}
 
 	return &defaultConnection{
-		requirements,
-		defaultTtl,
-		false,
-		tagHandler,
-		valueHandler,
+		DefaultConnectionRequirements: requirements,
+		defaultTtl:                    defaultTtl,
+		tagHandler:                    tagHandler,
+		valueHandler:                  valueHandler,
+
+		log: options.ExtractCustomLogger(_options...),
 	}
 }
 
@@ -195,7 +203,7 @@ func (d *plcConnectionConnectResult) GetErr() error {
 type plcConnectionCloseResult struct {
 	connection plc4go.PlcConnection
 	err        error
-	traces     []spi.TraceEntry
+	traces     []tracer.TraceEntry
 }
 
 func (d *plcConnectionCloseResult) GetConnection() plc4go.PlcConnection {
@@ -206,7 +214,7 @@ func (d *plcConnectionCloseResult) GetErr() error {
 	return d.err
 }
 
-func (d *plcConnectionCloseResult) GetTraces() []spi.TraceEntry {
+func (d *plcConnectionCloseResult) GetTraces() []tracer.TraceEntry {
 	return d.traces
 }
 
@@ -225,7 +233,8 @@ func (d *plcConnectionPingResult) GetErr() error {
 ///////////////////////////////////////
 
 func (d *defaultConnection) SetConnected(connected bool) {
-	d.connected = connected
+	d.log.Trace().Msgf("set connected %t", connected)
+	d.connected.Store(connected)
 }
 
 func (d *defaultConnection) Connect() <-chan plc4go.PlcConnectionConnectResult {
@@ -233,12 +242,12 @@ func (d *defaultConnection) Connect() <-chan plc4go.PlcConnectionConnectResult {
 }
 
 func (d *defaultConnection) ConnectWithContext(ctx context.Context) <-chan plc4go.PlcConnectionConnectResult {
-	log.Trace().Msg("Connecting")
+	d.log.Trace().Msg("Connecting")
 	ch := make(chan plc4go.PlcConnectionConnectResult, 1)
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				ch <- NewDefaultPlcConnectionConnectResult(nil, errors.Errorf("panic-ed %v", err))
+				ch <- NewDefaultPlcConnectionConnectResult(nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		err := d.GetMessageCodec().ConnectWithContext(ctx)
@@ -250,7 +259,7 @@ func (d *defaultConnection) ConnectWithContext(ctx context.Context) <-chan plc4g
 }
 
 func (d *defaultConnection) BlockingClose() {
-	log.Trace().Msg("blocking close connection")
+	d.log.Trace().Msg("blocking close connection")
 	closeResults := d.GetConnection().Close()
 	timeout := time.NewTimer(d.GetTtl())
 	d.SetConnected(false)
@@ -267,11 +276,24 @@ func (d *defaultConnection) BlockingClose() {
 }
 
 func (d *defaultConnection) Close() <-chan plc4go.PlcConnectionCloseResult {
-	log.Trace().Msg("close connection")
-	if err := d.GetMessageCodec().Disconnect(); err != nil {
-		log.Warn().Err(err).Msg("Error disconnecting message code")
+	d.log.Trace().Msg("close connection")
+	if messageCodec := d.GetMessageCodec(); messageCodec != nil {
+		d.log.Trace().Msgf("disconnecting message codec")
+		if err := messageCodec.Disconnect(); err != nil {
+			d.log.Warn().Err(err).Msg("Error disconnecting message code")
+		} else {
+			d.log.Trace().Msg("message codec disconnected")
+		}
 	}
-	err := d.GetTransportInstance().Close()
+	var err error
+	if transportInstance := d.GetTransportInstance(); transportInstance != nil {
+		d.log.Trace().Msg("closing transport instance")
+		if err = transportInstance.Close(); err != nil {
+			d.log.Warn().Err(err).Msg("Error disconnecting transport instance")
+		} else {
+			d.log.Trace().Msg("transport instance closed")
+		}
+	}
 	d.SetConnected(false)
 	ch := make(chan plc4go.PlcConnectionCloseResult, 1)
 	ch <- NewDefaultPlcConnectionCloseResult(d.GetConnection(), err)
@@ -280,7 +302,7 @@ func (d *defaultConnection) Close() <-chan plc4go.PlcConnectionCloseResult {
 
 func (d *defaultConnection) IsConnected() bool {
 	// TODO: should we check here if the transport is connected?
-	return d.connected
+	return d.connected.Load()
 }
 
 func (d *defaultConnection) Ping() <-chan plc4go.PlcConnectionPingResult {
@@ -288,7 +310,7 @@ func (d *defaultConnection) Ping() <-chan plc4go.PlcConnectionPingResult {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				ch <- NewDefaultPlcConnectionPingResult(errors.Errorf("panic-ed %v", err))
+				ch <- NewDefaultPlcConnectionPingResult(errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		if d.GetConnection().IsConnected() {

@@ -22,11 +22,13 @@ package cbus
 import (
 	"context"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/pool"
 	"github.com/apache/plc4x/plc4go/spi/transports/tcp"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"net"
 	"net/url"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -37,22 +39,24 @@ import (
 	"github.com/apache/plc4x/plc4go/spi/options"
 	"github.com/apache/plc4x/plc4go/spi/transports"
 	"github.com/apache/plc4x/plc4go/spi/utils"
-
-	"github.com/rs/zerolog/log"
 )
 
 type Discoverer struct {
 	transportInstanceCreationWorkItemId atomic.Int32
-	transportInstanceCreationQueue      utils.Executor
+	transportInstanceCreationQueue      pool.Executor
 	deviceScanningWorkItemId            atomic.Int32
-	deviceScanningQueue                 utils.Executor
+	deviceScanningQueue                 pool.Executor
+
+	log zerolog.Logger
 }
 
-func NewDiscoverer() *Discoverer {
+func NewDiscoverer(_options ...options.WithOption) *Discoverer {
 	return &Discoverer{
 		// TODO: maybe a dynamic executor would be better to not waste cycles when not in use
-		transportInstanceCreationQueue: utils.NewFixedSizeExecutor(50, 100),
-		deviceScanningQueue:            utils.NewFixedSizeExecutor(50, 100),
+		transportInstanceCreationQueue: pool.NewFixedSizeExecutor(50, 100, _options...),
+		deviceScanningQueue:            pool.NewFixedSizeExecutor(50, 100, _options...),
+
+		log: options.ExtractCustomLogger(_options...),
 	}
 }
 
@@ -61,14 +65,14 @@ func (d *Discoverer) Discover(ctx context.Context, callback func(event apiModel.
 	d.deviceScanningQueue.Start()
 
 	deviceNames := d.extractDeviceNames(discoveryOptions...)
-	interfaces, err := addressProviderRetriever(deviceNames)
+	interfaces, err := addressProviderRetriever(d.log, deviceNames)
 	if err != nil {
 		return errors.Wrap(err, "error getting addresses")
 	}
-	if log.Debug().Enabled() {
+	if d.log.Debug().Enabled() {
 		for _, provider := range interfaces {
-			log.Debug().Msgf("Discover on %s", provider)
-			log.Trace().Msgf("Discover on %#v", provider.containedInterface())
+			d.log.Debug().Msgf("Discover on %s", provider)
+			d.log.Trace().Msgf("Discover on %#v", provider.containedInterface())
 		}
 	}
 
@@ -77,7 +81,7 @@ func (d *Discoverer) Discover(ctx context.Context, callback func(event apiModel.
 	tcpTransport := tcp.NewTransport()
 	// Iterate over all network devices of this system.
 	for _, netInterface := range interfaces {
-		interfaceLog := log.With().Stringer("interface", netInterface).Logger()
+		interfaceLog := d.log.With().Stringer("interface", netInterface).Logger()
 		interfaceLog.Debug().Msg("Scanning")
 		addrs, err := netInterface.Addrs()
 		if err != nil {
@@ -87,7 +91,7 @@ func (d *Discoverer) Discover(ctx context.Context, callback func(event apiModel.
 		go func(netInterface addressProvider, interfaceLog zerolog.Logger) {
 			defer func() {
 				if err := recover(); err != nil {
-					interfaceLog.Error().Msgf("panic-ed %v", err)
+					interfaceLog.Error().Msgf("panic-ed %v. Stack: %s", err, debug.Stack())
 				}
 			}()
 			defer func() { wg.Done() }()
@@ -112,7 +116,7 @@ func (d *Discoverer) Discover(ctx context.Context, callback func(event apiModel.
 				if ipv4Addr == nil || ipv4Addr.IsLoopback() {
 					continue
 				}
-				addresses, err := utils.GetIPAddresses(ctx, netInterface.containedInterface(), false)
+				addresses, err := utils.GetIPAddresses(d.log, ctx, netInterface.containedInterface(), false)
 				if err != nil {
 					addressLogger.Warn().Err(err).Msgf("Can't get addresses for %v", netInterface)
 					continue
@@ -121,7 +125,7 @@ func (d *Discoverer) Discover(ctx context.Context, callback func(event apiModel.
 				go func(addressLogger zerolog.Logger) {
 					defer func() {
 						if err := recover(); err != nil {
-							addressLogger.Error().Msgf("panic-ed %v", err)
+							addressLogger.Error().Msgf("panic-ed %v. Stack: %s; ", err, debug.Stack())
 						}
 					}()
 					defer func() { wg.Done() }()
@@ -147,25 +151,38 @@ func (d *Discoverer) Discover(ctx context.Context, callback func(event apiModel.
 	}
 	go func() {
 		wg.Wait()
-		log.Trace().Msg("Closing transport instance channel")
+		d.log.Trace().Msg("Closing transport instance channel")
 		close(transportInstances)
 	}()
 
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Error().Msgf("panic-ed %v", err)
+				d.log.Error().Msgf("panic-ed %v. Stack: %s; ", err, debug.Stack())
 			}
 		}()
+		deviceScanWg := sync.WaitGroup{}
 		for transportInstance := range transportInstances {
-			log.Debug().Stringer("transportInstance", transportInstance).Msg("submitting device scan")
-			d.deviceScanningQueue.Submit(ctx, d.deviceScanningWorkItemId.Add(1), d.createDeviceScanDispatcher(transportInstance.(*tcp.TransportInstance), callback))
+			d.log.Debug().Stringer("transportInstance", transportInstance).Msg("submitting device scan")
+			completionFuture := d.deviceScanningQueue.Submit(ctx, d.deviceScanningWorkItemId.Add(1), d.createDeviceScanDispatcher(transportInstance.(*tcp.TransportInstance), callback))
+			deviceScanWg.Add(1)
+			go func() {
+				defer deviceScanWg.Done()
+				if err := completionFuture.AwaitCompletion(context.TODO()); err != nil {
+					d.log.Debug().Err(err).Msg("error waiting for completion")
+				}
+			}()
+			deviceScanWg.Wait()
+			d.log.Info().Msg("Discovery done")
+			d.transportInstanceCreationQueue.Stop()
+			d.deviceScanningQueue.Stop()
+			// TODO: do we maybe want a callback for that? As option for example
 		}
 	}()
 	return nil
 }
 
-func (d *Discoverer) createTransportInstanceDispatcher(ctx context.Context, wg *sync.WaitGroup, ip net.IP, tcpTransport *tcp.Transport, transportInstances chan transports.TransportInstance, cBusPort uint16, addressLogger zerolog.Logger) utils.Runnable {
+func (d *Discoverer) createTransportInstanceDispatcher(ctx context.Context, wg *sync.WaitGroup, ip net.IP, tcpTransport *tcp.Transport, transportInstances chan transports.TransportInstance, cBusPort uint16, addressLogger zerolog.Logger) pool.Runnable {
 	wg.Add(1)
 	return func() {
 		defer wg.Done()
@@ -199,17 +216,25 @@ func (d *Discoverer) createTransportInstanceDispatcher(ctx context.Context, wg *
 	}
 }
 
-func (d *Discoverer) createDeviceScanDispatcher(tcpTransportInstance *tcp.TransportInstance, callback func(event apiModel.PlcDiscoveryItem)) utils.Runnable {
+func (d *Discoverer) createDeviceScanDispatcher(tcpTransportInstance *tcp.TransportInstance, callback func(event apiModel.PlcDiscoveryItem)) pool.Runnable {
 	return func() {
-		transportInstanceLogger := log.With().Stringer("transportInstance", tcpTransportInstance).Logger()
+		transportInstanceLogger := d.log.With().Stringer("transportInstance", tcpTransportInstance).Logger()
 		transportInstanceLogger.Debug().Msgf("Scanning %v", tcpTransportInstance)
 		// Create a codec for sending and receiving messages.
-		codec := NewMessageCodec(tcpTransportInstance)
+		codec := NewMessageCodec(tcpTransportInstance, options.WithCustomLogger(d.log))
 		// Explicitly start the worker
-		if err := codec.Connect(); err != nil {
+		if err := codec.ConnectWithContext(context.TODO()); err != nil {
 			transportInstanceLogger.Debug().Err(err).Msg("Error connecting")
 			return
 		}
+		defer func() {
+			// Disconnect codec when done
+			d.log.Debug().Msg("Shutting down codec")
+			if err := codec.Disconnect(); err != nil {
+				d.log.Warn().Err(err).Msg("Error disconnecting codec")
+			}
+			d.log.Trace().Msg("done")
+		}()
 
 		// Prepare the discovery packet data
 		cBusOptions := readWriteModel.NewCBusOptions(false, false, false, false, false, false, false, false, true)
@@ -225,16 +250,14 @@ func (d *Discoverer) createDeviceScanDispatcher(tcpTransportInstance *tcp.Transp
 		}
 		// Keep on reading responses till the timeout is done.
 		// TODO: Make this configurable
-		timeout := time.NewTimer(time.Second * 1)
+		timeout := time.NewTimer(1 * time.Second)
 		defer utils.CleanupTimer(timeout)
-		timeout.Stop()
-		for start := time.Now(); time.Since(start) < time.Second*5; {
-			timeout.Reset(time.Second * 1)
+		for start := time.Now(); time.Since(start) < 5*time.Second; {
+			timeout.Reset(1 * time.Second)
 			select {
 			case receivedMessage := <-codec.GetDefaultIncomingMessageChannel():
-				if !timeout.Stop() {
-					<-timeout.C
-				}
+				// Cleanup, going to be resetted again
+				utils.CleanupTimer(timeout)
 				cbusMessage, ok := receivedMessage.(readWriteModel.CBusMessage)
 				if !ok {
 					continue
@@ -310,6 +333,12 @@ func (d *Discoverer) extractDeviceNames(discoveryOptions ...options.WithDiscover
 	return deviceNames
 }
 
+func (d *Discoverer) Close() error {
+	d.transportInstanceCreationQueue.Stop()
+	d.deviceScanningQueue.Stop()
+	return nil
+}
+
 // addressProvider is used to make discover testable
 type addressProvider interface {
 	fmt.Stringer
@@ -337,12 +366,12 @@ func (w *wrappedInterface) String() string {
 }
 
 // allInterfaceRetriever can be exchanged in tests
-var allInterfaceRetriever = func() ([]addressProvider, error) {
+var allInterfaceRetriever = func(localLog zerolog.Logger) ([]addressProvider, error) {
 	interfaces, err := net.Interfaces()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not retrieve all interfaces")
 	}
-	log.Debug().Msgf("Mapping %d interfaces", len(interfaces))
+	localLog.Debug().Msgf("Mapping %d interfaces", len(interfaces))
 	addressProviders := make([]addressProvider, len(interfaces))
 	for i, networkInterface := range interfaces {
 		var copyInterface = networkInterface
@@ -352,8 +381,8 @@ var allInterfaceRetriever = func() ([]addressProvider, error) {
 }
 
 // addressProviderRetriever can be exchanged in tests
-var addressProviderRetriever = func(deviceNames []string) ([]addressProvider, error) {
-	allInterfaces, err := allInterfaceRetriever()
+var addressProviderRetriever = func(localLog zerolog.Logger, deviceNames []string) ([]addressProvider, error) {
+	allInterfaces, err := allInterfaceRetriever(localLog)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting all interfaces")
 	}
@@ -362,7 +391,7 @@ var addressProviderRetriever = func(deviceNames []string) ([]addressProvider, er
 	// However if a discovery option is present to select a device by name, only
 	// add those devices matching any of the given names.
 	if len(deviceNames) <= 0 {
-		log.Info().Msgf("no devices selected, use all devices (%d)", len(allInterfaces))
+		localLog.Info().Msgf("no devices selected, use all devices (%d)", len(allInterfaces))
 		return allInterfaces, nil
 	}
 

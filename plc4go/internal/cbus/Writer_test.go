@@ -22,6 +22,8 @@ package cbus
 import (
 	"context"
 	spiModel "github.com/apache/plc4x/plc4go/spi/model"
+	"github.com/apache/plc4x/plc4go/spi/testutils"
+	"github.com/apache/plc4x/plc4go/spi/transactions"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/stretchr/testify/assert"
 	"strings"
@@ -29,14 +31,13 @@ import (
 	"time"
 
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
-	"github.com/apache/plc4x/plc4go/spi"
 )
 
 func TestNewWriter(t *testing.T) {
 	type args struct {
 		tpduGenerator *AlphaGenerator
 		messageCodec  *MessageCodec
-		tm            spi.RequestTransactionManager
+		tm            transactions.RequestTransactionManager
 	}
 	tests := []struct {
 		name string
@@ -62,7 +63,7 @@ func TestWriter_Write(t *testing.T) {
 	type fields struct {
 		alphaGenerator *AlphaGenerator
 		messageCodec   *MessageCodec
-		tm             spi.RequestTransactionManager
+		tm             transactions.RequestTransactionManager
 	}
 	type args struct {
 		ctx          context.Context
@@ -97,7 +98,7 @@ func TestWriter_Write(t *testing.T) {
 		{
 			name: "too many tags",
 			args: args{
-				ctx: context.Background(),
+				ctx: testutils.TestContext(t),
 				writeRequest: spiModel.NewDefaultPlcWriteRequest(nil, func() []string {
 					return strings.Split(strings.Repeat("asd,", 30), ",")
 				}(), nil, nil, nil),
@@ -135,7 +136,7 @@ func TestWriter_Write(t *testing.T) {
 					tm: spi.NewRequestTransactionManager(10),
 				},
 				args: args{
-					ctx: context.Background(),
+						ctx: testutils.TestContext(t),
 					writeRequest: spiModel.NewDefaultPlcWriteRequest(
 						map[string]apiModel.PlcTag{
 							"asd": &statusTag{},
@@ -172,6 +173,12 @@ func TestWriter_Write(t *testing.T) {
 				tm:             tt.fields.tm,
 			}
 			assert.Truef(t, tt.wantAsserter(t, m.Write(tt.args.ctx, tt.args.writeRequest)), "Write(%v, %v)", tt.args.ctx, tt.args.writeRequest)
+			if m.messageCodec != nil {
+				t.Log(m.messageCodec.Disconnect())
+			}
+			if m.tm != nil {
+				t.Log(m.tm.Close())
+			}
 		})
 	}
 }

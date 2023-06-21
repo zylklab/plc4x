@@ -23,10 +23,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/apache/plc4x/plc4go/spi/utils"
-	"github.com/rs/zerolog/log"
+	"github.com/apache/plc4x/plc4go/spi/pool"
+	"github.com/rs/zerolog"
 	"net"
 	"net/url"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -41,16 +42,19 @@ import (
 
 type Discoverer struct {
 	transportInstanceCreationWorkItemId atomic.Int32
-	transportInstanceCreationQueue      utils.Executor
+	transportInstanceCreationQueue      pool.Executor
 	deviceScanningWorkItemId            atomic.Int32
-	deviceScanningQueue                 utils.Executor
+	deviceScanningQueue                 pool.Executor
+
+	log zerolog.Logger
 }
 
-func NewDiscoverer() *Discoverer {
+func NewDiscoverer(_options ...options.WithOption) *Discoverer {
 	return &Discoverer{
 		// TODO: maybe a dynamic executor would be better to not waste cycles when not in use
-		transportInstanceCreationQueue: utils.NewFixedSizeExecutor(50, 100),
-		deviceScanningQueue:            utils.NewFixedSizeExecutor(50, 100),
+		transportInstanceCreationQueue: pool.NewFixedSizeExecutor(50, 100, _options...),
+		deviceScanningQueue:            pool.NewFixedSizeExecutor(50, 100, _options...),
+		log:                            options.ExtractCustomLogger(_options...),
 	}
 }
 
@@ -101,7 +105,7 @@ func (d *Discoverer) Discover(ctx context.Context, callback func(event apiModel.
 		go func(netInterface net.Interface) {
 			defer func() {
 				if err := recover(); err != nil {
-					log.Error().Msgf("panic-ed %v", err)
+					d.log.Error().Msgf("panic-ed %v. Stack: %s", err, debug.Stack())
 				}
 			}()
 			defer func() { wg.Done() }()
@@ -132,14 +136,14 @@ func (d *Discoverer) Discover(ctx context.Context, callback func(event apiModel.
 	}
 	go func() {
 		wg.Wait()
-		log.Trace().Msg("Closing transport instance channel")
+		d.log.Trace().Msg("Closing transport instance channel")
 		close(transportInstances)
 	}()
 
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Error().Msgf("panic-ed %v", err)
+				d.log.Error().Msgf("panic-ed %v. Stack: %s", err, debug.Stack())
 			}
 		}()
 		for transportInstance := range transportInstances {
@@ -149,7 +153,7 @@ func (d *Discoverer) Discover(ctx context.Context, callback func(event apiModel.
 	return nil
 }
 
-func (d *Discoverer) createTransportInstanceDispatcher(ctx context.Context, wg *sync.WaitGroup, connectionUrl *url.URL, ipv4Addr net.IP, udpTransport *udp.Transport, transportInstances chan transports.TransportInstance) utils.Runnable {
+func (d *Discoverer) createTransportInstanceDispatcher(ctx context.Context, wg *sync.WaitGroup, connectionUrl *url.URL, ipv4Addr net.IP, udpTransport *udp.Transport, transportInstances chan transports.TransportInstance) pool.Runnable {
 	wg.Add(1)
 	return func() {
 		defer wg.Done()
@@ -158,27 +162,27 @@ func (d *Discoverer) createTransportInstanceDispatcher(ctx context.Context, wg *
 			udpTransport.CreateTransportInstanceForLocalAddress(*connectionUrl, nil,
 				&net.UDPAddr{IP: ipv4Addr, Port: 0})
 		if err != nil {
-			log.Error().Err(err).Msg("error creating transport instance")
+			d.log.Error().Err(err).Msg("error creating transport instance")
 			return
 		}
 		err = transportInstance.ConnectWithContext(ctx)
 		if err != nil {
-			log.Debug().Err(err).Msg("Error Connecting")
+			d.log.Debug().Err(err).Msg("Error Connecting")
 			return
 		}
-		log.Debug().Msgf("Adding transport instance to scan %v", transportInstance)
+		d.log.Debug().Msgf("Adding transport instance to scan %v", transportInstance)
 		transportInstances <- transportInstance
 	}
 }
 
-func (d *Discoverer) createDeviceScanDispatcher(udpTransportInstance *udp.TransportInstance, callback func(event apiModel.PlcDiscoveryItem)) utils.Runnable {
+func (d *Discoverer) createDeviceScanDispatcher(udpTransportInstance *udp.TransportInstance, callback func(event apiModel.PlcDiscoveryItem)) pool.Runnable {
 	return func() {
-		log.Debug().Msgf("Scanning %v", udpTransportInstance)
+		d.log.Debug().Msgf("Scanning %v", udpTransportInstance)
 		// Create a codec for sending and receiving messages.
-		codec := NewMessageCodec(udpTransportInstance, nil)
+		codec := NewMessageCodec(udpTransportInstance, nil, options.WithCustomLogger(d.log))
 		// Explicitly start the worker
-		if err := codec.Connect(); err != nil {
-			log.Error().Err(err).Msg("Error connecting")
+		if err := codec.ConnectWithContext(context.TODO()); err != nil {
+			d.log.Error().Err(err).Msg("Error connecting")
 			return
 		}
 
@@ -191,15 +195,15 @@ func (d *Discoverer) createDeviceScanDispatcher(udpTransportInstance *udp.Transp
 		searchRequestMessage := driverModel.NewSearchRequest(discoveryEndpoint)
 		// Send the search request.
 		if err := codec.Send(searchRequestMessage); err != nil {
-			log.Debug().Err(err).Msgf("Error sending message:\n%s", searchRequestMessage)
+			d.log.Debug().Err(err).Msgf("Error sending message:\n%s", searchRequestMessage)
 			return
 		}
 		// Keep on reading responses till the timeout is done.
 		// TODO: Make this configurable
-		timeout := time.NewTimer(time.Second * 1)
+		timeout := time.NewTimer(1 * time.Second)
 		timeout.Stop()
 		for start := time.Now(); time.Since(start) < time.Second*5; {
-			timeout.Reset(time.Second * 1)
+			timeout.Reset(1 * time.Second)
 			select {
 			case message := <-codec.GetDefaultIncomingMessageChannel():
 				{

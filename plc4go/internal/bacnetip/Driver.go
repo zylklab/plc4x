@@ -22,6 +22,8 @@ package bacnetip
 import (
 	"context"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/transactions"
+	"github.com/rs/zerolog"
 	"math"
 	"net"
 	"net/url"
@@ -31,7 +33,6 @@ import (
 	"github.com/apache/plc4x/plc4go/pkg/api"
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
 	"github.com/apache/plc4x/plc4go/protocols/bacnetip/readwrite/model"
-	"github.com/apache/plc4x/plc4go/spi"
 	_default "github.com/apache/plc4x/plc4go/spi/default"
 	"github.com/apache/plc4x/plc4go/spi/options"
 	"github.com/apache/plc4x/plc4go/spi/transports"
@@ -43,19 +44,23 @@ import (
 type Driver struct {
 	_default.DefaultDriver
 	applicationManager      ApplicationManager
-	tm                      spi.RequestTransactionManager
+	tm                      transactions.RequestTransactionManager
 	awaitSetupComplete      bool
 	awaitDisconnectComplete bool
+
+	log zerolog.Logger // TODO: use it
 }
 
-func NewDriver() plc4go.PlcDriver {
+func NewDriver(_options ...options.WithOption) plc4go.PlcDriver {
 	driver := &Driver{
 		applicationManager: ApplicationManager{
 			applications: map[string]*ApplicationLayerMessageCodec{},
 		},
-		tm:                      spi.NewRequestTransactionManager(math.MaxInt),
+		tm:                      transactions.NewRequestTransactionManager(math.MaxInt),
 		awaitSetupComplete:      true,
 		awaitDisconnectComplete: true,
+
+		log: options.ExtractCustomLogger(_options...),
 	}
 	driver.DefaultDriver = _default.NewDefaultDriver(driver, "bacnet-ip", "BACnet/IP", "udp", NewTagHandler())
 	return driver
@@ -110,6 +115,10 @@ func (m *Driver) DiscoverWithContext(ctx context.Context, callback func(event ap
 	return NewDiscoverer().Discover(ctx, callback, discoveryOptions...)
 }
 
+func (m *Driver) Close() error {
+	return m.tm.Close()
+}
+
 type ApplicationManager struct {
 	sync.Mutex
 	applications map[string]*ApplicationLayerMessageCodec
@@ -118,6 +127,7 @@ type ApplicationManager struct {
 func (a *ApplicationManager) getApplicationLayerMessageCodec(transport *udp.Transport, transportUrl url.URL, options map[string][]string) (*ApplicationLayerMessageCodec, error) {
 	var localAddress *net.UDPAddr
 	var remoteAddr *net.UDPAddr
+	// Find out the remote and the local ip address by opening an UPD port (which is instantly closed)
 	{
 		host := transportUrl.Host
 		port := transportUrl.Port()
@@ -129,6 +139,7 @@ func (a *ApplicationManager) getApplicationLayerMessageCodec(transport *udp.Tran
 		} else {
 			remoteAddr = resolvedRemoteAddr
 		}
+		// TODO: Possibly do with with ip-address matching similar to the raw-socket impl in Java.
 		if dial, err := net.DialUDP("udp", nil, remoteAddr); err != nil {
 			return nil, errors.Errorf("couldn't dial to host %#v", transportUrl.Host)
 		} else {

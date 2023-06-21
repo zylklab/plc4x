@@ -22,6 +22,8 @@ package bacnetip
 import (
 	"context"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/rs/zerolog"
 	"net"
 	"net/url"
 	"time"
@@ -112,7 +114,11 @@ func (m *ApplicationLayerMessageCodec) Send(message spi.Message) error {
 		return errors.Wrap(err, "error creating IOCB")
 	}
 	go func() {
-		go m.bipSimpleApplication.RequestIO(iocb)
+		go func() {
+			if err := m.bipSimpleApplication.RequestIO(iocb); err != nil {
+				log.Debug().Err(err).Msg("errored")
+			}
+		}()
 		iocb.Wait()
 		if iocb.ioError != nil {
 			// TODO: handle error
@@ -142,7 +148,11 @@ func (m *ApplicationLayerMessageCodec) SendRequest(ctx context.Context, message 
 		return errors.Wrap(err, "error creating IOCB")
 	}
 	go func() {
-		go m.bipSimpleApplication.RequestIO(iocb)
+		go func() {
+			if err := m.bipSimpleApplication.RequestIO(iocb); err != nil {
+
+			}
+		}()
 		iocb.Wait()
 		if err := iocb.ioError; err != nil {
 			if err := handleError(err); err != nil {
@@ -197,6 +207,9 @@ func (m *ApplicationLayerMessageCodec) GetDefaultIncomingMessageChannel() chan s
 
 type MessageCodec struct {
 	_default.DefaultCodec
+
+	passLogToModel bool
+	log            zerolog.Logger
 }
 
 func NewMessageCodec(transportInstance transports.TransportInstance) *MessageCodec {
@@ -248,7 +261,8 @@ func (m *MessageCodec) Receive() (spi.Message, error) {
 			// TODO: Possibly clean up ...
 			return nil, nil
 		}
-		bvlcPacket, err := model.BVLCParse(data)
+		ctxForModel := options.GetLoggerContextForModel(context.TODO(), m.log, options.WithPassLoggerToModel(m.passLogToModel))
+		bvlcPacket, err := model.BVLCParse(ctxForModel, data)
 		if err != nil {
 			log.Warn().Err(err).Msg("error parsing")
 			// TODO: Possibly clean up ...

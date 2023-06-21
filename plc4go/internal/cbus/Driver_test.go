@@ -22,25 +22,28 @@ package cbus
 import (
 	"context"
 	"fmt"
-	plc4go "github.com/apache/plc4x/plc4go/pkg/api"
-	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
-	"github.com/apache/plc4x/plc4go/spi"
-	_default "github.com/apache/plc4x/plc4go/spi/default"
-	"github.com/apache/plc4x/plc4go/spi/options"
-	"github.com/apache/plc4x/plc4go/spi/transports"
-	"github.com/apache/plc4x/plc4go/spi/transports/test"
-	"github.com/apache/plc4x/plc4go/spi/utils"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"net/url"
 	"testing"
 	"time"
+
+	plc4go "github.com/apache/plc4x/plc4go/pkg/api"
+	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
+	_default "github.com/apache/plc4x/plc4go/spi/default"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/testutils"
+	"github.com/apache/plc4x/plc4go/spi/transactions"
+	"github.com/apache/plc4x/plc4go/spi/transports"
+	"github.com/apache/plc4x/plc4go/spi/transports/test"
+	"github.com/apache/plc4x/plc4go/spi/utils"
+
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDriver_DiscoverWithContext(t *testing.T) {
 	type fields struct {
 		DefaultDriver           _default.DefaultDriver
-		tm                      spi.RequestTransactionManager
+		tm                      transactions.RequestTransactionManager
 		awaitSetupComplete      bool
 		awaitDisconnectComplete bool
 	}
@@ -53,27 +56,40 @@ func TestDriver_DiscoverWithContext(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		setup   func(t *testing.T, fields *fields, args *args)
 		wantErr assert.ErrorAssertionFunc
 	}{
 		{
 			name: "localhost discovery",
 			args: args{
-				ctx: context.Background(),
 				callback: func(event apiModel.PlcDiscoveryItem) {
 					t.Log(event)
 				},
 				discoveryOptions: []options.WithDiscoveryOption{options.WithDiscoveryOptionLocalAddress("localhost")},
+			},
+			setup: func(t *testing.T, fields *fields, args *args) {
+				ctx, cancelFunc := context.WithCancel(context.Background())
+				t.Cleanup(func() {
+					cancelFunc()
+					// We give it on second to settle, so it can stop everything
+					time.Sleep(200 * time.Millisecond)
+				})
+				args.ctx = ctx
 			},
 			wantErr: assert.NoError,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				tt.setup(t, &tt.fields, &tt.args)
+			}
 			m := &Driver{
 				DefaultDriver:           tt.fields.DefaultDriver,
 				tm:                      tt.fields.tm,
 				awaitSetupComplete:      tt.fields.awaitSetupComplete,
 				awaitDisconnectComplete: tt.fields.awaitDisconnectComplete,
+				log:                     testutils.ProduceTestingLogger(t),
 			}
 			tt.wantErr(t, m.DiscoverWithContext(tt.args.ctx, tt.args.callback, tt.args.discoveryOptions...), fmt.Sprintf("DiscoverWithContext(%v, func()*, %v)", tt.args.ctx, tt.args.discoveryOptions))
 		})
@@ -83,7 +99,7 @@ func TestDriver_DiscoverWithContext(t *testing.T) {
 func TestDriver_GetConnectionWithContext(t *testing.T) {
 	type fields struct {
 		DefaultDriver           _default.DefaultDriver
-		tm                      spi.RequestTransactionManager
+		tm                      transactions.RequestTransactionManager
 		awaitSetupComplete      bool
 		awaitDisconnectComplete bool
 	}
@@ -97,18 +113,18 @@ func TestDriver_GetConnectionWithContext(t *testing.T) {
 		name         string
 		fields       fields
 		args         args
+		setup        func(t *testing.T, fields *fields, args *args)
 		wantVerifier func(t *testing.T, results <-chan plc4go.PlcConnectionConnectResult) bool
 	}{
 		{
 			name: "get connection transport not found",
 			fields: fields{
 				DefaultDriver:           _default.NewDefaultDriver(nil, "test", "test", "test", NewTagHandler()),
-				tm:                      nil,
 				awaitSetupComplete:      false,
 				awaitDisconnectComplete: false,
 			},
 			args: args{
-				ctx: context.Background(),
+				ctx: testutils.TestContext(t),
 				transportUrl: url.URL{
 					Scheme: "test",
 				},
@@ -132,21 +148,21 @@ func TestDriver_GetConnectionWithContext(t *testing.T) {
 			name: "get connection invalid options for transport",
 			fields: fields{
 				DefaultDriver:           _default.NewDefaultDriver(nil, "test", "test", "test", NewTagHandler()),
-				tm:                      nil,
 				awaitSetupComplete:      false,
 				awaitDisconnectComplete: false,
 			},
 			args: args{
-				ctx: context.Background(),
+				ctx: testutils.TestContext(t),
 				transportUrl: url.URL{
 					Scheme: "test",
 				},
-				transports: map[string]transports.Transport{
-					"test": test.NewTransport(),
-				},
+				transports: map[string]transports.Transport{},
 				options: map[string][]string{
 					"failTestTransport": {"yesSir"},
 				},
+			},
+			setup: func(t *testing.T, fields *fields, args *args) {
+				args.transports["test"] = test.NewTransport(testutils.EnrichOptionsWithOptionsForTesting(t)...)
 			},
 			wantVerifier: func(t *testing.T, results <-chan plc4go.PlcConnectionConnectResult) bool {
 				timeout := time.NewTimer(20 * time.Millisecond)
@@ -166,21 +182,21 @@ func TestDriver_GetConnectionWithContext(t *testing.T) {
 			name: "get connection invalid options for driver",
 			fields: fields{
 				DefaultDriver:           _default.NewDefaultDriver(nil, "test", "test", "test", NewTagHandler()),
-				tm:                      nil,
 				awaitSetupComplete:      false,
 				awaitDisconnectComplete: false,
 			},
 			args: args{
-				ctx: context.Background(),
+				ctx: testutils.TestContext(t),
 				transportUrl: url.URL{
 					Scheme: "test",
 				},
-				transports: map[string]transports.Transport{
-					"test": test.NewTransport(),
-				},
+				transports: map[string]transports.Transport{},
 				options: map[string][]string{
 					"MonitoredApplication1": {"pineapple"},
 				},
+			},
+			setup: func(t *testing.T, fields *fields, args *args) {
+				args.transports["test"] = test.NewTransport(testutils.EnrichOptionsWithOptionsForTesting(t)...)
 			},
 			wantVerifier: func(t *testing.T, results <-chan plc4go.PlcConnectionConnectResult) bool {
 				timeout := time.NewTimer(20 * time.Millisecond)
@@ -199,19 +215,19 @@ func TestDriver_GetConnectionWithContext(t *testing.T) {
 			name: "get connection",
 			fields: fields{
 				DefaultDriver:           _default.NewDefaultDriver(nil, "test", "test", "test", NewTagHandler()),
-				tm:                      nil,
 				awaitSetupComplete:      false,
 				awaitDisconnectComplete: false,
 			},
 			args: args{
-				ctx: context.Background(),
+				ctx: testutils.TestContext(t),
 				transportUrl: url.URL{
 					Scheme: "test",
 				},
-				transports: map[string]transports.Transport{
-					"test": test.NewTransport(),
-				},
-				options: map[string][]string{},
+				transports: map[string]transports.Transport{},
+				options:    map[string][]string{},
+			},
+			setup: func(t *testing.T, fields *fields, args *args) {
+				args.transports["test"] = test.NewTransport(testutils.EnrichOptionsWithOptionsForTesting(t)...)
 			},
 			wantVerifier: func(t *testing.T, results <-chan plc4go.PlcConnectionConnectResult) bool {
 				timeout := time.NewTimer(20 * time.Millisecond)
@@ -230,9 +246,11 @@ func TestDriver_GetConnectionWithContext(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				tt.setup(t, &tt.fields, &tt.args)
+			}
 			m := &Driver{
 				DefaultDriver:           tt.fields.DefaultDriver,
-				tm:                      tt.fields.tm,
 				awaitSetupComplete:      tt.fields.awaitSetupComplete,
 				awaitDisconnectComplete: tt.fields.awaitDisconnectComplete,
 			}
@@ -242,15 +260,27 @@ func TestDriver_GetConnectionWithContext(t *testing.T) {
 }
 
 func TestDriver_SetAwaitDisconnectComplete(t *testing.T) {
-	NewDriver().(*Driver).SetAwaitDisconnectComplete(true)
+	driver := NewDriver(testutils.EnrichOptionsWithOptionsForTesting(t)...)
+	t.Cleanup(func() {
+		assert.NoError(t, driver.Close())
+	})
+	driver.(*Driver).SetAwaitDisconnectComplete(true)
 }
 
 func TestDriver_SetAwaitSetupComplete(t *testing.T) {
-	NewDriver().(*Driver).SetAwaitSetupComplete(true)
+	driver := NewDriver(testutils.EnrichOptionsWithOptionsForTesting(t)...)
+	t.Cleanup(func() {
+		assert.NoError(t, driver.Close())
+	})
+	driver.(*Driver).SetAwaitSetupComplete(true)
 }
 
 func TestDriver_SupportsDiscovery(t *testing.T) {
-	NewDriver().(*Driver).SupportsDiscovery()
+	driver := NewDriver(testutils.EnrichOptionsWithOptionsForTesting(t)...)
+	t.Cleanup(func() {
+		assert.NoError(t, driver.Close())
+	})
+	driver.(*Driver).SupportsDiscovery()
 }
 
 func TestNewDriver(t *testing.T) {
@@ -273,7 +303,7 @@ func TestNewDriver(t *testing.T) {
 func TestDriver_reportError(t *testing.T) {
 	type fields struct {
 		DefaultDriver           _default.DefaultDriver
-		tm                      spi.RequestTransactionManager
+		tm                      transactions.RequestTransactionManager
 		awaitSetupComplete      bool
 		awaitDisconnectComplete bool
 	}

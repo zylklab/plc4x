@@ -21,27 +21,34 @@ package simulated
 
 import (
 	"context"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/tracer"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"runtime/debug"
 	"strconv"
 	"time"
 
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
 	apiValues "github.com/apache/plc4x/plc4go/pkg/api/values"
-	"github.com/apache/plc4x/plc4go/spi"
 	spiModel "github.com/apache/plc4x/plc4go/spi/model"
 )
 
 type Reader struct {
 	device  *Device
 	options map[string][]string
-	tracer  *spi.Tracer
+	tracer  tracer.Tracer
+
+	log zerolog.Logger
 }
 
-func NewReader(device *Device, options map[string][]string, tracer *spi.Tracer) *Reader {
+func NewReader(device *Device, readerOptions map[string][]string, tracer tracer.Tracer, _options ...options.WithOption) *Reader {
 	return &Reader{
 		device:  device,
-		options: options,
+		options: readerOptions,
 		tracer:  tracer,
+
+		log: options.ExtractCustomLogger(_options...),
 	}
 }
 
@@ -50,7 +57,7 @@ func (r *Reader) Read(_ context.Context, readRequest apiModel.PlcReadRequest) <-
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				ch <- spiModel.NewDefaultPlcReadRequestResult(readRequest, nil, errors.Errorf("panic-ed %v", err))
+				ch <- spiModel.NewDefaultPlcReadRequestResult(readRequest, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		var txId string

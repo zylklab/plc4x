@@ -21,6 +21,7 @@ package cbus
 
 import (
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/testutils"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -131,7 +132,7 @@ func TestParseFromOptions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseFromOptions(tt.args.options)
+			got, err := ParseFromOptions(testutils.ProduceTestingLogger(t), tt.args.options)
 			if !tt.wantErr(t, err, fmt.Sprintf("ParseFromOptions(%v)", tt.args.options)) {
 				return
 			}
@@ -196,7 +197,75 @@ func Test_getFromOptions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, getFromOptions(tt.args.options, tt.args.key), "getFromOptions(%v, %v)", tt.args.options, tt.args.key)
+			assert.Equalf(t, tt.want, getFromOptions(testutils.ProduceTestingLogger(t), tt.args.options, tt.args.key), "getFromOptions(%v, %v)", tt.args.options, tt.args.key)
+		})
+	}
+}
+
+func TestConfiguration_String(t *testing.T) {
+	type fields struct {
+		Srchk                 bool
+		Exstat                bool
+		Pun                   bool
+		LocalSal              bool
+		Pcn                   bool
+		Idmon                 bool
+		Monitor               bool
+		Smart                 bool
+		XonXoff               bool
+		Connect               bool
+		MonitoredApplication1 byte
+		MonitoredApplication2 byte
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		{
+			name: "string it",
+			fields: fields{
+				Srchk:                 true,
+				Exstat:                true,
+				Pun:                   true,
+				LocalSal:              true,
+				Pcn:                   true,
+				Idmon:                 true,
+				Monitor:               true,
+				Smart:                 true,
+				XonXoff:               true,
+				Connect:               true,
+				MonitoredApplication1: 2,
+				MonitoredApplication2: 3,
+			},
+			want: `
+╔═Configuration═════════════════════════════════════════════════════════════════════════════════╗
+║╔═srchk═╗╔═exstat╗╔═pun═══╗╔═localSal╗╔═pcn═══╗╔═idmon═╗╔═monitor╗╔═smart═╗╔═xonXoff╗╔═connect╗║
+║║b1 true║║b1 true║║b1 true║║ b1 true ║║b1 true║║b1 true║║b1 true ║║b1 true║║b1 true ║║b1 true ║║
+║╚═══════╝╚═══════╝╚═══════╝╚═════════╝╚═══════╝╚═══════╝╚════════╝╚═══════╝╚════════╝╚════════╝║
+║╔═monitoredApplication1╗╔═monitoredApplication2╗                                               ║
+║║       0x02 '.'       ║║       0x03 '.'       ║                                               ║
+║╚══════════════════════╝╚══════════════════════╝                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════════════════════╝`[1:],
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := Configuration{
+				Srchk:                 tt.fields.Srchk,
+				Exstat:                tt.fields.Exstat,
+				Pun:                   tt.fields.Pun,
+				LocalSal:              tt.fields.LocalSal,
+				Pcn:                   tt.fields.Pcn,
+				Idmon:                 tt.fields.Idmon,
+				Monitor:               tt.fields.Monitor,
+				Smart:                 tt.fields.Smart,
+				XonXoff:               tt.fields.XonXoff,
+				Connect:               tt.fields.Connect,
+				MonitoredApplication1: tt.fields.MonitoredApplication1,
+				MonitoredApplication2: tt.fields.MonitoredApplication2,
+			}
+			assert.Equalf(t, tt.want, c.String(), "String()")
 		})
 	}
 }

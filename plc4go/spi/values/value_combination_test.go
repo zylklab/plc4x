@@ -99,6 +99,7 @@ func TestCombinations(t *testing.T) {
 			name: apiValues.DINT,
 			arguments: []argument{
 				NewPlcDINT(math.MinInt32),
+				NewPlcDINT(0),
 				NewPlcDINT(1),
 				NewPlcDINT(64),
 				NewPlcDINT(255),
@@ -151,6 +152,96 @@ func TestCombinations(t *testing.T) {
 			name: apiValues.List,
 			arguments: []argument{
 				NewPlcList(nil),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcBOOL(true),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcBYTE(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcCHAR("a"),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcDATE(time.Now()),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcDATE_AND_TIME(time.Now()),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcDINT(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcDWORD(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcINT(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcLDATE(time.Now()),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcLDATE_AND_TIME(time.Now()),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcLINT(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcList([]apiValues.PlcValue{}),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcLREAL(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcLTIME(time.Now().Sub(time.Now())),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcLTIME_OF_DAY(time.Now()),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcLWORD(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcNULL(),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcRawByteArray([]byte{1, 2, 3}),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcREAL(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcSINT(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcSTRING("asd"),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcStruct(map[string]apiValues.PlcValue{}),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcTIME(time.Now().Sub(time.Now())),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcTIME_OF_DAY(time.Now().Sub(time.Now())),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcUDINT(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcUINT(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcUSINT(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcWCHAR("a"),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcWORD(1),
+				}),
+				NewPlcList([]apiValues.PlcValue{
+					NewPlcWSTRING("a"),
+				}),
 				NewPlcList([]apiValues.PlcValue{
 					NewPlcBOOL(true),
 					NewPlcBOOL(false),
@@ -266,6 +357,17 @@ func TestCombinations(t *testing.T) {
 				NewPlcTIME_OF_DAY(64),
 				NewPlcTIME_OF_DAY(255),
 				NewPlcTIME_OF_DAY(math.MaxUint32),
+			},
+		},
+		{
+			name: apiValues.LTIME_OF_DAY,
+			arguments: []argument{
+				NewPlcLTIME_OF_DAY(time.Now()),
+				NewPlcLTIME_OF_DAY(0),
+				NewPlcLTIME_OF_DAY(1),
+				NewPlcLTIME_OF_DAY(64),
+				NewPlcLTIME_OF_DAY(255),
+				NewPlcLTIME_OF_DAY(math.MaxUint32),
 			},
 		},
 		{
@@ -402,4 +504,164 @@ func TestCombinations(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExtraTests(t *testing.T) {
+	// These tests are for extra methods not covered by TestCombinations
+	t.Run("PLCDate", func(t *testing.T) {
+		t.Run("constructors", func(t *testing.T) {
+			t.Run("uint16", func(t *testing.T) {
+				assert.NotNil(t, NewPlcDATE(uint16(1)))
+			})
+			t.Run("uint32", func(t *testing.T) {
+				assert.NotNil(t, NewPlcDATE(uint32(1)))
+			})
+			t.Run("FromSecondsSinceEpoch", func(t *testing.T) {
+				assert.NotNil(t, NewPlcDATEFromSecondsSinceEpoch(1))
+			})
+			t.Run("FromDaysSinceEpoch", func(t *testing.T) {
+				assert.NotNil(t, NewPlcDATEFromDaysSinceEpoch(1))
+			})
+			t.Run("FromDaysSinceSiemensEpoch", func(t *testing.T) {
+				assert.NotNil(t, NewPlcDATEFromDaysSinceSiemensEpoch(1))
+			})
+		})
+		t.Run("GetSecondsSinceEpoch", func(t *testing.T) {
+			NewPlcDATE(time.Now()).GetSecondsSinceEpoch()
+		})
+		t.Run("GetDaysSinceEpoch", func(t *testing.T) {
+			NewPlcDATE(time.Now()).GetDaysSinceEpoch()
+		})
+		t.Run("GetDaysSinceSiemensEpoch", func(t *testing.T) {
+			NewPlcDATE(time.Now()).GetDaysSinceSiemensEpoch()
+		})
+	})
+	t.Run("PlcLDATE_AND_TIME", func(t *testing.T) {
+		t.Run("constructors", func(t *testing.T) {
+			t.Run("uint16", func(t *testing.T) {
+				assert.NotNil(t, NewPlcLDATE_AND_TIME(uint16(1)))
+			})
+			t.Run("uint32", func(t *testing.T) {
+				assert.NotNil(t, NewPlcLDATE_AND_TIME(uint32(1)))
+			})
+			t.Run("FromNanosecondsSinceEpoch", func(t *testing.T) {
+				assert.NotNil(t, NewPlcLDATE_AND_TIMEFromNanosecondsSinceEpoch(1))
+			})
+		})
+		t.Run("GetNanosecondsSinceEpoch", func(t *testing.T) {
+			NewPlcLDATE_AND_TIME(time.Now()).GetNanosecondsSinceEpoch()
+		})
+	})
+	t.Run("PlcLDATE", func(t *testing.T) {
+		t.Run("constructors", func(t *testing.T) {
+			t.Run("uint16", func(t *testing.T) {
+				assert.NotNil(t, NewPlcLDATE(uint16(1)))
+			})
+			t.Run("uint64", func(t *testing.T) {
+				assert.NotNil(t, NewPlcLDATE(uint64(1)))
+			})
+			t.Run("FromNanosecondsSinceEpoch", func(t *testing.T) {
+				assert.NotNil(t, NewPlcLDATEFromNanosecondsSinceEpoch(1))
+			})
+		})
+		t.Run("GetNanosecondsSinceEpoch", func(t *testing.T) {
+			NewPlcLDATE(time.Now()).GetNanosecondsSinceEpoch()
+		})
+	})
+	t.Run("PlcList", func(t *testing.T) {
+		t.Run("GetLength", func(t *testing.T) {
+			NewPlcList([]apiValues.PlcValue{NewPlcNULL()}).GetLength()
+		})
+		t.Run("GetIndex", func(t *testing.T) {
+			NewPlcList([]apiValues.PlcValue{NewPlcNULL()}).GetIndex(0)
+		})
+		t.Run("GetKeys", func(t *testing.T) {
+			NewPlcList([]apiValues.PlcValue{NewPlcStruct(map[string]apiValues.PlcValue{})}).GetKeys()
+		})
+		t.Run("HasKey", func(t *testing.T) {
+			NewPlcList([]apiValues.PlcValue{NewPlcStruct(map[string]apiValues.PlcValue{})}).HasKey("")
+		})
+		t.Run("GetValue", func(t *testing.T) {
+			NewPlcList([]apiValues.PlcValue{NewPlcStruct(map[string]apiValues.PlcValue{})}).GetValue("")
+		})
+	})
+	t.Run("PlcLTIME", func(t *testing.T) {
+		t.Run("FromNanoseconds", func(t *testing.T) {
+			assert.NotNil(t, NewPlcLTIMEFromNanoseconds(0))
+		})
+		t.Run("GetNanoseconds", func(t *testing.T) {
+			NewPlcLTIMEFromNanoseconds(0).GetNanoseconds()
+		})
+	})
+	t.Run("PlcLTIME_OF_DAY", func(t *testing.T) {
+		t.Run("constructors", func(t *testing.T) {
+			t.Run("uint16", func(t *testing.T) {
+				assert.NotNil(t, NewPlcLTIME_OF_DAY(uint16(1)))
+			})
+			t.Run("uint64", func(t *testing.T) {
+				assert.NotNil(t, NewPlcLTIME_OF_DAY(uint64(1)))
+			})
+			t.Run("FromNanosecondsSinceMidnight", func(t *testing.T) {
+				assert.NotNil(t, NewPlcLTIME_OF_DAYFromNanosecondsSinceMidnight(1))
+			})
+		})
+		t.Run("GetNanosecondsSinceEpoch", func(t *testing.T) {
+			NewPlcLTIME_OF_DAY(time.Now()).GetNanosecondsSinceMidnight()
+		})
+	})
+	t.Run("PlcRawByteArray", func(t *testing.T) {
+		t.Run("GetLength", func(t *testing.T) {
+			NewPlcRawByteArray([]byte{1, 2, 3, 4}).GetLength()
+		})
+		t.Run("GetIndex", func(t *testing.T) {
+			NewPlcRawByteArray([]byte{1, 2, 3, 4}).GetIndex(0)
+		})
+	})
+	t.Run("PlcStruct", func(t *testing.T) {
+		t.Run("GetKeys", func(t *testing.T) {
+			NewPlcStruct(map[string]apiValues.PlcValue{
+				"a": NewPlcNULL(),
+				"b": NewPlcNULL(),
+				"c": NewPlcNULL(),
+			}).GetKeys()
+		})
+		t.Run("HasKey", func(t *testing.T) {
+			NewPlcStruct(map[string]apiValues.PlcValue{
+				"a": NewPlcNULL(),
+				"b": NewPlcNULL(),
+				"c": NewPlcNULL(),
+			}).HasKey("a")
+		})
+		t.Run("GetValue", func(t *testing.T) {
+			NewPlcStruct(map[string]apiValues.PlcValue{
+				"a": NewPlcNULL(),
+				"b": NewPlcNULL(),
+				"c": NewPlcNULL(),
+			}).GetValue("a")
+		})
+	})
+	t.Run("PlcTIME", func(t *testing.T) {
+		t.Run("FromMilliseconds", func(t *testing.T) {
+			assert.NotNil(t, NewPlcTIMEFromMilliseconds(1))
+		})
+		t.Run("GetMilliseconds", func(t *testing.T) {
+			NewPlcTIMEFromMilliseconds(1).GetMilliseconds()
+		})
+	})
+	t.Run("PlcTIME_OF_DAY", func(t *testing.T) {
+		t.Run("constructors", func(t *testing.T) {
+			t.Run("uint16", func(t *testing.T) {
+				assert.NotNil(t, NewPlcTIME_OF_DAY(uint16(1)))
+			})
+			t.Run("uint32", func(t *testing.T) {
+				assert.NotNil(t, NewPlcTIME_OF_DAY(uint32(1)))
+			})
+			t.Run("FromMillisecondsSinceMidnight(", func(t *testing.T) {
+				assert.NotNil(t, NewPlcTIME_OF_DAYFromMillisecondsSinceMidnight(1))
+			})
+		})
+		t.Run("GetMillisecondsSinceMidnight", func(t *testing.T) {
+			NewPlcTIME_OF_DAY(time.Now()).GetMillisecondsSinceMidnight()
+		})
+	})
 }

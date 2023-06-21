@@ -39,6 +39,9 @@ type MultiError struct {
 }
 
 func (m MultiError) Error() string {
+	if m.MainError == nil && len(m.Errors) == 0 {
+		return ""
+	}
 	mainErrorText := "Child errors:\n"
 	if m.MainError != nil {
 		mainErrorText = fmt.Sprintf("Main Error: %v\nChild errors:\n", m.MainError)
@@ -91,7 +94,7 @@ func NewTimeoutError(timeout time.Duration) TimeoutError {
 }
 
 func (t TimeoutError) Error() string {
-	return fmt.Sprintf("got timeout after %v", t.timeout)
+	return fmt.Sprintf("got timeout after %s", t.timeout)
 }
 
 func (t TimeoutError) Is(target error) bool {

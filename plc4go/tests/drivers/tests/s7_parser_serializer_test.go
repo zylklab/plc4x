@@ -20,11 +20,11 @@
 package tests
 
 import (
+	"github.com/apache/plc4x/plc4go/spi/options"
 	"testing"
 
 	s7IO "github.com/apache/plc4x/plc4go/protocols/s7/readwrite"
 	"github.com/apache/plc4x/plc4go/spi/testutils"
-	_ "github.com/apache/plc4x/plc4go/tests/initializetest"
 )
 
 func TestS7ParserSerializer(t *testing.T) {
@@ -42,5 +42,6 @@ func TestS7ParserSerializer(t *testing.T) {
 			"S7 Write Request",
 			"S7 Write Request",
 		),
+		options.WithCustomLogger(testutils.ProduceTestingLogger(t)),
 	)
 }

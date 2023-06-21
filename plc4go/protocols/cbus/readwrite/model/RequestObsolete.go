@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -160,13 +161,15 @@ func (m *_RequestObsolete) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func RequestObsoleteParse(theBytes []byte, cBusOptions CBusOptions) (RequestObsolete, error) {
-	return RequestObsoleteParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), cBusOptions)
+func RequestObsoleteParse(ctx context.Context, theBytes []byte, cBusOptions CBusOptions) (RequestObsolete, error) {
+	return RequestObsoleteParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), cBusOptions)
 }
 
 func RequestObsoleteParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, cBusOptions CBusOptions) (RequestObsolete, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("RequestObsolete"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for RequestObsolete")
 	}
@@ -174,7 +177,7 @@ func RequestObsoleteParseWithBuffer(ctx context.Context, readBuffer utils.ReadBu
 	_ = currentPos
 
 	// Manual Field (calData)
-	_calData, _calDataErr := ReadCALData(readBuffer)
+	_calData, _calDataErr := ReadCALData(ctx, readBuffer)
 	if _calDataErr != nil {
 		return nil, errors.Wrap(_calDataErr, "Error parsing 'calData' field of RequestObsolete")
 	}
@@ -198,7 +201,7 @@ func RequestObsoleteParseWithBuffer(ctx context.Context, readBuffer utils.ReadBu
 		_val, _err := AlphaParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'alpha' field of RequestObsolete")
@@ -237,13 +240,15 @@ func (m *_RequestObsolete) Serialize() ([]byte, error) {
 func (m *_RequestObsolete) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("RequestObsolete"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for RequestObsolete")
 		}
 
 		// Manual Field (calData)
-		_calDataErr := WriteCALData(writeBuffer, m.GetCalData())
+		_calDataErr := WriteCALData(ctx, writeBuffer, m.GetCalData())
 		if _calDataErr != nil {
 			return errors.Wrap(_calDataErr, "Error serializing 'calData' field")
 		}

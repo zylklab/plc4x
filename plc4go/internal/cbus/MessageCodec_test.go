@@ -21,25 +21,26 @@ package cbus
 
 import (
 	"fmt"
+	"testing"
+
 	readWriteModel "github.com/apache/plc4x/plc4go/protocols/cbus/readwrite/model"
 	"github.com/apache/plc4x/plc4go/spi"
 	_default "github.com/apache/plc4x/plc4go/spi/default"
+	"github.com/apache/plc4x/plc4go/spi/testutils"
 	"github.com/apache/plc4x/plc4go/spi/transports"
 	"github.com/apache/plc4x/plc4go/spi/transports/test"
+
 	"github.com/stretchr/testify/assert"
-	"testing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMessageCodec_Send(t *testing.T) {
 	type fields struct {
-		DefaultCodec                  _default.DefaultCodec
-		requestContext                readWriteModel.RequestContext
-		cbusOptions                   readWriteModel.CBusOptions
-		monitoredMMIs                 chan readWriteModel.CALReply
-		monitoredSALs                 chan readWriteModel.MonitoredSAL
-		lastPackageHash               uint32
-		hashEncountered               uint
-		currentlyReportedServerErrors uint
+		DefaultCodec   _default.DefaultCodec
+		requestContext readWriteModel.RequestContext
+		cbusOptions    readWriteModel.CBusOptions
+		monitoredMMIs  chan readWriteModel.CALReply
+		monitoredSALs  chan readWriteModel.MonitoredSAL
 	}
 	type args struct {
 		message spi.Message
@@ -48,6 +49,7 @@ func TestMessageCodec_Send(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		setup   func(t *testing.T, fields *fields, args *args)
 		wantErr assert.ErrorAssertionFunc
 	}{
 		{
@@ -56,28 +58,37 @@ func TestMessageCodec_Send(t *testing.T) {
 		},
 		{
 			name: "a cbus message",
-			fields: fields{
-				DefaultCodec: NewMessageCodec(test.NewTransportInstance(test.NewTransport())),
-			},
 			args: args{message: readWriteModel.NewCBusMessageToClient(
 				readWriteModel.NewReplyOrConfirmationConfirmation(
 					readWriteModel.NewConfirmation(readWriteModel.NewAlpha('!'), nil, readWriteModel.ConfirmationType_CHECKSUM_FAILURE), nil, 0x00, nil, nil,
 				), nil, nil,
 			)},
+			setup: func(t *testing.T, fields *fields, args *args) {
+				_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+				transport := test.NewTransport(_options...)
+				instance := test.NewTransportInstance(transport, _options...)
+				codec := NewMessageCodec(instance, _options...)
+				require.NoError(t, codec.Connect())
+				t.Cleanup(func() {
+					assert.NoError(t, codec.Disconnect())
+				})
+				fields.DefaultCodec = codec
+			},
 			wantErr: assert.NoError,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				tt.setup(t, &tt.fields, &tt.args)
+			}
 			m := &MessageCodec{
-				DefaultCodec:                  tt.fields.DefaultCodec,
-				requestContext:                tt.fields.requestContext,
-				cbusOptions:                   tt.fields.cbusOptions,
-				monitoredMMIs:                 tt.fields.monitoredMMIs,
-				monitoredSALs:                 tt.fields.monitoredSALs,
-				lastPackageHash:               tt.fields.lastPackageHash,
-				hashEncountered:               tt.fields.hashEncountered,
-				currentlyReportedServerErrors: tt.fields.currentlyReportedServerErrors,
+				DefaultCodec:   tt.fields.DefaultCodec,
+				requestContext: tt.fields.requestContext,
+				cbusOptions:    tt.fields.cbusOptions,
+				monitoredMMIs:  tt.fields.monitoredMMIs,
+				monitoredSALs:  tt.fields.monitoredSALs,
 			}
 			tt.wantErr(t, m.Send(tt.args.message), fmt.Sprintf("Send(%v)", tt.args.message))
 		})
@@ -89,55 +100,49 @@ func TestMessageCodec_Receive(t *testing.T) {
 	cbusOptions := readWriteModel.NewCBusOptions(false, false, false, false, false, false, false, false, false)
 
 	type fields struct {
-		DefaultCodec                  _default.DefaultCodec
-		requestContext                readWriteModel.RequestContext
-		cbusOptions                   readWriteModel.CBusOptions
-		monitoredMMIs                 chan readWriteModel.CALReply
-		monitoredSALs                 chan readWriteModel.MonitoredSAL
-		lastPackageHash               uint32
-		hashEncountered               uint
-		currentlyReportedServerErrors uint
+		DefaultCodec   _default.DefaultCodec
+		requestContext readWriteModel.RequestContext
+		cbusOptions    readWriteModel.CBusOptions
+		monitoredMMIs  chan readWriteModel.CALReply
+		monitoredSALs  chan readWriteModel.MonitoredSAL
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		want    spi.Message
-		wantErr assert.ErrorAssertionFunc
+		name        string
+		fields      fields
+		setup       func(t *testing.T, fields *fields)
+		manipulator func(t *testing.T, messageCodec *MessageCodec)
+		want        spi.Message
+		wantErr     assert.ErrorAssertionFunc
 	}{
 		{
 			name: "No data",
 			fields: fields{
-				DefaultCodec: NewMessageCodec(func() transports.TransportInstance {
-					transport := test.NewTransport()
-					transportInstance := test.NewTransportInstance(transport)
-					return transportInstance
-				}()),
-				requestContext:                requestContext,
-				cbusOptions:                   cbusOptions,
-				monitoredMMIs:                 nil,
-				monitoredSALs:                 nil,
-				lastPackageHash:               0,
-				hashEncountered:               0,
-				currentlyReportedServerErrors: 0,
+				requestContext: requestContext,
+				cbusOptions:    cbusOptions,
+				monitoredMMIs:  nil,
+				monitoredSALs:  nil,
+			},
+			setup: func(t *testing.T, fields *fields) {
+				_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+				transport := test.NewTransport(_options...)
+				instance := test.NewTransportInstance(transport, _options...)
+				require.NoError(t, instance.Connect())
+				codec := NewMessageCodec(instance, _options...)
+				t.Cleanup(func() {
+					assert.Error(t, codec.Disconnect())
+				})
+				fields.DefaultCodec = codec
 			},
 			wantErr: assert.NoError,
 		},
 		{
 			name: "checksum error",
 			fields: fields{
-				DefaultCodec: NewMessageCodec(func() transports.TransportInstance {
-					transport := test.NewTransport()
-					transportInstance := test.NewTransportInstance(transport)
-					transportInstance.FillReadBuffer([]byte("!"))
-					return transportInstance
-				}()),
-				requestContext:                requestContext,
-				cbusOptions:                   cbusOptions,
-				monitoredMMIs:                 nil,
-				monitoredSALs:                 nil,
-				lastPackageHash:               0,
-				hashEncountered:               0,
-				currentlyReportedServerErrors: 0,
+				requestContext: requestContext,
+				cbusOptions:    cbusOptions,
+				monitoredMMIs:  nil,
+				monitoredSALs:  nil,
 			},
 			want: readWriteModel.NewCBusMessageToClient(
 				readWriteModel.NewServerErrorReply(
@@ -145,62 +150,90 @@ func TestMessageCodec_Receive(t *testing.T) {
 				),
 				requestContext, cbusOptions,
 			),
+			setup: func(t *testing.T, fields *fields) {
+				_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+				transport := test.NewTransport(_options...)
+				instance := test.NewTransportInstance(transport, _options...)
+				require.NoError(t, instance.Connect())
+				instance.FillReadBuffer([]byte("!"))
+				codec := NewMessageCodec(instance, _options...)
+				t.Cleanup(func() {
+					assert.Error(t, codec.Disconnect())
+				})
+				fields.DefaultCodec = codec
+			},
 			wantErr: assert.NoError,
 		},
 		{
 			name: "A21 echo",
 			fields: fields{
-				DefaultCodec: NewMessageCodec(func() transports.TransportInstance {
-					transport := test.NewTransport()
-					transportInstance := test.NewTransportInstance(transport)
-					transportInstance.FillReadBuffer([]byte("@A62120\r@A62120\r"))
-					return transportInstance
-				}()),
-				requestContext:                requestContext,
-				cbusOptions:                   cbusOptions,
-				monitoredMMIs:                 nil,
-				monitoredSALs:                 nil,
-				lastPackageHash:               0,
-				hashEncountered:               0,
-				currentlyReportedServerErrors: 0,
+				requestContext: requestContext,
+				cbusOptions:    cbusOptions,
+				monitoredMMIs:  nil,
+				monitoredSALs:  nil,
+			},
+			setup: func(t *testing.T, fields *fields) {
+				_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+				transport := test.NewTransport(_options...)
+				instance := test.NewTransportInstance(transport, _options...)
+				require.NoError(t, instance.Connect())
+				instance.FillReadBuffer([]byte("@A62120\r@A62120\r"))
+				codec := NewMessageCodec(instance, _options...)
+				t.Cleanup(func() {
+					assert.Error(t, codec.Disconnect())
+				})
+				fields.DefaultCodec = codec
 			},
 			wantErr: assert.NoError,
 		},
 		{
 			name: "garbage",
 			fields: fields{
-				DefaultCodec: NewMessageCodec(func() transports.TransportInstance {
-					transport := test.NewTransport()
-					transportInstance := test.NewTransportInstance(transport)
-					transportInstance.FillReadBuffer([]byte("what on earth\n\r"))
-					return transportInstance
-				}()),
-				requestContext:                requestContext,
-				cbusOptions:                   cbusOptions,
-				monitoredMMIs:                 nil,
-				monitoredSALs:                 nil,
-				lastPackageHash:               0,
-				hashEncountered:               0,
-				currentlyReportedServerErrors: 0,
+				requestContext: requestContext,
+				cbusOptions:    cbusOptions,
+				monitoredMMIs:  nil,
+				monitoredSALs:  nil,
+			},
+			setup: func(t *testing.T, fields *fields) {
+				_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+				transport := test.NewTransport(_options...)
+				instance := test.NewTransportInstance(transport, _options...)
+				require.NoError(t, instance.Connect())
+				instance.FillReadBuffer([]byte("what on earth\n\r"))
+				codec := NewMessageCodec(instance, _options...)
+				t.Cleanup(func() {
+					assert.Error(t, codec.Disconnect())
+				})
+				fields.DefaultCodec = codec
 			},
 			wantErr: assert.NoError,
 		},
 		{
 			name: "error encountered multiple time",
 			fields: fields{
-				DefaultCodec: NewMessageCodec(func() transports.TransportInstance {
-					transport := test.NewTransport()
-					transportInstance := test.NewTransportInstance(transport)
-					transportInstance.FillReadBuffer([]byte("AFFE!!!\r"))
-					return transportInstance
-				}()),
-				requestContext:                requestContext,
-				cbusOptions:                   cbusOptions,
-				monitoredMMIs:                 nil,
-				monitoredSALs:                 nil,
-				lastPackageHash:               0,
-				hashEncountered:               9999,
-				currentlyReportedServerErrors: 0,
+				requestContext: requestContext,
+				cbusOptions:    cbusOptions,
+				monitoredMMIs:  nil,
+				monitoredSALs:  nil,
+			},
+			setup: func(t *testing.T, fields *fields) {
+				_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+				transport := test.NewTransport(_options...)
+				instance := test.NewTransportInstance(transport, _options...)
+				require.NoError(t, instance.Connect())
+				instance.FillReadBuffer([]byte("AFFE!!!\r"))
+				codec := NewMessageCodec(instance, _options...)
+				t.Cleanup(func() {
+					assert.Error(t, codec.Disconnect())
+				})
+				fields.DefaultCodec = codec
+			},
+			manipulator: func(t *testing.T, messageCodec *MessageCodec) {
+				messageCodec.hashEncountered.Store(9999)
 			},
 			want: readWriteModel.NewCBusMessageToClient(
 				readWriteModel.NewServerErrorReply(
@@ -213,19 +246,14 @@ func TestMessageCodec_Receive(t *testing.T) {
 		{
 			name: "error encountered and reported multiple time",
 			fields: fields{
-				DefaultCodec: NewMessageCodec(func() transports.TransportInstance {
-					transport := test.NewTransport()
-					transportInstance := test.NewTransportInstance(transport)
-					transportInstance.FillReadBuffer([]byte("@1A2001!!!\r"))
-					return transportInstance
-				}()),
-				requestContext:                requestContext,
-				cbusOptions:                   cbusOptions,
-				monitoredMMIs:                 nil,
-				monitoredSALs:                 nil,
-				lastPackageHash:               0,
-				hashEncountered:               9999,
-				currentlyReportedServerErrors: 9999,
+				requestContext: requestContext,
+				cbusOptions:    cbusOptions,
+				monitoredMMIs:  nil,
+				monitoredSALs:  nil,
+			},
+			manipulator: func(t *testing.T, messageCodec *MessageCodec) {
+				messageCodec.hashEncountered.Store(9999)
+				messageCodec.currentlyReportedServerErrors.Store(9999)
 			},
 			want: readWriteModel.NewCBusMessageToServer(
 				readWriteModel.NewRequestDirectCommandAccess(
@@ -246,24 +274,45 @@ func TestMessageCodec_Receive(t *testing.T) {
 				),
 				requestContext, cbusOptions,
 			),
+			setup: func(t *testing.T, fields *fields) {
+				_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+				transport := test.NewTransport(_options...)
+				instance := test.NewTransportInstance(transport, _options...)
+				require.NoError(t, instance.Connect())
+				instance.FillReadBuffer([]byte("@1A2001!!!\r"))
+				codec := NewMessageCodec(instance, _options...)
+				t.Cleanup(func() {
+					assert.Error(t, codec.Disconnect())
+				})
+				fields.DefaultCodec = codec
+			},
 			wantErr: assert.NoError,
 		},
 		{
 			name: "mmi",
 			fields: fields{
-				DefaultCodec: NewMessageCodec(func() transports.TransportInstance {
-					transport := test.NewTransport()
-					transportInstance := test.NewTransportInstance(transport)
-					transportInstance.FillReadBuffer([]byte("86040200F940380001000000000000000008000000000000000000000000FA\r\n"))
-					return transportInstance
-				}()),
-				requestContext:                requestContext,
-				cbusOptions:                   cbusOptions,
-				monitoredMMIs:                 nil,
-				monitoredSALs:                 nil,
-				lastPackageHash:               0,
-				hashEncountered:               9999,
-				currentlyReportedServerErrors: 9999,
+				requestContext: requestContext,
+				cbusOptions:    cbusOptions,
+				monitoredMMIs:  nil,
+				monitoredSALs:  nil,
+			},
+			setup: func(t *testing.T, fields *fields) {
+				_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+				transport := test.NewTransport(_options...)
+				instance := test.NewTransportInstance(transport, _options...)
+				require.NoError(t, instance.Connect())
+				instance.FillReadBuffer([]byte("86040200F940380001000000000000000008000000000000000000000000FA\r\n"))
+				codec := NewMessageCodec(instance, _options...)
+				t.Cleanup(func() {
+					assert.Error(t, codec.Disconnect())
+				})
+				fields.DefaultCodec = codec
+			},
+			manipulator: func(t *testing.T, messageCodec *MessageCodec) {
+				messageCodec.hashEncountered.Store(9999)
+				messageCodec.currentlyReportedServerErrors.Store(9999)
 			},
 			want: readWriteModel.NewCBusMessageToClient(
 				readWriteModel.NewReplyOrConfirmationReply(
@@ -447,19 +496,27 @@ func TestMessageCodec_Receive(t *testing.T) {
 		{
 			name: "sal",
 			fields: fields{
-				DefaultCodec: NewMessageCodec(func() transports.TransportInstance {
-					transport := test.NewTransport()
-					transportInstance := test.NewTransportInstance(transport)
-					transportInstance.FillReadBuffer([]byte("0531AC0079042F0401430316000011\r\n"))
-					return transportInstance
-				}()),
-				requestContext:                requestContext,
-				cbusOptions:                   cbusOptions,
-				monitoredMMIs:                 nil,
-				monitoredSALs:                 nil,
-				lastPackageHash:               0,
-				hashEncountered:               9999,
-				currentlyReportedServerErrors: 9999,
+				requestContext: requestContext,
+				cbusOptions:    cbusOptions,
+				monitoredMMIs:  nil,
+				monitoredSALs:  nil,
+			},
+			manipulator: func(t *testing.T, messageCodec *MessageCodec) {
+				messageCodec.hashEncountered.Store(9999)
+				messageCodec.currentlyReportedServerErrors.Store(9999)
+			},
+			setup: func(t *testing.T, fields *fields) {
+				_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+				transport := test.NewTransport(_options...)
+				instance := test.NewTransportInstance(transport, _options...)
+				require.NoError(t, instance.Connect())
+				instance.FillReadBuffer([]byte("0531AC0079042F0401430316000011\r\n"))
+				codec := NewMessageCodec(instance, _options...)
+				t.Cleanup(func() {
+					assert.Error(t, codec.Disconnect())
+				})
+				fields.DefaultCodec = codec
 			},
 			want: readWriteModel.NewCBusMessageToClient(
 				readWriteModel.NewReplyOrConfirmationReply(
@@ -518,15 +575,18 @@ func TestMessageCodec_Receive(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				tt.setup(t, &tt.fields)
+			}
 			m := &MessageCodec{
-				DefaultCodec:                  tt.fields.DefaultCodec,
-				requestContext:                tt.fields.requestContext,
-				cbusOptions:                   tt.fields.cbusOptions,
-				monitoredMMIs:                 tt.fields.monitoredMMIs,
-				monitoredSALs:                 tt.fields.monitoredSALs,
-				lastPackageHash:               tt.fields.lastPackageHash,
-				hashEncountered:               tt.fields.hashEncountered,
-				currentlyReportedServerErrors: tt.fields.currentlyReportedServerErrors,
+				DefaultCodec:   tt.fields.DefaultCodec,
+				requestContext: tt.fields.requestContext,
+				cbusOptions:    tt.fields.cbusOptions,
+				monitoredMMIs:  tt.fields.monitoredMMIs,
+				monitoredSALs:  tt.fields.monitoredSALs,
+			}
+			if tt.manipulator != nil {
+				tt.manipulator(t, m)
 			}
 			got, err := m.Receive()
 			if !tt.wantErr(t, err, fmt.Sprintf("Receive()")) {
@@ -539,9 +599,15 @@ func TestMessageCodec_Receive(t *testing.T) {
 
 func TestMessageCodec_Receive_Delayed_Response(t *testing.T) {
 	t.Run("instant data", func(t *testing.T) {
-		transport := test.NewTransport()
-		transportInstance := test.NewTransportInstance(transport)
-		codec := NewMessageCodec(transportInstance)
+		_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+		transport := test.NewTransport(_options...)
+		transportInstance := test.NewTransportInstance(transport, _options...)
+		require.NoError(t, transportInstance.Connect())
+		codec := NewMessageCodec(transportInstance, _options...)
+		t.Cleanup(func() {
+			assert.Error(t, codec.Disconnect())
+		})
 		codec.requestContext = readWriteModel.NewRequestContext(true)
 
 		var msg spi.Message
@@ -564,15 +630,21 @@ func TestMessageCodec_Receive_Delayed_Response(t *testing.T) {
 		// We should wait for more data, so no error, no message
 		msg, err = codec.Receive()
 		assert.NoError(t, err)
-		assert.NotNil(t, msg)
+		require.NotNil(t, msg)
 
 		// The message should have a confirmation with an alpha
 		assert.True(t, msg.(readWriteModel.CBusMessageToClient).GetReply().GetIsAlpha())
 	})
 	t.Run("data after 6 times", func(t *testing.T) {
-		transport := test.NewTransport()
-		transportInstance := test.NewTransportInstance(transport)
-		codec := NewMessageCodec(transportInstance)
+		_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+		transport := test.NewTransport(_options...)
+		transportInstance := test.NewTransportInstance(transport, _options...)
+		require.NoError(t, transportInstance.Connect())
+		codec := NewMessageCodec(transportInstance, _options...)
+		t.Cleanup(func() {
+			assert.Error(t, codec.Disconnect())
+		})
 		codec.requestContext = readWriteModel.NewRequestContext(true)
 
 		var msg spi.Message
@@ -603,10 +675,16 @@ func TestMessageCodec_Receive_Delayed_Response(t *testing.T) {
 		// The message should have a confirmation with an alpha
 		assert.True(t, msg.(readWriteModel.CBusMessageToClient).GetReply().GetIsAlpha())
 	})
-	t.Run("data after 16 times", func(t *testing.T) {
-		transport := test.NewTransport()
-		transportInstance := test.NewTransportInstance(transport)
-		codec := NewMessageCodec(transportInstance)
+	t.Run("data after 15 times", func(t *testing.T) {
+		_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+		transport := test.NewTransport(_options...)
+		transportInstance := test.NewTransportInstance(transport, _options...)
+		require.NoError(t, transportInstance.Connect())
+		codec := NewMessageCodec(transportInstance, _options...)
+		t.Cleanup(func() {
+			assert.Error(t, codec.Disconnect())
+		})
 		codec.requestContext = readWriteModel.NewRequestContext(true)
 
 		var msg spi.Message
@@ -618,13 +696,13 @@ func TestMessageCodec_Receive_Delayed_Response(t *testing.T) {
 		// Now we add a confirmation
 		transportInstance.FillReadBuffer([]byte("i."))
 
-		for i := 0; i < 16; i++ {
+		for i := 0; i <= 15; i++ {
 			t.Logf("%d try", i+1)
 			// We should wait for more data, so no error, no message
 			msg, err = codec.Receive()
 			if i == 15 {
 				assert.NoError(t, err)
-				assert.NotNil(t, msg)
+				require.NotNil(t, msg)
 				// This should be the confirmation only ...
 				reply := msg.(readWriteModel.CBusMessageToClient).GetReply()
 				assert.True(t, reply.GetIsAlpha())
@@ -632,7 +710,7 @@ func TestMessageCodec_Receive_Delayed_Response(t *testing.T) {
 				assert.Nil(t, reply.(readWriteModel.ReplyOrConfirmationConfirmation).GetEmbeddedReply())
 			} else {
 				assert.NoError(t, err)
-				assert.Nil(t, msg)
+				assert.Nil(t, msg, "Got message at %d try", i+1)
 			}
 		}
 
@@ -663,7 +741,11 @@ func TestNewMessageCodec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NotNilf(t, NewMessageCodec(tt.args.transportInstance), "NewMessageCodec(%v)", tt.args.transportInstance)
+			codec := NewMessageCodec(tt.args.transportInstance)
+			t.Cleanup(func() {
+				assert.Error(t, codec.Disconnect())
+			})
+			assert.NotNilf(t, codec, "NewMessageCodec(%v)", tt.args.transportInstance)
 		})
 	}
 }
@@ -679,9 +761,10 @@ func Test_extractMMIAndSAL(t *testing.T) {
 		message spi.Message
 	}
 	tests := []struct {
-		name string
-		args args
-		want bool
+		name  string
+		args  args
+		setup func(t *testing.T, args *args)
+		want  bool
 	}{
 		{
 			name: "extract it",
@@ -689,7 +772,6 @@ func Test_extractMMIAndSAL(t *testing.T) {
 		{
 			name: "monitored sal",
 			args: args{
-				codec: NewMessageCodec(nil),
 				message: readWriteModel.NewCBusMessageToClient(
 					readWriteModel.NewReplyOrConfirmationReply(
 						readWriteModel.NewReplyEncodedReply(
@@ -713,11 +795,90 @@ func Test_extractMMIAndSAL(t *testing.T) {
 					nil,
 				),
 			},
+			setup: func(t *testing.T, args *args) {
+				_options := testutils.EnrichOptionsWithOptionsForTesting(t)
+				codec := NewMessageCodec(nil, _options...)
+				codec.monitoredSALs = make(chan readWriteModel.MonitoredSAL, 1)
+				args.codec = codec
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, extractMMIAndSAL(tt.args.codec, tt.args.message), "extractMMIAndSAL(%v, %v)", tt.args.codec, tt.args.message)
+			if tt.setup != nil {
+				tt.setup(t, &tt.args)
+			}
+			assert.Equalf(t, tt.want, extractMMIAndSAL(testutils.ProduceTestingLogger(t))(tt.args.codec, tt.args.message), "extractMMIAndSAL(%v, %v)", tt.args.codec, tt.args.message)
+		})
+	}
+}
+
+func TestMessageCodec_String(t *testing.T) {
+	type fields struct {
+		DefaultCodec   _default.DefaultCodec
+		requestContext readWriteModel.RequestContext
+		cbusOptions    readWriteModel.CBusOptions
+		monitoredMMIs  chan readWriteModel.CALReply
+		monitoredSALs  chan readWriteModel.MonitoredSAL
+	}
+	tests := []struct {
+		name        string
+		fields      fields
+		manipulator func(t *testing.T, messageCodec *MessageCodec)
+		want        string
+	}{
+		{
+			name: "string it",
+			fields: fields{
+				DefaultCodec:   _default.NewDefaultCodec(nil, test.NewTransportInstance(test.NewTransport())),
+				requestContext: readWriteModel.NewRequestContext(true),
+				cbusOptions:    readWriteModel.NewCBusOptions(true, true, true, true, true, true, true, true, true),
+				monitoredMMIs:  nil,
+				monitoredSALs:  nil,
+			},
+			manipulator: func(t *testing.T, messageCodec *MessageCodec) {
+				messageCodec.lastPackageHash.Store(2)
+				messageCodec.hashEncountered.Store(3)
+				messageCodec.currentlyReportedServerErrors.Store(4)
+			},
+			want: `
+╔═MessageCodec════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║╔═defaultCodec══════════════════════════════════════════════════════════════════════════════════════════╗            ║
+║║╔═transportInstance╗╔═defaultIncomingMessageChannel╗╔═customMessageHandling╗╔═running╗╔═receiveTimeout╗║            ║
+║║║       test       ║║         0 element(s)         ║║       b0 false       ║║b0 false║║      10s      ║║            ║
+║║╚══════════════════╝╚══════════════════════════════╝╚══════════════════════╝╚════════╝╚═══════════════╝║            ║
+║║╔═traceDefaultMessageCodecWorker╗                                                                      ║            ║
+║║║           b0 false            ║                                                                      ║            ║
+║║╚═══════════════════════════════╝                                                                      ║            ║
+║╚═══════════════════════════════════════════════════════════════════════════════════════════════════════╝            ║
+║╔═requestContext/RequestContext/sendIdentifyRequestBefore═════════════════════════════════════════════════════╗      ║
+║║                                                   b1 true                                                   ║      ║
+║╚═════════════════════════════════════════════════════════════════════════════════════════════════════════════╝      ║
+║╔═cbusOptions/CBusOptions═══════════════════════════════════════════════════════════╗╔═monitoredMMIs╗╔═monitoredSALs╗║
+║║╔═connect╗╔═smart═╗╔═idmon═╗╔═exstat╗╔═monitor╗╔═monall╗╔═pun═══╗╔═pcn═══╗╔═srchk═╗║║ 0 element(s) ║║ 0 element(s) ║║
+║║║b1 true ║║b1 true║║b1 true║║b1 true║║b1 true ║║b1 true║║b1 true║║b1 true║║b1 true║║╚══════════════╝╚══════════════╝║
+║║╚════════╝╚═══════╝╚═══════╝╚═══════╝╚════════╝╚═══════╝╚═══════╝╚═══════╝╚═══════╝║                                ║
+║╚═══════════════════════════════════════════════════════════════════════════════════╝                                ║
+║╔═lastPackageHash╗╔═hashEncountered════╗╔═currentlyReportedServerErrors╗                                             ║
+║║  0x00000002 2  ║║0x0000000000000003 3║║     0x0000000000000004 4     ║                                             ║
+║╚════════════════╝╚════════════════════╝╚══════════════════════════════╝                                             ║
+╚═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝`[1:],
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &MessageCodec{
+				DefaultCodec:   tt.fields.DefaultCodec,
+				requestContext: tt.fields.requestContext,
+				cbusOptions:    tt.fields.cbusOptions,
+				monitoredMMIs:  tt.fields.monitoredMMIs,
+				monitoredSALs:  tt.fields.monitoredSALs,
+				log:            testutils.ProduceTestingLogger(t),
+			}
+			if tt.manipulator != nil {
+				tt.manipulator(t, m)
+			}
+			assert.Equalf(t, tt.want, m.String(), "String()")
 		})
 	}
 }

@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -202,13 +203,15 @@ func (m *_RequestCommand) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func RequestCommandParse(theBytes []byte, cBusOptions CBusOptions) (RequestCommand, error) {
-	return RequestCommandParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), cBusOptions)
+func RequestCommandParse(ctx context.Context, theBytes []byte, cBusOptions CBusOptions) (RequestCommand, error) {
+	return RequestCommandParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), cBusOptions)
 }
 
 func RequestCommandParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, cBusOptions CBusOptions) (RequestCommand, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("RequestCommand"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for RequestCommand")
 	}
@@ -225,7 +228,7 @@ func RequestCommandParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuf
 	}
 
 	// Manual Field (cbusCommand)
-	_cbusCommand, _cbusCommandErr := ReadCBusCommand(readBuffer, cBusOptions, cBusOptions.GetSrchk())
+	_cbusCommand, _cbusCommandErr := ReadCBusCommand(ctx, readBuffer, cBusOptions, cBusOptions.GetSrchk())
 	if _cbusCommandErr != nil {
 		return nil, errors.Wrap(_cbusCommandErr, "Error parsing 'cbusCommand' field of RequestCommand")
 	}
@@ -240,7 +243,7 @@ func RequestCommandParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuf
 	_ = cbusCommandDecoded
 
 	// Manual Field (chksum)
-	_chksum, _chksumErr := ReadAndValidateChecksum(readBuffer, cbusCommand, cBusOptions.GetSrchk())
+	_chksum, _chksumErr := ReadAndValidateChecksum(ctx, readBuffer, cbusCommand, cBusOptions.GetSrchk())
 	if _chksumErr != nil {
 		return nil, errors.Wrap(_chksumErr, "Error parsing 'chksum' field of RequestCommand")
 	}
@@ -264,7 +267,7 @@ func RequestCommandParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuf
 		_val, _err := AlphaParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'alpha' field of RequestCommand")
@@ -304,6 +307,8 @@ func (m *_RequestCommand) Serialize() ([]byte, error) {
 func (m *_RequestCommand) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("RequestCommand"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for RequestCommand")
@@ -316,7 +321,7 @@ func (m *_RequestCommand) SerializeWithWriteBuffer(ctx context.Context, writeBuf
 		}
 
 		// Manual Field (cbusCommand)
-		_cbusCommandErr := WriteCBusCommand(writeBuffer, m.GetCbusCommand())
+		_cbusCommandErr := WriteCBusCommand(ctx, writeBuffer, m.GetCbusCommand())
 		if _cbusCommandErr != nil {
 			return errors.Wrap(_cbusCommandErr, "Error serializing 'cbusCommand' field")
 		}
@@ -326,7 +331,7 @@ func (m *_RequestCommand) SerializeWithWriteBuffer(ctx context.Context, writeBuf
 		}
 
 		// Manual Field (chksum)
-		_chksumErr := CalculateChecksum(writeBuffer, m.GetCbusCommand(), m.CBusOptions.GetSrchk())
+		_chksumErr := CalculateChecksum(ctx, writeBuffer, m.GetCbusCommand(), m.CBusOptions.GetSrchk())
 		if _chksumErr != nil {
 			return errors.Wrap(_chksumErr, "Error serializing 'chksum' field")
 		}

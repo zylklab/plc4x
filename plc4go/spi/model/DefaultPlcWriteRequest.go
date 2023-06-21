@@ -21,6 +21,7 @@ package model
 
 import (
 	"context"
+	"runtime/debug"
 	"time"
 
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
@@ -136,11 +137,14 @@ func (d *DefaultPlcWriteRequest) Execute() <-chan apiModel.PlcWriteRequestResult
 }
 
 func (d *DefaultPlcWriteRequest) ExecuteWithContext(ctx context.Context) <-chan apiModel.PlcWriteRequestResult {
-	// Shortcut, if no interceptor is defined
-	if d.writeRequestInterceptor == nil {
-		return d.writer.Write(ctx, d)
+	if d.writeRequestInterceptor != nil {
+		return d.ExecuteWithContextAndInterceptor(ctx)
 	}
 
+	return d.writer.Write(ctx, d)
+}
+
+func (d *DefaultPlcWriteRequest) ExecuteWithContextAndInterceptor(ctx context.Context) <-chan apiModel.PlcWriteRequestResult {
 	// Split the requests up into multiple ones.
 	writeRequests := d.writeRequestInterceptor.InterceptWriteRequest(ctx, d)
 	// Shortcut for single-request-requests
@@ -154,7 +158,7 @@ func (d *DefaultPlcWriteRequest) ExecuteWithContext(ctx context.Context) <-chan 
 	for _, subRequest := range writeRequests {
 		subResultChannels = append(subResultChannels, d.writer.Write(ctx, subRequest))
 		// TODO: Replace this with a real queueing of requests. Later on we need throttling. At the moment this avoids race condition as the read above writes to fast on the line which is a problem for the test
-		time.Sleep(time.Millisecond * 4)
+		time.Sleep(4 * time.Millisecond)
 	}
 
 	// Create a new result-channel, which completes as soon as all sub-result-channels have returned
@@ -162,7 +166,7 @@ func (d *DefaultPlcWriteRequest) ExecuteWithContext(ctx context.Context) <-chan 
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				resultChannel <- NewDefaultPlcWriteRequestResult(d, nil, errors.Errorf("panic-ed %v", err))
+				resultChannel <- NewDefaultPlcWriteRequestResult(d, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		var subResults []apiModel.PlcWriteRequestResult
@@ -181,7 +185,6 @@ func (d *DefaultPlcWriteRequest) ExecuteWithContext(ctx context.Context) <-chan 
 		// Return the final result
 		resultChannel <- result
 	}()
-
 	return resultChannel
 }
 

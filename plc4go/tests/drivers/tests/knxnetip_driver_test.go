@@ -25,16 +25,24 @@ import (
 
 	"github.com/apache/plc4x/plc4go/internal/knxnetip"
 	knxIO "github.com/apache/plc4x/plc4go/protocols/knxnetip/readwrite"
-	knxModel "github.com/apache/plc4x/plc4go/protocols/knxnetip/readwrite/model"
+	readWriteModel "github.com/apache/plc4x/plc4go/protocols/knxnetip/readwrite/model"
+	"github.com/apache/plc4x/plc4go/spi/options"
 	"github.com/apache/plc4x/plc4go/spi/testutils"
 	"github.com/apache/plc4x/plc4go/spi/utils"
-	_ "github.com/apache/plc4x/plc4go/tests/initializetest"
 )
 
 func TestKNXNetIPDriver(t *testing.T) {
 	t.Skip("No test yet")
 	parser := func(readBufferByteBased utils.ReadBufferByteBased) (any, error) {
-		return knxModel.KnxNetIpMessageParseWithBuffer(context.Background(), readBufferByteBased)
+		return readWriteModel.KnxNetIpMessageParseWithBuffer(context.Background(), readBufferByteBased)
 	}
-	testutils.RunDriverTestsuite(t, knxnetip.NewDriver(), "assets/testing/protocols/knxnetip/DriverTestsuite.xml", knxIO.KnxnetipXmlParserHelper{}, testutils.WithRootTypeParser(parser))
+	withCustomLogger := options.WithCustomLogger(testutils.ProduceTestingLogger(t))
+	testutils.RunDriverTestsuite(
+		t,
+		knxnetip.NewDriver(withCustomLogger),
+		"assets/testing/protocols/knxnetip/DriverTestsuite.xml",
+		knxIO.KnxnetipXmlParserHelper{},
+		testutils.WithRootTypeParser(parser),
+		withCustomLogger,
+	)
 }

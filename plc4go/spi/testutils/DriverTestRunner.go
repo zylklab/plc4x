@@ -24,6 +24,10 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/pkg/api/config"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/options/converter"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"runtime/debug"
 	"strconv"
@@ -60,34 +64,23 @@ type XmlParser interface {
 	Parse(typeName string, xmlString string, parserArguments ...string) (any, error)
 }
 
-type WithOption interface {
-	isOption() bool
-}
-
-type _option struct {
-}
-
-func (_option) isOption() bool {
-	return true
-}
-
-// WithRootTypeParser can be used to output the root type of a protocol for better debugging
-func WithRootTypeParser(rootTypeParser func(utils.ReadBufferByteBased) (any, error)) WithOption {
+// WithRootTypeParser can be used to output the root type of protocol for better debugging
+func WithRootTypeParser(rootTypeParser func(utils.ReadBufferByteBased) (any, error)) config.WithOption {
 	return withRootTypeParser{rootTypeParser: rootTypeParser}
 }
 
 type withRootTypeParser struct {
-	_option
+	options.Option
 	rootTypeParser func(utils.ReadBufferByteBased) (any, error)
 }
 
 // WithSkippedTestCases can be used to skip test cases
-func WithSkippedTestCases(skippedTestCases ...string) WithOption {
+func WithSkippedTestCases(skippedTestCases ...string) config.WithOption {
 	return withSkippedTestCases{skippedTestCases: skippedTestCases}
 }
 
 type withSkippedTestCases struct {
-	_option
+	options.Option
 	skippedTestCases []string
 }
 
@@ -99,13 +92,13 @@ type TestTransportInstance interface {
 }
 
 func (m DriverTestsuite) Run(t *testing.T, driverManager plc4go.PlcDriverManager, testcase DriverTestcase) error {
-	var options []string
+	var driverParameters []string
 	for key, value := range m.driverParameters {
-		options = append(options, fmt.Sprintf("%s=%s", key, value))
+		driverParameters = append(driverParameters, fmt.Sprintf("%s=%s", key, value))
 	}
 	optionsString := ""
-	if len(options) > 0 {
-		optionsString = "?" + strings.Join(options, "&")
+	if len(driverParameters) > 0 {
+		optionsString = "?" + strings.Join(driverParameters, "&")
 	}
 	// Get a connection
 	connectionChan := driverManager.GetConnection(m.driverName + ":test://hurz" + optionsString)
@@ -126,8 +119,9 @@ func (m DriverTestsuite) Run(t *testing.T, driverManager plc4go.PlcDriverManager
 			return errors.Wrap(err, "error in setup step "+testStep.name)
 		}
 		// We sleep a bit to not run too fast into the post setup steps and give connections a bit time to settle built up
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond) // TODO: this is really bad as on CI sometimes those sleeps are not enough...
 	}
+	t.Log("setup done")
 
 	// Run the actual scenario steps
 	t.Logf("\n-------------------------------------------------------\nRunning testcases for: %s \n-------------------------------------------------------\n", testcase.name)
@@ -136,8 +130,9 @@ func (m DriverTestsuite) Run(t *testing.T, driverManager plc4go.PlcDriverManager
 		if err != nil {
 			return errors.Wrap(err, "error in step "+testStep.name)
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond) // TODO: this is really bad as on CI sometimes those sleeps are not enough...
 	}
+	t.Log("test steps done")
 
 	// Run the teardown steps
 	t.Logf("\n-------------------------------------------------------\nPerforming teardown for: %s \n-------------------------------------------------------\n", testcase.name)
@@ -146,8 +141,9 @@ func (m DriverTestsuite) Run(t *testing.T, driverManager plc4go.PlcDriverManager
 		if err != nil {
 			return errors.Wrap(err, "error in teardown step "+testStep.name)
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond) // TODO: this is really bad as on CI sometimes those sleeps are not enough...
 	}
+	t.Log("tear down done")
 
 	t.Logf("\n-------------------------------------------------------\nDone\n-------------------------------------------------------\n")
 	return nil
@@ -164,9 +160,7 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 	}
 
 	start := time.Now()
-	t.Logf("\n-------------------------------------------------------\n - Executing step: %s \n-------------------------------------------------------\n", step.name)
-
-	t.Logf("Handling step %s", step.stepType)
+	t.Logf("\n-------------------------------------------------------\n - Executing step (%s): %s\n-------------------------------------------------------\n", step.stepType, step.name)
 	switch step.stepType {
 	case StepTypeApiRequest:
 		switch step.payload.Name {
@@ -185,11 +179,12 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 			}
 
 			// Execute the read-request and store the response-channel in the testcase.
-			t.Log("Execute read request")
+			t.Logf("Execute read request (%T)\n%[1]s", readRequest)
 			if testcase.readRequestResultChannel != nil {
 				return errors.New("testcase read-request result channel already occupied")
 			}
 			testcase.readRequestResultChannel = readRequest.Execute()
+			t.Log("request executed")
 		case "TestWriteRequest":
 			t.Log("Assemble write request")
 			wrb := connection.WriteRequestBuilder()
@@ -220,11 +215,12 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 			if err != nil {
 				return errors.Wrap(err, "Error creating write-request")
 			}
-			t.Log("Execute write request")
+			t.Logf("Execute write request (%T)\n%[1]s", writeRequest)
 			if testcase.writeRequestResultChannel != nil {
 				return errors.New("testcase write-request result channel already occupied")
 			}
 			testcase.writeRequestResultChannel = writeRequest.Execute()
+			t.Log("request executed")
 		}
 	case StepTypeApiResponse:
 		switch step.payload.Name {
@@ -239,7 +235,9 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 			}
 			// Serialize the response to XML
 			xmlWriteBuffer := utils.NewXmlWriteBuffer()
-			err := readRequestResult.GetResponse().(utils.Serializable).SerializeWithWriteBuffer(context.Background(), xmlWriteBuffer)
+			response := readRequestResult.GetResponse()
+			t.Logf("Got response (%T)\n%[1]s", response)
+			err := response.(utils.Serializable).SerializeWithWriteBuffer(context.Background(), xmlWriteBuffer)
 			if err != nil {
 				return errors.Wrap(err, "error serializing response")
 			}
@@ -264,7 +262,9 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 			}
 			// Serialize the response to XML
 			xmlWriteBuffer := utils.NewXmlWriteBuffer()
-			err := writeResponseResult.GetResponse().(utils.Serializable).SerializeWithWriteBuffer(context.Background(), xmlWriteBuffer)
+			response := writeResponseResult.GetResponse()
+			t.Logf("Got response (%T)\n%[1]s", response)
+			err := response.(utils.Serializable).SerializeWithWriteBuffer(context.Background(), xmlWriteBuffer)
 			if err != nil {
 				return errors.Wrap(err, "error serializing response")
 			}
@@ -289,6 +289,7 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 		if err != nil {
 			return errors.Wrap(err, "Error parsing message")
 		}
+		t.Logf("Parsed message (%T)\n%[1]s", expectedMessage)
 
 		// Serialize the model into bytes
 		t.Log("Write to bytes")
@@ -309,11 +310,11 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 		expectedRawOutput := expectedWriteBuffer.GetBytes()
 		expectedRawOutputLength := uint32(len(expectedRawOutput))
 
-		now := time.Now()
+		startTransportPolling := time.Now()
 		// Read exactly this amount of bytes from the transport
-		t.Logf("Reading bytes (expectedRawOutputLength %d)", expectedRawOutputLength)
+		t.Logf("Reading bytes from transport instance (expectedRawOutputLength %d)", expectedRawOutputLength)
 		for testTransportInstance.GetNumDrainableBytes() < expectedRawOutputLength {
-			if time.Now().Sub(now) > 2*time.Second {
+			if time.Since(startTransportPolling) > 2*time.Second {
 				drainableBytes := testTransportInstance.GetNumDrainableBytes()
 				actualRawOutput := testTransportInstance.DrainWriteBuffer(drainableBytes)
 				return errors.Errorf("error getting bytes from transport. Not enough data available: actual(%d)<expected(%d), \nactual:   %#X\nexpected: %#X\nHexdumps:\n%s",
@@ -346,6 +347,7 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 				return errors.Errorf("actual output doesn't match expected output:\nactual:   %#X\nexpected: %#X\nHexdumps:\n%s", actualRawOutput, expectedRawOutput, utils.DiffHex(expectedRawOutput, actualRawOutput))
 			}
 		}
+		t.Log("outputs are matching")
 		// If there's a difference, parse the input and display it to simplify debugging
 	case StepTypeOutgoingPlcBytes:
 		// Read exactly this amount of bytes from the transport
@@ -354,6 +356,7 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 		if err != nil {
 			return errors.Wrap(err, "error decoding hex-encoded byte data")
 		}
+		t.Logf("\n%s", hex.Dump(expectedRawInput))
 		rawInput := testTransportInstance.DrainWriteBuffer(uint32(len(expectedRawInput)))
 
 		// Compare the bytes read with the ones we expect
@@ -374,6 +377,7 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 		if err != nil {
 			return errors.Wrap(err, "error parsing message")
 		}
+		t.Logf("Parsed message (%T)\n%[1]s", expectedMessage)
 
 		// Serialize the model into bytes
 		t.Log("Serializing bytes")
@@ -393,8 +397,9 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 		}
 
 		// Send these bytes to the transport
-		t.Log("Writing to transport")
-		testTransportInstance.FillReadBuffer(wb.GetBytes())
+		_bytes := wb.GetBytes()
+		t.Logf("Writing to transport\n%s", hex.Dump(_bytes))
+		testTransportInstance.FillReadBuffer(_bytes)
 	case StepTypeIncomingPlcBytes:
 		// Get the raw hex-data.
 		t.Log("Get hex data")
@@ -404,7 +409,7 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 		}
 
 		// Send these bytes to the transport
-		t.Log("Writing bytes to transport")
+		t.Logf("Writing bytes to transport\n%[1]s", hex.Dump(rawInput))
 		testTransportInstance.FillReadBuffer(rawInput)
 	case StepTypeDelay:
 		// Get the number of milliseconds
@@ -424,7 +429,7 @@ func (m DriverTestsuite) ExecuteStep(t *testing.T, connection plc4go.PlcConnecti
 			return errors.Wrap(err, "error closing transport")
 		}
 	}
-	t.Logf("\n-------------------------------------------------------\n - Finished step: %s after %vms \n-------------------------------------------------------", step.name, time.Now().Sub(start).Milliseconds())
+	t.Logf("\n-------------------------------------------------------\n - Finished step: %s after %sms \n-------------------------------------------------------", step.name, time.Since(start))
 	return nil
 }
 
@@ -456,6 +461,7 @@ type DriverTestStep struct {
 type StepType uint8
 
 //go:generate stringer -type StepType
+//go:generate go run ../../tools/plc4xlicenser/gen.go -type=StepType
 const (
 	StepTypeOutgoingPlcMessage StepType = 0x01
 	StepTypeOutgoingPlcBytes   StepType = 0x02
@@ -467,11 +473,11 @@ const (
 	StepTypeTerminate          StepType = 0x08
 )
 
-func RunDriverTestsuite(t *testing.T, driver plc4go.PlcDriver, testPath string, parser XmlParser, options ...WithOption) {
+func RunDriverTestsuite(t *testing.T, driver plc4go.PlcDriver, testPath string, parser XmlParser, _options ...config.WithOption) {
 	t.Log("Extract testsuite options")
 	var rootTypeParser func(utils.ReadBufferByteBased) (any, error)
 	skippedTestCasesMap := map[string]bool{}
-	for _, withOption := range options {
+	for _, withOption := range _options {
 		switch option := withOption.(type) {
 		case withRootTypeParser:
 			t.Logf("Using root type parser for better output")
@@ -484,21 +490,29 @@ func RunDriverTestsuite(t *testing.T, driver plc4go.PlcDriver, testPath string, 
 			}
 		}
 	}
+	t.Log("Read the test-specification as XML file")
 	// Read the test-specification as XML file
 	rootNode := ParseDriverTestsuiteXml(t, testPath)
 
+	t.Log("Parse the contents of the test-specification")
 	// Parse the contents of the test-specification
 	testsuite := ParseDriverTestsuite(t, *rootNode, parser, rootTypeParser)
 
 	// We don't want to await completion of connection initialization
 	if connectionConnectAwaiter, ok := driver.(ConnectionConnectAwaiter); ok {
+		t.Log("We don't wait for setup and disconnect")
 		connectionConnectAwaiter.SetAwaitSetupComplete(false)
 		connectionConnectAwaiter.SetAwaitDisconnectComplete(false)
 	}
 
+	t.Log("Initialize the driver manager")
 	// Initialize the driver manager
-	driverManager := plc4go.NewPlcDriverManager()
-	driverManager.(spi.TransportAware).RegisterTransport(test.NewTransport())
+	driverManager := plc4go.NewPlcDriverManager(_options...)
+	t.Cleanup(func() {
+		assert.NoError(t, driverManager.Close())
+	})
+	transport := test.NewTransport(converter.WithOptionToInternal(_options...)...)
+	driverManager.(spi.TransportAware).RegisterTransport(transport)
 	driverManager.RegisterDriver(driver)
 
 	t.Logf("Running %d testcases", len(testsuite.testcases))

@@ -21,7 +21,10 @@ package knxnetip
 
 import (
 	"context"
+	"github.com/apache/plc4x/plc4go/spi/options"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"runtime/debug"
 	"time"
 
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
@@ -35,12 +38,17 @@ import (
 type Subscriber struct {
 	connection *Connection
 	consumers  map[*spiModel.DefaultPlcConsumerRegistration]apiModel.PlcSubscriptionEventConsumer
+
+	passLogToModel bool
+	log            zerolog.Logger
 }
 
-func NewSubscriber(connection *Connection) *Subscriber {
+func NewSubscriber(connection *Connection, _options ...options.WithOption) *Subscriber {
 	return &Subscriber{
-		connection: connection,
-		consumers:  make(map[*spiModel.DefaultPlcConsumerRegistration]apiModel.PlcSubscriptionEventConsumer),
+		connection:     connection,
+		consumers:      make(map[*spiModel.DefaultPlcConsumerRegistration]apiModel.PlcSubscriptionEventConsumer),
+		passLogToModel: options.ExtractPassLoggerToModel(_options...),
+		log:            options.ExtractCustomLogger(_options...),
 	}
 }
 
@@ -50,7 +58,7 @@ func (m *Subscriber) Subscribe(ctx context.Context, subscriptionRequest apiModel
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				result <- spiModel.NewDefaultPlcSubscriptionRequestResult(subscriptionRequest, nil, errors.Errorf("panic-ed %v", err))
+				result <- spiModel.NewDefaultPlcSubscriptionRequestResult(subscriptionRequest, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		internalPlcSubscriptionRequest := subscriptionRequest.(*spiModel.DefaultPlcSubscriptionRequest)
@@ -69,7 +77,12 @@ func (m *Subscriber) Subscribe(ctx context.Context, subscriptionRequest apiModel
 
 		result <- spiModel.NewDefaultPlcSubscriptionRequestResult(
 			subscriptionRequest,
-			spiModel.NewDefaultPlcSubscriptionResponse(subscriptionRequest, responseCodes, subscriptionValues),
+			spiModel.NewDefaultPlcSubscriptionResponse(
+				subscriptionRequest,
+				responseCodes,
+				subscriptionValues,
+				options.WithCustomLogger(m.log),
+			),
 			nil,
 		)
 	}()
@@ -89,10 +102,11 @@ func (m *Subscriber) Unsubscribe(ctx context.Context, unsubscriptionRequest apiM
 /*
  * Callback for incoming value change events from the KNX bus
  */
-func (m *Subscriber) handleValueChange(destinationAddress []byte, payload []byte, changed bool) {
+func (m *Subscriber) handleValueChange(ctx context.Context, destinationAddress []byte, payload []byte, changed bool) {
 	// Decode the group-address according to the settings in the driver
 	// Group addresses can be 1, 2 or 3 levels (3 being the default)
-	groupAddress, err := driverModel.KnxGroupAddressParse(destinationAddress, m.connection.getGroupAddressNumLevels())
+	ctxForModel := options.GetLoggerContextForModel(ctx, m.log, options.WithPassLoggerToModel(m.passLogToModel))
+	groupAddress, err := driverModel.KnxGroupAddressParse(ctxForModel, destinationAddress, m.connection.getGroupAddressNumLevels())
 	if err != nil {
 		return
 	}
@@ -167,7 +181,7 @@ func (m *Subscriber) handleValueChange(destinationAddress []byte, payload []byte
 					plcValues[tagName] = spiValues.NewPlcList(plcValueList)
 				}
 			}
-			event := NewSubscriptionEvent(tags, types, intervals, responseCodes, addresses, plcValues)
+			event := NewSubscriptionEvent(tags, types, intervals, responseCodes, addresses, plcValues, options.WithCustomLogger(m.log))
 			consumer(&event)
 		}
 	}

@@ -20,7 +20,8 @@
 package simulated
 
 import (
-	"context"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/testutils"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -76,7 +77,7 @@ func TestWriter_Write(t *testing.T) {
 					"test": apiModel.PlcResponseCode_OK,
 				}),
 			newState: map[simulatedTag]*apiValues.PlcValue{
-				NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1): ToReference(spiValues.NewPlcBOOL(true)),
+				NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1).(simulatedTag): ToReference(spiValues.NewPlcBOOL(true)),
 			},
 			delayAtLeast: 0,
 		},
@@ -86,7 +87,7 @@ func TestWriter_Write(t *testing.T) {
 				device: &Device{
 					Name: "hurz",
 					State: map[simulatedTag]*apiValues.PlcValue{
-						NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1): ToReference(spiValues.NewPlcBOOL(true)),
+						NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1).(simulatedTag): ToReference(spiValues.NewPlcBOOL(true)),
 					},
 				},
 				options: map[string][]string{},
@@ -105,7 +106,7 @@ func TestWriter_Write(t *testing.T) {
 					"test": apiModel.PlcResponseCode_OK,
 				}),
 			newState: map[simulatedTag]*apiValues.PlcValue{
-				NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1): ToReference(spiValues.NewPlcBOOL(false)),
+				NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1).(simulatedTag): ToReference(spiValues.NewPlcBOOL(false)),
 			},
 			delayAtLeast: 0,
 		},
@@ -115,7 +116,7 @@ func TestWriter_Write(t *testing.T) {
 				device: &Device{
 					Name: "hurz",
 					State: map[simulatedTag]*apiValues.PlcValue{
-						NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1): ToReference(spiValues.NewPlcBOOL(true)),
+						NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1).(simulatedTag): ToReference(spiValues.NewPlcBOOL(true)),
 					},
 				},
 				options: map[string][]string{
@@ -136,7 +137,7 @@ func TestWriter_Write(t *testing.T) {
 					"test": apiModel.PlcResponseCode_OK,
 				}),
 			newState: map[simulatedTag]*apiValues.PlcValue{
-				NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1): ToReference(spiValues.NewPlcBOOL(false)),
+				NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1).(simulatedTag): ToReference(spiValues.NewPlcBOOL(false)),
 			},
 			delayAtLeast: 1000,
 		},
@@ -147,7 +148,7 @@ func TestWriter_Write(t *testing.T) {
 				device: &Device{
 					Name: "hurz",
 					State: map[simulatedTag]*apiValues.PlcValue{
-						NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1): ToReference(spiValues.NewPlcBOOL(true)),
+						NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1).(simulatedTag): ToReference(spiValues.NewPlcBOOL(true)),
 					},
 				},
 				options: map[string][]string{},
@@ -166,17 +167,17 @@ func TestWriter_Write(t *testing.T) {
 					"test": apiModel.PlcResponseCode_INVALID_ADDRESS,
 				}),
 			newState: map[simulatedTag]*apiValues.PlcValue{
-				NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1): ToReference(spiValues.NewPlcBOOL(true)),
+				NewSimulatedTag(TagState, "test", simulatedReadWriteModel.SimulatedDataTypeSizes_BOOL, 1).(simulatedTag): ToReference(spiValues.NewPlcBOOL(true)),
 			},
 			delayAtLeast: 0,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := NewWriter(tt.fields.device, tt.fields.options, nil)
+			w := NewWriter(tt.fields.device, tt.fields.options, nil, options.WithCustomLogger(testutils.ProduceTestingLogger(t)))
 			writeRequest := spiModel.NewDefaultPlcWriteRequest(tt.args.fields, tt.args.fieldNames, tt.args.values, w, nil)
 			timeBeforeWriteRequest := time.Now()
-			writeResponseChannel := w.Write(context.TODO(), writeRequest)
+			writeResponseChannel := w.Write(testutils.TestContext(t), writeRequest)
 			timeout := time.NewTimer(3 * time.Second)
 			defer utils.CleanupTimer(timeout)
 			select {

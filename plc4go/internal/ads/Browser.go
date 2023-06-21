@@ -22,6 +22,7 @@ package ads
 import (
 	"context"
 	"github.com/pkg/errors"
+	"runtime/debug"
 	"strings"
 
 	"github.com/apache/plc4x/plc4go/internal/ads/model"
@@ -45,7 +46,7 @@ func (m *Connection) BrowseWithInterceptor(ctx context.Context, browseRequest ap
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				result <- spiModel.NewDefaultPlcBrowseRequestResult(browseRequest, nil, errors.Errorf("Recovered from panic: %v", err))
+				result <- spiModel.NewDefaultPlcBrowseRequestResult(browseRequest, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		responseCodes := map[string]apiModel.PlcResponseCode{}
@@ -108,7 +109,7 @@ func (m *Connection) filterSymbols(filterExpression string) []apiModel.PlcBrowse
 
 func (m *Connection) filterDataTypes(parentName string, currentType driverModel.AdsDataTypeTableEntry, currentPath string, remainingAddressSegments []string) []apiModel.PlcBrowseItem {
 	if len(remainingAddressSegments) == 0 {
-		arrayInfo := []apiModel.ArrayInfo{}
+		var arrayInfo []apiModel.ArrayInfo
 		for _, ai := range currentType.GetArrayInfo() {
 			arrayInfo = append(arrayInfo, &spiModel.DefaultArrayInfo{
 				LowerBound: ai.GetLowerBound(),

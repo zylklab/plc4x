@@ -22,8 +22,12 @@ package cbus
 import (
 	"context"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/options"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
@@ -31,52 +35,74 @@ import (
 	readWriteModel "github.com/apache/plc4x/plc4go/protocols/cbus/readwrite/model"
 	spiModel "github.com/apache/plc4x/plc4go/spi/model"
 	spiValues "github.com/apache/plc4x/plc4go/spi/values"
-	"github.com/rs/zerolog/log"
 )
 
+//go:generate go run ../../tools/plc4xgenerator/gen.go -type=Subscriber
 type Subscriber struct {
-	connection *Connection
-	consumers  map[*spiModel.DefaultPlcConsumerRegistration]apiModel.PlcSubscriptionEventConsumer
+	consumers     map[*spiModel.DefaultPlcConsumerRegistration]apiModel.PlcSubscriptionEventConsumer `ignore:"true"`
+	addSubscriber func(subscriber *Subscriber)
+
+	consumersMutex sync.RWMutex
+
+	log zerolog.Logger `ignore:"true"`
 }
 
-func NewSubscriber(connection *Connection) *Subscriber {
+func NewSubscriber(addSubscriber func(subscriber *Subscriber), _options ...options.WithOption) *Subscriber {
 	return &Subscriber{
-		connection: connection,
-		consumers:  make(map[*spiModel.DefaultPlcConsumerRegistration]apiModel.PlcSubscriptionEventConsumer),
+		addSubscriber: addSubscriber,
+		consumers:     make(map[*spiModel.DefaultPlcConsumerRegistration]apiModel.PlcSubscriptionEventConsumer),
+
+		log: options.ExtractCustomLogger(_options...),
 	}
 }
 
-func (m *Subscriber) Subscribe(_ context.Context, subscriptionRequest apiModel.PlcSubscriptionRequest) <-chan apiModel.PlcSubscriptionRequestResult {
+func (s *Subscriber) Subscribe(_ context.Context, subscriptionRequest apiModel.PlcSubscriptionRequest) <-chan apiModel.PlcSubscriptionRequestResult {
 	result := make(chan apiModel.PlcSubscriptionRequestResult, 1)
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				result <- spiModel.NewDefaultPlcSubscriptionRequestResult(subscriptionRequest, nil, errors.Errorf("panic-ed %v", err))
+				result <- spiModel.NewDefaultPlcSubscriptionRequestResult(subscriptionRequest, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		internalPlcSubscriptionRequest := subscriptionRequest.(*spiModel.DefaultPlcSubscriptionRequest)
 
 		// Add this subscriber to the connection.
-		m.connection.addSubscriber(m)
+		s.addSubscriber(s)
 
 		// Just populate all requests with an OK
 		responseCodes := map[string]apiModel.PlcResponseCode{}
 		subscriptionValues := make(map[string]apiModel.PlcSubscriptionHandle)
 		for _, tagName := range internalPlcSubscriptionRequest.GetTagNames() {
 			responseCodes[tagName] = apiModel.PlcResponseCode_OK
-			subscriptionValues[tagName] = NewSubscriptionHandle(m, tagName, internalPlcSubscriptionRequest.GetTag(tagName), internalPlcSubscriptionRequest.GetType(tagName), internalPlcSubscriptionRequest.GetInterval(tagName))
+			handle := NewSubscriptionHandle(
+				s,
+				tagName,
+				internalPlcSubscriptionRequest.GetTag(tagName),
+				internalPlcSubscriptionRequest.GetType(tagName),
+				internalPlcSubscriptionRequest.GetInterval(tagName),
+			)
+			preRegisteredConsumers := internalPlcSubscriptionRequest.GetPreRegisteredConsumers(tagName)
+			for _, consumer := range preRegisteredConsumers {
+				_ = handle.Register(consumer)
+			}
+			subscriptionValues[tagName] = handle
 		}
 
 		result <- spiModel.NewDefaultPlcSubscriptionRequestResult(
 			subscriptionRequest,
-			spiModel.NewDefaultPlcSubscriptionResponse(subscriptionRequest, responseCodes, subscriptionValues),
+			spiModel.NewDefaultPlcSubscriptionResponse(
+				subscriptionRequest,
+				responseCodes,
+				subscriptionValues,
+				options.WithCustomLogger(s.log),
+			),
 			nil,
 		)
 	}()
 	return result
 }
 
-func (m *Subscriber) Unsubscribe(ctx context.Context, unsubscriptionRequest apiModel.PlcUnsubscriptionRequest) <-chan apiModel.PlcUnsubscriptionRequestResult {
+func (s *Subscriber) Unsubscribe(ctx context.Context, unsubscriptionRequest apiModel.PlcUnsubscriptionRequest) <-chan apiModel.PlcUnsubscriptionRequestResult {
 	// TODO: handle context
 	result := make(chan apiModel.PlcUnsubscriptionRequestResult, 1)
 	result <- spiModel.NewDefaultPlcUnsubscriptionRequestResult(unsubscriptionRequest, nil, errors.New("Not Implemented"))
@@ -89,7 +115,8 @@ func (m *Subscriber) Unsubscribe(ctx context.Context, unsubscriptionRequest apiM
 	return result
 }
 
-func (m *Subscriber) handleMonitoredMMI(calReply readWriteModel.CALReply) bool {
+func (s *Subscriber) handleMonitoredMMI(calReply readWriteModel.CALReply) bool {
+	s.log.Debug().Msgf("handling:\n%s", calReply)
 	var unitAddressString string
 	switch calReply := calReply.(type) {
 	case readWriteModel.CALReplyLongExactly:
@@ -106,20 +133,28 @@ func (m *Subscriber) handleMonitoredMMI(calReply readWriteModel.CALReply) bool {
 	default:
 		unitAddressString = "u0" // On short form it should be always unit 0 TODO: double check that
 	}
+	s.log.Debug().Msgf("Unit address string: %s", unitAddressString)
 	calData := calReply.GetCalData()
 	handled := false
-	for registration, consumer := range m.consumers {
+	s.consumersMutex.RLock()
+	defer s.consumersMutex.RUnlock()
+	for registration, consumer := range s.consumers {
+		s.log.Debug().Msgf("Checking with registration\n%s\nand consumer set %t", registration, consumer != nil)
 		for _, subscriptionHandle := range registration.GetSubscriptionHandles() {
-			handled = handled || m.offerMMI(unitAddressString, calData, subscriptionHandle.(*SubscriptionHandle), consumer)
+			s.log.Debug().Msgf("offering to\n%s", subscriptionHandle)
+			handleHandled := s.offerMMI(unitAddressString, calData, subscriptionHandle.(*SubscriptionHandle), consumer)
+			s.log.Debug().Msgf("handle handled: %t", handleHandled)
+			handled = handled || handleHandled
 		}
 	}
+	s.log.Debug().Msgf("final handled: %t", handled)
 	return handled
 }
 
-func (m *Subscriber) offerMMI(unitAddressString string, calData readWriteModel.CALData, subscriptionHandle *SubscriptionHandle, consumer apiModel.PlcSubscriptionEventConsumer) bool {
+func (s *Subscriber) offerMMI(unitAddressString string, calData readWriteModel.CALData, subscriptionHandle *SubscriptionHandle, consumer apiModel.PlcSubscriptionEventConsumer) bool {
 	tag, ok := subscriptionHandle.tag.(*mmiMonitorTag)
 	if !ok {
-		log.Debug().Msgf("Unusable tag for mmi subscription %s", subscriptionHandle.tag)
+		s.log.Debug().Msgf("Unusable tag for mmi subscription %s", subscriptionHandle.tag)
 		return false
 	}
 
@@ -135,7 +170,7 @@ func (m *Subscriber) offerMMI(unitAddressString string, calData readWriteModel.C
 	if unitAddress := tag.GetUnitAddress(); unitAddress != nil {
 		unitSuffix := fmt.Sprintf("u%d", unitAddress.GetAddress())
 		if !strings.HasSuffix(unitAddressString, unitSuffix) {
-			log.Debug().Msgf("Current address string %s has not the suffix %s", unitAddressString, unitSuffix)
+			s.log.Debug().Msgf("Current address string %s has not the suffix %s", unitAddressString, unitSuffix)
 			return false
 		}
 	}
@@ -217,12 +252,12 @@ func (m *Subscriber) offerMMI(unitAddressString string, calData readWriteModel.C
 			plcValues[tagName] = spiValues.NewPlcList(plcListValues)
 		}
 	default:
-		log.Error().Msgf("Unmapped type %T", calData)
+		s.log.Error().Msgf("Unmapped type %T", calData)
 		return false
 	}
 	if application := tag.GetApplication(); application != nil {
 		if actualApplicationIdString := application.ApplicationId().String(); applicationString != actualApplicationIdString {
-			log.Debug().Msgf("Current application id %s  doesn't match actual id %s", unitAddressString, actualApplicationIdString)
+			s.log.Debug().Msgf("Current application id %s  doesn't match actual id %s", unitAddressString, actualApplicationIdString)
 			return false
 		}
 	}
@@ -238,20 +273,22 @@ func (m *Subscriber) offerMMI(unitAddressString string, calData readWriteModel.C
 	return true
 }
 
-func (m *Subscriber) handleMonitoredSAL(sal readWriteModel.MonitoredSAL) bool {
+func (s *Subscriber) handleMonitoredSAL(sal readWriteModel.MonitoredSAL) bool {
 	handled := false
-	for registration, consumer := range m.consumers {
+	s.consumersMutex.RLock()
+	defer s.consumersMutex.RUnlock()
+	for registration, consumer := range s.consumers {
 		for _, subscriptionHandle := range registration.GetSubscriptionHandles() {
-			handled = handled || m.offerSAL(sal, subscriptionHandle.(*SubscriptionHandle), consumer)
+			handled = handled || s.offerSAL(sal, subscriptionHandle.(*SubscriptionHandle), consumer)
 		}
 	}
 	return handled
 }
 
-func (m *Subscriber) offerSAL(sal readWriteModel.MonitoredSAL, subscriptionHandle *SubscriptionHandle, consumer apiModel.PlcSubscriptionEventConsumer) bool {
+func (s *Subscriber) offerSAL(sal readWriteModel.MonitoredSAL, subscriptionHandle *SubscriptionHandle, consumer apiModel.PlcSubscriptionEventConsumer) bool {
 	tag, ok := subscriptionHandle.tag.(*salMonitorTag)
 	if !ok {
-		log.Debug().Msgf("Unusable tag for mmi subscription %s", subscriptionHandle.tag)
+		s.log.Debug().Msgf("Unusable tag for mmi subscription %s", subscriptionHandle.tag)
 		return false
 	}
 	tags := map[string]apiModel.PlcTag{}
@@ -295,7 +332,7 @@ func (m *Subscriber) offerSAL(sal readWriteModel.MonitoredSAL, subscriptionHandl
 	if unitAddress := tag.GetUnitAddress(); unitAddress != nil {
 		unitSuffix := fmt.Sprintf("u%d", unitAddress.GetAddress())
 		if !strings.HasSuffix(unitAddressString, unitSuffix) {
-			log.Debug().Msgf("Current address string %s has not the suffix %s", unitAddressString, unitSuffix)
+			s.log.Debug().Msgf("Current address string %s has not the suffix %s", unitAddressString, unitSuffix)
 			return false
 		}
 	}
@@ -303,7 +340,7 @@ func (m *Subscriber) offerSAL(sal readWriteModel.MonitoredSAL, subscriptionHandl
 
 	if application := tag.GetApplication(); application != nil {
 		if actualApplicationIdString := application.ApplicationId().String(); applicationString != actualApplicationIdString {
-			log.Debug().Msgf("Current application id %s  doesn't match actual id %s", unitAddressString, actualApplicationIdString)
+			s.log.Debug().Msgf("Current application id %s  doesn't match actual id %s", unitAddressString, actualApplicationIdString)
 			return false
 		}
 	}
@@ -325,7 +362,7 @@ func (m *Subscriber) offerSAL(sal readWriteModel.MonitoredSAL, subscriptionHandl
 	case readWriteModel.SALDataErrorReportingExactly:
 		commandTypeGetter = salData.GetErrorReportingData().GetCommandType()
 	case readWriteModel.SALDataFreeUsageExactly:
-		log.Info().Msg("Unknown command type")
+		s.log.Info().Msg("Unknown command type")
 	case readWriteModel.SALDataHeatingExactly:
 		commandTypeGetter = salData.GetHeatingData().GetCommandType()
 	case readWriteModel.SALDataHvacActuatorExactly:
@@ -343,9 +380,9 @@ func (m *Subscriber) offerSAL(sal readWriteModel.MonitoredSAL, subscriptionHandl
 	case readWriteModel.SALDataPoolsSpasPondsFountainsControlExactly:
 		commandTypeGetter = salData.GetPoolsSpaPondsFountainsData().GetCommandType()
 	case readWriteModel.SALDataReservedExactly:
-		log.Info().Msg("Unknown command type")
+		s.log.Info().Msg("Unknown command type")
 	case readWriteModel.SALDataRoomControlSystemExactly:
-		log.Info().Msg("Unknown command type not implemented yet") // TODO: implement once there
+		s.log.Info().Msg("Unknown command type not implemented yet") // TODO: implement once there
 	case readWriteModel.SALDataSecurityExactly:
 		commandTypeGetter = salData.GetSecurityData().GetCommandType()
 	case readWriteModel.SALDataTelephonyStatusAndControlExactly:
@@ -353,13 +390,13 @@ func (m *Subscriber) offerSAL(sal readWriteModel.MonitoredSAL, subscriptionHandl
 	case readWriteModel.SALDataTemperatureBroadcastExactly:
 		commandTypeGetter = salData.GetTemperatureBroadcastData().GetCommandType()
 	case readWriteModel.SALDataTestingExactly:
-		log.Info().Msg("Unknown command type not implemented yet") // TODO: implement once there
+		s.log.Info().Msg("Unknown command type not implemented yet") // TODO: implement once there
 	case readWriteModel.SALDataTriggerControlExactly:
 		commandTypeGetter = salData.GetTriggerControlData().GetCommandType()
 	case readWriteModel.SALDataVentilationExactly:
 		commandTypeGetter = salData.GetVentilationData().GetCommandType()
 	default:
-		log.Error().Msgf("Unmapped type %T", salData)
+		s.log.Error().Msgf("Unmapped type %T", salData)
 	}
 	commandType := "Unknown"
 	if commandTypeGetter != nil {
@@ -372,7 +409,7 @@ func (m *Subscriber) offerSAL(sal readWriteModel.MonitoredSAL, subscriptionHandl
 	rbvb := spiValues.NewWriteBufferPlcValueBased()
 	err := salData.SerializeWithWriteBuffer(context.Background(), rbvb)
 	if err != nil {
-		log.Error().Err(err).Msg("Error serializing to plc value... just returning it as string")
+		s.log.Error().Err(err).Msg("Error serializing to plc value... just returning it as string")
 		plcValues[tagName] = spiValues.NewPlcSTRING(fmt.Sprintf("%s", salData))
 	} else {
 		plcValues[tagName] = rbvb.GetPlcValue()
@@ -386,12 +423,16 @@ func (m *Subscriber) offerSAL(sal readWriteModel.MonitoredSAL, subscriptionHandl
 	return true
 }
 
-func (m *Subscriber) Register(consumer apiModel.PlcSubscriptionEventConsumer, handles []apiModel.PlcSubscriptionHandle) apiModel.PlcConsumerRegistration {
-	consumerRegistration := spiModel.NewDefaultPlcConsumerRegistration(m, consumer, handles...)
-	m.consumers[consumerRegistration.(*spiModel.DefaultPlcConsumerRegistration)] = consumer
+func (s *Subscriber) Register(consumer apiModel.PlcSubscriptionEventConsumer, handles []apiModel.PlcSubscriptionHandle) apiModel.PlcConsumerRegistration {
+	s.consumersMutex.Lock()
+	defer s.consumersMutex.Unlock()
+	consumerRegistration := spiModel.NewDefaultPlcConsumerRegistration(s, consumer, handles...)
+	s.consumers[consumerRegistration.(*spiModel.DefaultPlcConsumerRegistration)] = consumer
 	return consumerRegistration
 }
 
-func (m *Subscriber) Unregister(registration apiModel.PlcConsumerRegistration) {
-	delete(m.consumers, registration.(*spiModel.DefaultPlcConsumerRegistration))
+func (s *Subscriber) Unregister(registration apiModel.PlcConsumerRegistration) {
+	s.consumersMutex.Lock()
+	defer s.consumersMutex.Unlock()
+	delete(s.consumers, registration.(*spiModel.DefaultPlcConsumerRegistration))
 }

@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -299,13 +300,15 @@ func (m *_NPDU) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func NPDUParse(theBytes []byte, npduLength uint16) (NPDU, error) {
-	return NPDUParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), npduLength)
+func NPDUParse(ctx context.Context, theBytes []byte, npduLength uint16) (NPDU, error) {
+	return NPDUParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), npduLength)
 }
 
 func NPDUParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, npduLength uint16) (NPDU, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("NPDU"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for NPDU")
 	}
@@ -461,7 +464,7 @@ func NPDUParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, npduL
 		_val, _err := NLMParseWithBuffer(ctx, readBuffer, uint16(npduLength)-uint16(payloadSubtraction))
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'nlm' field of NPDU")
@@ -483,7 +486,7 @@ func NPDUParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, npduL
 		_val, _err := APDUParseWithBuffer(ctx, readBuffer, uint16(npduLength)-uint16(payloadSubtraction))
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'apdu' field of NPDU")
@@ -532,6 +535,8 @@ func (m *_NPDU) Serialize() ([]byte, error) {
 func (m *_NPDU) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("NPDU"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for NPDU")
 	}

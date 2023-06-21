@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"math"
 )
 
@@ -128,13 +129,15 @@ func (m *_S7VarPayloadDataItem) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func S7VarPayloadDataItemParse(theBytes []byte) (S7VarPayloadDataItem, error) {
-	return S7VarPayloadDataItemParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func S7VarPayloadDataItemParse(ctx context.Context, theBytes []byte) (S7VarPayloadDataItem, error) {
+	return S7VarPayloadDataItemParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func S7VarPayloadDataItemParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (S7VarPayloadDataItem, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("S7VarPayloadDataItem"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for S7VarPayloadDataItem")
 	}
@@ -221,6 +224,8 @@ func (m *_S7VarPayloadDataItem) Serialize() ([]byte, error) {
 func (m *_S7VarPayloadDataItem) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("S7VarPayloadDataItem"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for S7VarPayloadDataItem")
 	}

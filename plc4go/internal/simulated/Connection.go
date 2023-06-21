@@ -21,6 +21,8 @@ package simulated
 
 import (
 	"context"
+	"github.com/apache/plc4x/plc4go/spi/tracer"
+	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -29,9 +31,11 @@ import (
 	"github.com/apache/plc4x/plc4go/spi"
 	_default "github.com/apache/plc4x/plc4go/spi/default"
 	spiModel "github.com/apache/plc4x/plc4go/spi/model"
+	"github.com/apache/plc4x/plc4go/spi/options"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 type Connection struct {
@@ -41,21 +45,26 @@ type Connection struct {
 	options      map[string][]string
 	connected    bool
 	connectionId string
-	tracer       *spi.Tracer
+	tracer       tracer.Tracer
+
+	log zerolog.Logger
 }
 
-func NewConnection(device *Device, tagHandler spi.PlcTagHandler, valueHandler spi.PlcValueHandler, options map[string][]string) *Connection {
+func NewConnection(device *Device, tagHandler spi.PlcTagHandler, valueHandler spi.PlcValueHandler, connectionOptions map[string][]string, _options ...options.WithOption) *Connection {
+	localLogger := options.ExtractCustomLogger(_options...)
 	connection := &Connection{
 		device:       device,
 		tagHandler:   tagHandler,
 		valueHandler: valueHandler,
-		options:      options,
+		options:      connectionOptions,
 		connected:    false,
-		connectionId: utils.GenerateId(4),
+		connectionId: utils.GenerateId(localLogger, 4),
+
+		log: localLogger,
 	}
-	if traceEnabledOption, ok := options["traceEnabled"]; ok {
+	if traceEnabledOption, ok := connectionOptions["traceEnabled"]; ok {
 		if len(traceEnabledOption) == 1 {
-			connection.tracer = spi.NewTracer(connection.connectionId)
+			connection.tracer = tracer.NewTracer(connection.connectionId, _options...)
 		}
 	}
 	return connection
@@ -69,7 +78,7 @@ func (c *Connection) IsTraceEnabled() bool {
 	return c.tracer != nil
 }
 
-func (c *Connection) GetTracer() *spi.Tracer {
+func (c *Connection) GetTracer() tracer.Tracer {
 	return c.tracer
 }
 
@@ -77,12 +86,12 @@ func (c *Connection) Connect() <-chan plc4go.PlcConnectionConnectResult {
 	return c.ConnectWithContext(context.Background())
 }
 
-func (c *Connection) ConnectWithContext(ctx context.Context) <-chan plc4go.PlcConnectionConnectResult {
+func (c *Connection) ConnectWithContext(_ context.Context) <-chan plc4go.PlcConnectionConnectResult {
 	ch := make(chan plc4go.PlcConnectionConnectResult, 1)
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				ch <- _default.NewDefaultPlcConnectionCloseResult(nil, errors.Errorf("panic-ed %v", err))
+				ch <- _default.NewDefaultPlcConnectionCloseResult(nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		// Check if the connection was already connected
@@ -138,7 +147,7 @@ func (c *Connection) Close() <-chan plc4go.PlcConnectionCloseResult {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				ch <- _default.NewDefaultPlcConnectionConnectResult(nil, errors.Errorf("panic-ed %v", err))
+				ch <- _default.NewDefaultPlcConnectionConnectResult(nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		// Check if the connection is connected.
@@ -184,7 +193,7 @@ func (c *Connection) Ping() <-chan plc4go.PlcConnectionPingResult {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				ch <- _default.NewDefaultPlcConnectionPingResult(errors.Errorf("panic-ed %v", err))
+				ch <- _default.NewDefaultPlcConnectionPingResult(errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		// Check if the connection is connected

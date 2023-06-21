@@ -36,6 +36,43 @@ on:
         description: "Forces a snapshot update"
         required: false
         default: 'false'
+      highLogPrecision:
+        description: "sets the logs to nano resolution"
+        required: false
+        default: 'false'
+      passLoggerToModel:
+        description: "passes the logger to the model"
+        required: false
+        default: 'false'
+      receiveTimeout:
+        description: "sets the receive timeout to milliseconds"
+        required: false
+        default: '600000'
+      traceTransactionManagerWorkers:
+        description: "sets tracing for transaction manager workers"
+        required: false
+        default: 'false'
+      traceTransactionManagerTransactions:
+        description: "sets tracing for transaction manager transactions"
+        required: false
+        default: 'false'
+      traceDefaultMessageCodecWorker:
+        description: "sets tracing for the default message codec worker"
+        required: false
+        default: 'false'
+      traceExecutorWorkers:
+        description: "sets tracing for executor workers"
+        required: false
+        default: 'false'
+
+env:
+  PLC4X_TEST_HIGH_TEST_LOG_PRECISION: ${{ github.event.inputs.highLogPrecision }}
+  PLC4X_TEST_PASS_LOGGER_TO_MODEL: ${{ github.event.inputs.passLoggerToModel }}
+  PLC4X_TEST_RECEIVE_TIMEOUT_MS: ${{ github.event.inputs.receiveTimeout }}
+  PLC4X_TEST_TRACE_TRANSACTION_MANAGER_WORKERS: ${{ github.event.inputs.traceTransactionManagerWorkers }}
+  PLC4X_TEST_TRACE_TRANSACTION_MANAGER_TRANSACTIONS: ${{ github.event.inputs.traceTransactionManagerTransactions }}
+  PLC4X_TEST_TRACE_MESSAGE_CODEC_WORKER: ${{ github.event.inputs.traceDefaultMessageCodecWorker }}
+  PLC4X_TEST_TRACE_EXECUTOR_WORKERS: ${{ github.event.inputs.traceExecutorWorkers }}
 
 jobs:
   test:
@@ -128,14 +165,37 @@ jobs:
         with:
           languages: go
 
+      - name: Check LongPathsEnabled on Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          (Get-ItemProperty "HKLM:System\CurrentControlSet\Control\FileSystem").LongPathsEnabled
+
       # Note: due to github has no concept of recovering from a fail even if we have our fallback below we append a second un-parallel run behind this to be sure that it works with all checks. Only if that fails too we are ok with a "red" (which should be yellow) cross indicating a problem
       - name: Run mvnw
         run: |
           ./mvnw${{ steps.platform_suffix.outputs.platform_suffix }} ${{ steps.extra_options.outputs.extra_options }} -B -P'with-go,enable-all-checks' -pl :plc4go -am ${{ steps.platform_opts.outputs.platform_opts }} install
 
+      - name: Upload Test Report (first failure)
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: "golang-test-report-first-failure-${{ matrix.os }}"
+          path: |
+            **/surefire-reports/go-junit-report.xml
+            **/reports/test-out-verbose.log
+
       - name: Run mvnv without BacNet regression tests
         if: ${{ failure() }}
         run: ./mvnw${{ steps.platform_suffix.outputs.platform_suffix }} ${{ steps.extra_options.outputs.extra_options }} -B -P'with-go,skip-bacnet-regression-test' -pl :plc4go -am ${{ steps.platform_opts.outputs.platform_opts }} install
+
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v3
+        if: success() || failure()
+        with:
+          name: "golang-test-report-${{ matrix.os }}"
+          path: |
+            **/surefire-reports/go-junit-report.xml
+            **/reports/test-out-verbose.log
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2

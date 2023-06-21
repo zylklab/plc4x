@@ -22,11 +22,11 @@ package cache
 import (
 	"context"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/tracer"
 	"time"
 
 	plc4go "github.com/apache/plc4x/plc4go/pkg/api"
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
-	"github.com/apache/plc4x/plc4go/spi"
 	_default "github.com/apache/plc4x/plc4go/spi/default"
 )
 
@@ -58,7 +58,7 @@ func (t *plcConnectionLease) IsTraceEnabled() bool {
 	return t.connection.IsTraceEnabled()
 }
 
-func (t *plcConnectionLease) GetTracer() *spi.Tracer {
+func (t *plcConnectionLease) GetTracer() tracer.Tracer {
 	if t.connection == nil {
 		panic("Called 'GetTracer' on a closed cached connection")
 	}
@@ -98,7 +98,7 @@ func (t *plcConnectionLease) Close() <-chan plc4go.PlcConnectionCloseResult {
 	go func() {
 		// Check if the connection is still alive, if it is, put it back into the cache
 		pingResults := t.Ping()
-		pingTimeout := time.NewTimer(time.Second * 5)
+		pingTimeout := time.NewTimer(5 * time.Second)
 		newState := StateIdle
 		select {
 		case pingResult := <-pingResults:
@@ -119,15 +119,15 @@ func (t *plcConnectionLease) Close() <-chan plc4go.PlcConnectionCloseResult {
 		}
 
 		// Extract the trace entries from the connection.
-		var traces []spi.TraceEntry
+		var traces []tracer.TraceEntry
 		if t.IsTraceEnabled() {
-			tracer := t.GetTracer()
+			_tracer := t.GetTracer()
 			// Save all traces.
-			traces = tracer.GetTraces()
+			traces = _tracer.GetTraces()
 			// Clear the log.
-			tracer.ResetTraces()
+			_tracer.ResetTraces()
 			// Reset the connection id back to the one without the lease-id.
-			tracer.SetConnectionId(t.connection.GetConnectionId())
+			_tracer.SetConnectionId(t.connection.GetConnectionId())
 		}
 
 		// Return the connection to the connection container and don't actually close it.

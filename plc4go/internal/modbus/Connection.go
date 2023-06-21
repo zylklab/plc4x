@@ -22,6 +22,10 @@ package modbus
 import (
 	"context"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/tracer"
+	"github.com/rs/zerolog"
+	"runtime/debug"
 	"time"
 
 	"github.com/apache/plc4x/plc4go/pkg/api"
@@ -33,7 +37,6 @@ import (
 	spiModel "github.com/apache/plc4x/plc4go/spi/model"
 
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 type Connection struct {
@@ -44,30 +47,34 @@ type Connection struct {
 	requestInterceptor interceptors.RequestInterceptor
 
 	connectionId string
-	tracer       *spi.Tracer
+	tracer       tracer.Tracer
+
+	log zerolog.Logger
 }
 
-func NewConnection(unitIdentifier uint8, messageCodec spi.MessageCodec, options map[string][]string, tagHandler spi.PlcTagHandler) *Connection {
+func NewConnection(unitIdentifier uint8, messageCodec spi.MessageCodec, connectionOptions map[string][]string, tagHandler spi.PlcTagHandler, _options ...options.WithOption) *Connection {
 	connection := &Connection{
 		unitIdentifier: unitIdentifier,
 		messageCodec:   messageCodec,
-		options:        options,
+		options:        connectionOptions,
 		requestInterceptor: interceptors.NewSingleItemRequestInterceptor(
 			spiModel.NewDefaultPlcReadRequest,
 			spiModel.NewDefaultPlcWriteRequest,
 			spiModel.NewDefaultPlcReadResponse,
 			spiModel.NewDefaultPlcWriteResponse,
+			_options...,
 		),
+		log: options.ExtractCustomLogger(_options...),
 	}
-	if traceEnabledOption, ok := options["traceEnabled"]; ok {
+	if traceEnabledOption, ok := connectionOptions["traceEnabled"]; ok {
 		if len(traceEnabledOption) == 1 {
-			connection.tracer = spi.NewTracer(connection.connectionId)
+			connection.tracer = tracer.NewTracer(connection.connectionId, _options...)
 		}
 	}
 	connection.DefaultConnection = _default.NewDefaultConnection(connection,
-		_default.WithDefaultTtl(time.Second*5),
+		_default.WithDefaultTtl(5*time.Second),
 		_default.WithPlcTagHandler(tagHandler),
-		_default.WithPlcValueHandler(NewValueHandler()),
+		_default.WithPlcValueHandler(NewValueHandler(_options...)),
 	)
 	return connection
 }
@@ -80,7 +87,7 @@ func (m *Connection) IsTraceEnabled() bool {
 	return m.tracer != nil
 }
 
-func (m *Connection) GetTracer() *spi.Tracer {
+func (m *Connection) GetTracer() tracer.Tracer {
 	return m.tracer
 }
 
@@ -95,12 +102,12 @@ func (m *Connection) GetMessageCodec() spi.MessageCodec {
 func (m *Connection) Ping() <-chan plc4go.PlcConnectionPingResult {
 	// TODO: use proper context
 	ctx := context.TODO()
-	log.Trace().Msg("Pinging")
+	m.log.Trace().Msg("Pinging")
 	result := make(chan plc4go.PlcConnectionPingResult, 1)
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				result <- _default.NewDefaultPlcConnectionPingResult(errors.Errorf("panic-ed %v", err))
+				result <- _default.NewDefaultPlcConnectionPingResult(errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		diagnosticRequestPdu := readWriteModel.NewModbusPDUDiagnosticRequest(0, 0x42)
@@ -114,19 +121,19 @@ func (m *Connection) Ping() <-chan plc4go.PlcConnectionPingResult {
 				return responseAdu.GetTransactionIdentifier() == 1 && responseAdu.GetUnitIdentifier() == m.unitIdentifier
 			},
 			func(message spi.Message) error {
-				log.Trace().Msgf("Received Message")
+				m.log.Trace().Msgf("Received Message")
 				if message != nil {
 					// If we got a valid response (even if it will probably contain an error, we know the remote is available)
-					log.Trace().Msg("got valid response")
+					m.log.Trace().Msg("got valid response")
 					result <- _default.NewDefaultPlcConnectionPingResult(nil)
 				} else {
-					log.Trace().Msg("got no response")
+					m.log.Trace().Msg("got no response")
 					result <- _default.NewDefaultPlcConnectionPingResult(errors.New("no response"))
 				}
 				return nil
 			},
 			func(err error) error {
-				log.Trace().Msgf("Received Error")
+				m.log.Trace().Msgf("Received Error")
 				result <- _default.NewDefaultPlcConnectionPingResult(errors.Wrap(err, "got error processing request"))
 				return nil
 			},
@@ -148,7 +155,7 @@ func (m *Connection) GetMetadata() apiModel.PlcConnectionMetadata {
 func (m *Connection) ReadRequestBuilder() apiModel.PlcReadRequestBuilder {
 	return spiModel.NewDefaultPlcReadRequestBuilderWithInterceptor(
 		m.GetPlcTagHandler(),
-		NewReader(m.unitIdentifier, m.messageCodec),
+		NewReader(m.unitIdentifier, m.messageCodec, options.WithCustomLogger(m.log)),
 		m.requestInterceptor,
 	)
 }
@@ -157,7 +164,7 @@ func (m *Connection) WriteRequestBuilder() apiModel.PlcWriteRequestBuilder {
 	return spiModel.NewDefaultPlcWriteRequestBuilderWithInterceptor(
 		m.GetPlcTagHandler(),
 		m.GetPlcValueHandler(),
-		NewWriter(m.unitIdentifier, m.messageCodec),
+		NewWriter(m.unitIdentifier, m.messageCodec, options.WithCustomLogger(m.log)),
 		m.requestInterceptor,
 	)
 }

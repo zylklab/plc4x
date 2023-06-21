@@ -21,6 +21,10 @@ package s7
 
 import (
 	"context"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/transactions"
+	"github.com/rs/zerolog"
+	"runtime/debug"
 	"time"
 
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
@@ -30,20 +34,22 @@ import (
 	spiModel "github.com/apache/plc4x/plc4go/spi/model"
 
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 type Writer struct {
 	tpduGenerator *TpduGenerator
 	messageCodec  spi.MessageCodec
-	tm            spi.RequestTransactionManager
+	tm            transactions.RequestTransactionManager
+
+	log zerolog.Logger
 }
 
-func NewWriter(tpduGenerator *TpduGenerator, messageCodec spi.MessageCodec, tm spi.RequestTransactionManager) Writer {
+func NewWriter(tpduGenerator *TpduGenerator, messageCodec spi.MessageCodec, tm transactions.RequestTransactionManager, _options ...options.WithOption) Writer {
 	return Writer{
 		tpduGenerator: tpduGenerator,
 		messageCodec:  messageCodec,
 		tm:            tm,
+		log:           options.ExtractCustomLogger(_options...),
 	}
 }
 
@@ -53,7 +59,7 @@ func (m Writer) Write(ctx context.Context, writeRequest apiModel.PlcWriteRequest
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				result <- spiModel.NewDefaultPlcWriteRequestResult(writeRequest, nil, errors.Errorf("panic-ed %v", err))
+				result <- spiModel.NewDefaultPlcWriteRequestResult(writeRequest, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		parameterItems := make([]readWriteModel.S7VarRequestParameterItem, len(writeRequest.GetTagNames()))
@@ -84,7 +90,7 @@ func (m Writer) Write(ctx context.Context, writeRequest apiModel.PlcWriteRequest
 		)
 
 		// Assemble the finished paket
-		log.Trace().Msg("Assemble paket")
+		m.log.Trace().Msg("Assemble paket")
 		// TODO: why do we use a uint16 above and the cotp a uint8?
 		tpktPacket := readWriteModel.NewTPKTPacket(
 			readWriteModel.NewCOTPPacketData(
@@ -98,7 +104,7 @@ func (m Writer) Write(ctx context.Context, writeRequest apiModel.PlcWriteRequest
 
 		// Start a new request-transaction (Is ended in the response-handler)
 		transaction := m.tm.StartTransaction()
-		transaction.Submit(func(transaction spi.RequestTransaction) {
+		transaction.Submit(func(transaction transactions.RequestTransaction) {
 			// Send the  over the wire
 			if err := m.messageCodec.SendRequest(ctx, tpktPacket, func(message spi.Message) bool {
 				tpktPacket, ok := message.(readWriteModel.TPKTPacketExactly)
@@ -116,12 +122,12 @@ func (m Writer) Write(ctx context.Context, writeRequest apiModel.PlcWriteRequest
 				return payload.GetTpduReference() == tpduId
 			}, func(message spi.Message) error {
 				// Convert the response into an
-				log.Trace().Msg("convert response to ")
+				m.log.Trace().Msg("convert response to ")
 				tpktPacket := message.(readWriteModel.TPKTPacket)
 				cotpPacketData := tpktPacket.GetPayload().(readWriteModel.COTPPacketData)
 				payload := cotpPacketData.GetPayload()
 				// Convert the s7 response into a PLC4X response
-				log.Trace().Msg("convert response to PLC4X response")
+				m.log.Trace().Msg("convert response to PLC4X response")
 				readResponse, err := m.ToPlc4xWriteResponse(payload, writeRequest)
 
 				if err != nil {
@@ -144,7 +150,9 @@ func (m Writer) Write(ctx context.Context, writeRequest apiModel.PlcWriteRequest
 				return transaction.EndRequest()
 			}, time.Second*1); err != nil {
 				result <- spiModel.NewDefaultPlcWriteRequestResult(writeRequest, nil, errors.Wrap(err, "error sending message"))
-				_ = transaction.EndRequest()
+				if err := transaction.FailRequest(errors.Errorf("timeout after %s", 1*time.Second)); err != nil {
+					m.log.Debug().Err(err).Msg("Error failing request")
+				}
 			}
 		})
 	}()
@@ -170,15 +178,15 @@ func (m Writer) ToPlc4xWriteResponse(response readWriteModel.S7Message, writeReq
 	if (errorClass != 0) || (errorCode != 0) {
 		// This is usually the case if PUT/GET wasn't enabled on the PLC
 		if (errorClass == 129) && (errorCode == 4) {
-			log.Warn().Msg("Got an error response from the PLC. This particular response code usually indicates " +
+			m.log.Warn().Msg("Got an error response from the PLC. This particular response code usually indicates " +
 				"that PUT/GET is not enabled on the PLC.")
 			for _, tagName := range writeRequest.GetTagNames() {
 				responseCodes[tagName] = apiModel.PlcResponseCode_ACCESS_DENIED
 			}
-			log.Trace().Msg("Returning the response")
+			m.log.Trace().Msg("Returning the response")
 			return spiModel.NewDefaultPlcWriteResponse(writeRequest, responseCodes), nil
 		} else {
-			log.Warn().Msgf("Got an unknown error response from the PLC. Error Class: %d, Error Code %d. "+
+			m.log.Warn().Msgf("Got an unknown error response from the PLC. Error Class: %d, Error Code %d. "+
 				"We probably need to implement explicit handling for this, so please file a bug-report "+
 				"on https://issues.apache.org/jira/projects/PLC4X and ideally attach a WireShark dump "+
 				"containing a capture of the communication.",
@@ -206,12 +214,12 @@ func (m Writer) ToPlc4xWriteResponse(response readWriteModel.S7Message, writeReq
 
 		responseCode := decodeResponseCode(payloadItem.GetReturnCode())
 		// Decode the data according to the information from the request
-		log.Trace().Msg("decode data")
+		m.log.Trace().Msg("decode data")
 		responseCodes[tagName] = responseCode
 	}
 
 	// Return the response
-	log.Trace().Msg("Returning the response")
+	m.log.Trace().Msg("Returning the response")
 	return spiModel.NewDefaultPlcWriteResponse(writeRequest, responseCodes), nil
 }
 

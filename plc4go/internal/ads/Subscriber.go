@@ -21,6 +21,8 @@ package ads
 
 import (
 	"context"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"runtime/debug"
 	"time"
 
 	dirverModel "github.com/apache/plc4x/plc4go/internal/ads/model"
@@ -29,7 +31,6 @@ import (
 	spiModel "github.com/apache/plc4x/plc4go/spi/model"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 func (m *Connection) SubscriptionRequestBuilder() apiModel.PlcSubscriptionRequestBuilder {
@@ -73,12 +74,14 @@ func (m *Connection) Subscribe(ctx context.Context, subscriptionRequest apiModel
 		subscriptionType := defaultSubscriptionRequest.GetType(tagName)
 		interval := defaultSubscriptionRequest.GetInterval(tagName)
 		preRegisteredConsumers := defaultSubscriptionRequest.GetPreRegisteredConsumers(tagName)
-		subSubscriptionRequests[tagName] = spiModel.NewDefaultPlcSubscriptionRequest(m,
+		subSubscriptionRequests[tagName] = spiModel.NewDefaultPlcSubscriptionRequest(
+			m,
 			[]string{tagName},
 			map[string]apiModel.PlcTag{tagName: directTag},
 			map[string]spiModel.SubscriptionType{tagName: subscriptionType},
 			map[string]time.Duration{tagName: interval},
-			map[string][]apiModel.PlcSubscriptionEventConsumer{tagName: preRegisteredConsumers})
+			map[string][]apiModel.PlcSubscriptionEventConsumer{tagName: preRegisteredConsumers},
+		)
 	}
 
 	// If this is a single item request, we can take a shortcut.
@@ -99,7 +102,7 @@ func (m *Connection) Subscribe(ctx context.Context, subscriptionRequest apiModel
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Error().Msgf("panic-ed %v", err)
+				m.log.Error().Msgf("panic-ed %v. Stack: %s", err, debug.Stack())
 			}
 		}()
 		// Iterate over all sub-results
@@ -128,7 +131,7 @@ func (m *Connection) subscribe(ctx context.Context, subscriptionRequest apiModel
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				responseChan <- spiModel.NewDefaultPlcSubscriptionRequestResult(subscriptionRequest, nil, errors.Errorf("panic-ed %v", err))
+				responseChan <- spiModel.NewDefaultPlcSubscriptionRequestResult(subscriptionRequest, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
 		}()
 		// At this point we are sure to only have single item direct tag requests.
@@ -147,13 +150,14 @@ func (m *Connection) subscribe(ctx context.Context, subscriptionRequest apiModel
 			)
 		}
 		// Create a new subscription handle.
-		subscriptionHandle := dirverModel.NewAdsSubscriptionHandle(m, tagName, directTag)
+		subscriptionHandle := dirverModel.NewAdsSubscriptionHandle(m, tagName, directTag, options.WithCustomLogger(m.log))
 		responseChan <- spiModel.NewDefaultPlcSubscriptionRequestResult(
 			subscriptionRequest,
 			spiModel.NewDefaultPlcSubscriptionResponse(
 				subscriptionRequest,
 				map[string]apiModel.PlcResponseCode{tagName: apiModel.PlcResponseCode_OK},
 				map[string]apiModel.PlcSubscriptionHandle{tagName: subscriptionHandle},
+				options.WithCustomLogger(m.log),
 			),
 			nil,
 		)
@@ -165,19 +169,19 @@ func (m *Connection) subscribe(ctx context.Context, subscriptionRequest apiModel
 
 func (m *Connection) processSubscriptionResponses(_ context.Context, subscriptionRequest apiModel.PlcSubscriptionRequest, subscriptionResults map[string]apiModel.PlcSubscriptionRequestResult) apiModel.PlcSubscriptionRequestResult {
 	if len(subscriptionResults) == 1 {
-		log.Debug().Msg("We got only one response, no merging required")
+		m.log.Debug().Msg("We got only one response, no merging required")
 		for tagName := range subscriptionResults {
 			return subscriptionResults[tagName]
 		}
 	}
 
-	log.Trace().Msg("Merging requests")
+	m.log.Trace().Msg("Merging requests")
 	responseCodes := map[string]apiModel.PlcResponseCode{}
 	subscriptionHandles := map[string]apiModel.PlcSubscriptionHandle{}
 	var err error = nil
 	for _, subscriptionResult := range subscriptionResults {
 		if subscriptionResult.GetErr() != nil {
-			log.Debug().Err(subscriptionResult.GetErr()).Msgf("Error during subscription")
+			m.log.Debug().Err(subscriptionResult.GetErr()).Msgf("Error during subscription")
 			if err == nil {
 				// Lazy initialization of multi error
 				err = utils.MultiError{MainError: errors.New("while aggregating results"), Errors: []error{subscriptionResult.GetErr()}}
@@ -187,7 +191,7 @@ func (m *Connection) processSubscriptionResponses(_ context.Context, subscriptio
 			}
 		} else if subscriptionResult.GetResponse() != nil {
 			if len(subscriptionResult.GetResponse().GetRequest().GetTagNames()) > 1 {
-				log.Error().Int("numberOfTags", len(subscriptionResult.GetResponse().GetRequest().GetTagNames())).Msg("We should only get 1")
+				m.log.Error().Int("numberOfTags", len(subscriptionResult.GetResponse().GetRequest().GetTagNames())).Msg("We should only get 1")
 			}
 			for _, tagName := range subscriptionResult.GetResponse().GetRequest().GetTagNames() {
 				handle, err := subscriptionResult.GetResponse().GetSubscriptionHandle(tagName)
@@ -202,7 +206,12 @@ func (m *Connection) processSubscriptionResponses(_ context.Context, subscriptio
 	}
 	return spiModel.NewDefaultPlcSubscriptionRequestResult(
 		subscriptionRequest,
-		spiModel.NewDefaultPlcSubscriptionResponse(subscriptionRequest, responseCodes, subscriptionHandles),
+		spiModel.NewDefaultPlcSubscriptionResponse(
+			subscriptionRequest,
+			responseCodes,
+			subscriptionHandles,
+			options.WithCustomLogger(m.log),
+		),
 		err,
 	)
 }

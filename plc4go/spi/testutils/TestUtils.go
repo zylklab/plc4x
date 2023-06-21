@@ -20,18 +20,30 @@
 package testutils
 
 import (
-	"github.com/ajankovic/xdiff"
-	"github.com/ajankovic/xdiff/parser"
-	"github.com/apache/plc4x/plc4go/spi/utils"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/assert"
+	"context"
 	"os"
+	"runtime"
+	"runtime/debug"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/pool"
+	"github.com/apache/plc4x/plc4go/spi/transactions"
+	"github.com/apache/plc4x/plc4go/spi/utils"
+
+	"github.com/ajankovic/xdiff"
+	"github.com/ajankovic/xdiff/parser"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/assert"
 )
 
 func CompareResults(t *testing.T, actualString []byte, referenceString []byte) error {
+	localLog := ProduceTestingLogger(t)
 	// Now parse the xml strings of the actual and the reference in xdiff's dom
 	p := parser.New()
 	actual, err := p.ParseBytes(actualString)
@@ -54,7 +66,7 @@ func CompareResults(t *testing.T, actualString []byte, referenceString []byte) e
 	cleanDiff := make([]xdiff.Delta, 0)
 	for _, delta := range diff {
 		if delta.Operation == xdiff.Delete && delta.Subject.Value == nil || delta.Operation == xdiff.Insert && delta.Subject.Value == nil {
-			log.Info().Msgf("We ignore empty elements which should be deleted %v", delta)
+			localLog.Info().Msgf("We ignore empty elements which should be deleted %v", delta)
 			continue
 		}
 		// Workaround for different precisions on float
@@ -64,7 +76,7 @@ func CompareResults(t *testing.T, actualString []byte, referenceString []byte) e
 			string(delta.Object.Parent.FirstChild.Name) == "dataType" &&
 			string(delta.Object.Parent.FirstChild.Value) == "float" {
 			if strings.Contains(string(delta.Subject.Value), string(delta.Object.Value)) || strings.Contains(string(delta.Object.Value), string(delta.Subject.Value)) {
-				log.Info().Msgf("We ignore precision diffs %v", delta)
+				localLog.Info().Msgf("We ignore precision diffs %v", delta)
 				continue
 			}
 		}
@@ -74,7 +86,7 @@ func CompareResults(t *testing.T, actualString []byte, referenceString []byte) e
 			string(delta.Object.Parent.FirstChild.Name) == "dataType" &&
 			string(delta.Object.Parent.FirstChild.Value) == "string" {
 			if diff, err := xdiff.Compare(delta.Subject, delta.Object); diff == nil && err == nil {
-				log.Info().Msgf("We ignore newline diffs %v", delta)
+				localLog.Info().Msgf("We ignore newline diffs %v", delta)
 				continue
 			}
 		}
@@ -86,7 +98,7 @@ func CompareResults(t *testing.T, actualString []byte, referenceString []byte) e
 		return errors.Wrap(err, "Error outputting results")
 	}
 	if len(cleanDiff) <= 0 {
-		log.Warn().Msg("We only found non relevant changes")
+		localLog.Warn().Msg("We only found non relevant changes")
 		return nil
 	}
 
@@ -97,4 +109,125 @@ func CompareResults(t *testing.T, actualString []byte, referenceString []byte) e
 	boxSideBySide := asciiBoxWriter.BoxSideBySide(expectedBox, gotBox)
 	_ = boxSideBySide // TODO: xml too distorted, we need a don't center option
 	return errors.New("there were differences: Expected: \n" + string(referenceString) + "\nBut Got: \n" + string(actualString))
+}
+
+// TestContext produces a context which is getting cleaned up by testing.T
+func TestContext(t *testing.T) context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	ctx = ProduceTestingLogger(t).WithContext(ctx)
+	return ctx
+}
+
+var (
+	highLogPrecision                    bool
+	passLoggerToModel                   bool
+	receiveTimeout                      time.Duration
+	traceTransactionManagerWorkers      bool
+	traceTransactionManagerTransactions bool
+	traceDefaultMessageCodecWorker      bool
+	traceExecutorWorkers                bool
+)
+
+func init() {
+	getOrLeaveBool("PLC4X_TEST_HIGH_TEST_LOG_PRECISION", &highLogPrecision)
+	if highLogPrecision {
+		zerolog.TimeFieldFormat = time.RFC3339Nano
+	}
+	getOrLeaveBool("PLC4X_TEST_PASS_LOGGER_TO_MODEL", &passLoggerToModel)
+	receiveTimeout = 3 * time.Second
+	getOrLeaveDuration("PLC4X_TEST_RECEIVE_TIMEOUT_MS", &receiveTimeout)
+	getOrLeaveBool("PLC4X_TEST_TRACE_TRANSACTION_MANAGER_WORKERS", &traceTransactionManagerWorkers)
+	getOrLeaveBool("PLC4X_TEST_TRACE_TRANSACTION_MANAGER_TRANSACTIONS", &traceTransactionManagerTransactions)
+	getOrLeaveBool("PLC4X_TEST_TRACE_MESSAGE_CODEC_WORKER", &traceDefaultMessageCodecWorker)
+	getOrLeaveBool("PLC4X_TEST_TRACE_EXECUTOR_WORKERS", &traceExecutorWorkers)
+}
+
+func getOrLeaveBool(key string, setting *bool) {
+	if env, ok := os.LookupEnv(key); ok {
+		*setting = strings.EqualFold(env, "true")
+	}
+}
+
+func getOrLeaveDuration(key string, setting *time.Duration) {
+	if env, ok := os.LookupEnv(key); ok && env != "" {
+		parsedDuration, err := strconv.ParseInt(env, 10, 64)
+		if err != nil {
+			panic(err)
+		}
+		*setting = time.Duration(parsedDuration) * time.Millisecond
+	}
+}
+
+// ProduceTestingLogger produces a logger which redirects to testing.T
+func ProduceTestingLogger(t *testing.T) zerolog.Logger {
+	logger := zerolog.New(
+		zerolog.NewConsoleWriter(
+			zerolog.ConsoleTestWriter(t),
+			func(w *zerolog.ConsoleWriter) {
+				// TODO: this is really an issue with go-junit-report not sanitizing output before dumping into xml...
+				onJenkins := os.Getenv("JENKINS_URL") != ""
+				onGithubAction := os.Getenv("GITHUB_ACTIONS") != ""
+				onCI := os.Getenv("CI") != ""
+				if onJenkins || onGithubAction || onCI {
+					w.NoColor = true
+				}
+
+			},
+			func(w *zerolog.ConsoleWriter) {
+				if highLogPrecision {
+					w.TimeFormat = time.StampNano
+				}
+			},
+		),
+	)
+	if highLogPrecision {
+		logger = logger.With().Timestamp().Logger()
+	}
+	return logger
+}
+
+// EnrichOptionsWithOptionsForTesting appends options useful for testing to config.WithOption s
+func EnrichOptionsWithOptionsForTesting(t *testing.T, _options ...options.WithOption) []options.WithOption {
+	if extractedTraceWorkers, found := options.ExtractTracerWorkers(_options...); found {
+		traceExecutorWorkers = extractedTraceWorkers
+	}
+	_options = append(_options,
+		options.WithCustomLogger(ProduceTestingLogger(t)),
+		options.WithPassLoggerToModel(passLoggerToModel),
+		options.WithReceiveTimeout(receiveTimeout),
+		options.WithTraceTransactionManagerWorkers(traceTransactionManagerWorkers),
+		options.WithTraceTransactionManagerTransactions(traceTransactionManagerTransactions),
+		options.WithTraceDefaultMessageCodecWorker(traceDefaultMessageCodecWorker),
+		options.WithExecutorOptionTracerWorkers(traceExecutorWorkers),
+	)
+	// We always create a custom executor to ensure shared executor for transaction manager is not used for tests
+	testSharedExecutorInstance := pool.NewFixedSizeExecutor(
+		runtime.NumCPU(),
+		100,
+		_options...,
+	)
+	testSharedExecutorInstance.Start()
+	t.Cleanup(testSharedExecutorInstance.Stop)
+	_options = append(_options,
+		transactions.WithCustomExecutor(testSharedExecutorInstance),
+	)
+	return _options
+}
+
+type _explodingGlobalLogger struct {
+	hardExplode bool
+}
+
+func (e _explodingGlobalLogger) Write(_ []byte) (_ int, err error) {
+	if e.hardExplode {
+		debug.PrintStack()
+		panic("found a global log usage")
+	}
+	return 0, errors.New("found a global log usage")
+}
+
+// ExplodingGlobalLogger Useful to find unredirected logs
+func ExplodingGlobalLogger(hardExplode bool) {
+	log.Logger = zerolog.New(_explodingGlobalLogger{hardExplode: hardExplode})
 }

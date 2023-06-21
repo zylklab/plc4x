@@ -21,6 +21,8 @@ package modbus
 
 import (
 	"context"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/rs/zerolog"
 	"math"
 	"sync/atomic"
 	"time"
@@ -31,20 +33,22 @@ import (
 	spiModel "github.com/apache/plc4x/plc4go/spi/model"
 
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 type Writer struct {
 	transactionIdentifier int32
 	unitIdentifier        uint8
 	messageCodec          spi.MessageCodec
+
+	log zerolog.Logger
 }
 
-func NewWriter(unitIdentifier uint8, messageCodec spi.MessageCodec) Writer {
+func NewWriter(unitIdentifier uint8, messageCodec spi.MessageCodec, _options ...options.WithOption) Writer {
 	return Writer{
 		transactionIdentifier: 0,
 		unitIdentifier:        unitIdentifier,
 		messageCodec:          messageCodec,
+		log:                   options.ExtractCustomLogger(_options...),
 	}
 }
 
@@ -61,7 +65,7 @@ func (m Writer) Write(ctx context.Context, writeRequest apiModel.PlcWriteRequest
 
 		// Get the modbus tag instance from the request
 		tag := writeRequest.GetTag(tagName)
-		modbusTag, err := CastToModbusTagFromPlcTag(tag)
+		modbusTag, err := castToModbusTagFromPlcTag(tag)
 		if err != nil {
 			result <- spiModel.NewDefaultPlcWriteRequestResult(writeRequest, nil, errors.Wrap(err, "invalid tag item type"))
 			return
@@ -186,13 +190,13 @@ func (m Writer) ToPlc4xWriteResponse(requestAdu readWriteModel.ModbusTcpADU, res
 		case readWriteModel.ModbusErrorCode_GATEWAY_TARGET_DEVICE_FAILED_TO_RESPOND:
 			responseCodes[tagName] = apiModel.PlcResponseCode_REMOTE_ERROR
 		default:
-			log.Debug().Msgf("Unmapped exception code %x", resp.GetExceptionCode())
+			m.log.Debug().Msgf("Unmapped exception code %x", resp.GetExceptionCode())
 		}
 	default:
 		return nil, errors.Errorf("unsupported response type %T", resp)
 	}
 
 	// Return the response
-	log.Trace().Msg("Returning the response")
+	m.log.Trace().Msg("Returning the response")
 	return spiModel.NewDefaultPlcWriteResponse(writeRequest, responseCodes), nil
 }

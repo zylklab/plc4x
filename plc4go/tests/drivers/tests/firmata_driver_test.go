@@ -20,15 +20,22 @@
 package tests
 
 import (
+	"github.com/apache/plc4x/plc4go/spi/options"
 	"testing"
 
 	"github.com/apache/plc4x/plc4go/internal/knxnetip"
 	firmataIO "github.com/apache/plc4x/plc4go/protocols/firmata/readwrite"
 	"github.com/apache/plc4x/plc4go/spi/testutils"
-	_ "github.com/apache/plc4x/plc4go/tests/initializetest"
 )
 
 func TestFirmataDriver(t *testing.T) {
 	t.Skip("no testsuite yet")
-	testutils.RunDriverTestsuite(t, knxnetip.NewDriver(), "assets/testing/protocols/firmata/DriverTestsuite.xml", firmataIO.FirmataXmlParserHelper{})
+	withCustomLogger := options.WithCustomLogger(testutils.ProduceTestingLogger(t))
+	testutils.RunDriverTestsuite(
+		t,
+		knxnetip.NewDriver(withCustomLogger),
+		"assets/testing/protocols/firmata/DriverTestsuite.xml",
+		firmataIO.FirmataXmlParserHelper{},
+		withCustomLogger,
+	)
 }
