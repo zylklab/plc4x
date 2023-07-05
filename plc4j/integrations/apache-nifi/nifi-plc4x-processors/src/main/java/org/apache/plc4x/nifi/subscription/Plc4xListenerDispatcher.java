@@ -20,7 +20,6 @@ package org.apache.plc4x.nifi.subscription;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -32,10 +31,12 @@ import org.apache.plc4x.java.api.PlcConnection;
 import org.apache.plc4x.java.api.PlcConnectionManager;
 import org.apache.plc4x.java.api.exceptions.PlcConnectionException;
 import org.apache.plc4x.java.api.exceptions.PlcProtocolException;
-import org.apache.plc4x.java.api.messages.PlcSubscriptionEvent;
 import org.apache.plc4x.java.api.messages.PlcSubscriptionRequest;
 import org.apache.plc4x.java.api.messages.PlcSubscriptionResponse;
+import org.apache.plc4x.java.api.messages.PlcUnsubscriptionRequest;
+import org.apache.plc4x.java.api.messages.PlcUnsubscriptionResponse;
 import org.apache.plc4x.java.api.model.PlcSubscriptionHandle;
+import org.apache.plc4x.java.spi.messages.DefaultPlcSubscriptionEvent;
 
 public class Plc4xListenerDispatcher implements Runnable {
 
@@ -44,24 +45,28 @@ public class Plc4xListenerDispatcher implements Runnable {
     private Long cyclingPollingInterval;
     private ComponentLog logger;
     private boolean running = false;
-    private BlockingQueue<PlcSubscriptionEvent> events;
+    private LinkedBlockingQueue<Plc4xSubscriptionEvent> events;
     private PlcSubscriptionResponse subscriptionResponse;
     private PlcConnection connection;
     private Long timeout;
-    private BlockingQueue<PlcSubscriptionEvent> queuedEvents;
+    private LinkedBlockingQueue<Plc4xSubscriptionEvent> queuedEvents;
+    private Plc4xSubscriptionResponseType responseHandleType;
+    private String plcConnectionString;
+    private Map<String, String> tags;
 
     public boolean isRunning() {
         return running;
     }
 
-    public Plc4xListenerDispatcher(Long timeout, Plc4xSubscriptionType subscriptionType, Long cyclingPollingInterval, ComponentLog logger, final BlockingQueue<PlcSubscriptionEvent> events) {
+    public Plc4xListenerDispatcher(Long timeout, Plc4xSubscriptionType subscriptionType, Long cyclingPollingInterval, ComponentLog logger, final LinkedBlockingQueue<Plc4xSubscriptionEvent> events, Plc4xSubscriptionResponseType responseHandleType, PlcConnectionManager connectionManager) {
         this.timeout = timeout;
         this.subscriptionType = subscriptionType;
         this.cyclingPollingInterval = cyclingPollingInterval;
         this.logger = logger;
         this.events = events;
         this.queuedEvents = new LinkedBlockingQueue<>();
-        this.connectionManager = new DefaultPlcDriverManager();
+        this.connectionManager = connectionManager;
+        this.responseHandleType = responseHandleType;
     }
 
     /**
@@ -73,7 +78,14 @@ public class Plc4xListenerDispatcher implements Runnable {
      * @throws Exception
      * @throws PlcConnectionException
      */
-    public void open(String plcConnectionString, Map<String, String> tags) throws PlcConnectionException, Exception {
+    public void open(String plcConnectionString, Map<String, String> tags) throws Exception {
+        this.plcConnectionString = plcConnectionString;
+        this.tags = tags;
+        open();
+    }
+
+
+    private void open() throws Exception {
         connection = connectionManager.getConnection(plcConnectionString);
 
         if (!connection.getMetadata().canSubscribe()) {
@@ -110,13 +122,14 @@ public class Plc4xListenerDispatcher implements Runnable {
             throw (e instanceof ProcessException) ? (ProcessException) e : new ProcessException(e);
         }
 
-        for (PlcSubscriptionHandle handle : subscriptionResponse.getSubscriptionHandles()) {
-            handle.register(plcSubscriptionEvent -> {
-                queuedEvents.offer(plcSubscriptionEvent);
-            });
+        for (String tag : tags.keySet()){
+            PlcSubscriptionHandle handle = subscriptionResponse.getSubscriptionHandle(tag);
+            handle.register(plcSubscriptionEvent -> queuedEvents.offer(new Plc4xSubscriptionEvent(tag, (DefaultPlcSubscriptionEvent) plcSubscriptionEvent, tags, responseHandleType)));
         }
 
         running = true;
+        
+        connection.close();
     }
 
     /**
@@ -125,9 +138,16 @@ public class Plc4xListenerDispatcher implements Runnable {
     public void close() {
         running = false;
         try {
+            logger.info("Sending unsuscribe request to {} with tags {}", plcConnectionString, tags);
+            
+            connection = connectionManager.getConnection(plcConnectionString);
+            PlcUnsubscriptionRequest.Builder builder = connection.unsubscriptionRequestBuilder();
+            PlcUnsubscriptionRequest unsubscription = builder.addHandles(subscriptionResponse.getSubscriptionHandles()).build();
+            
+            unsubscription.execute().get(timeout, TimeUnit.MILLISECONDS);
             connection.close();
         } catch (Exception e) {
-            logger.debug(e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -139,13 +159,16 @@ public class Plc4xListenerDispatcher implements Runnable {
         while (running) {
             try {
                 // If there is a new event before timeout save it, else reopen the connection
-                PlcSubscriptionEvent event = queuedEvents.poll(timeout, TimeUnit.MILLISECONDS);
+                Plc4xSubscriptionEvent event = queuedEvents.poll(timeout, TimeUnit.MILLISECONDS);
                 if (event != null){
                     events.put(event);
                 } else {
                     close();
                 }
             } catch (InterruptedException e){ 
+                close();
+            } catch (Exception e) {
+                e.printStackTrace();
                 close();
             }
         }

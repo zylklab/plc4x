@@ -62,10 +62,7 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
 
     protected final SchemaCache schemaCache = new SchemaCache(0);
 
-    private final PlcConnectionManager connectionManager = CachedPlcConnectionManager.getBuilder()
-        .withMaxLeaseTime(Duration.ofSeconds(1000L))
-        .withMaxWaitTime(Duration.ofSeconds(500L))
-        .build();
+    private PlcConnectionManager connectionManager;
 
     protected static final List<AllowableValue> addressAccessStrategy = Collections.unmodifiableList(Arrays.asList(
         AddressesAccessUtils.ADDRESS_PROPERTY,
@@ -167,6 +164,10 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
 
     @OnScheduled
     public void onScheduled(final ProcessContext context) {
+        connectionManager = CachedPlcConnectionManager.getBuilder()
+            .withMaxLeaseTime(Duration.ofSeconds(1000L))
+            .withMaxWaitTime(Duration.ofSeconds(500L))
+            .build();
 		connectionString = context.getProperty(PLC_CONNECTION_STRING.getName()).getValue();
         schemaCache.restartCache(context.getProperty(PLC_SCHEMA_CACHE_SIZE).asInteger());
         debugEnabled = getLogger().isDebugEnabled();

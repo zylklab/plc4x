@@ -37,6 +37,7 @@ import org.junit.jupiter.api.Test;
 public class SchemaCacheTest {
 
     private static final SchemaCache schemaCache = new SchemaCache(0);
+    private static final SchemaCache schemaCache2 = new SchemaCache(0);
     private static final List<RecordSchema> schemas = new ArrayList<>();
     private static final List<List<PlcTag>> tags = new ArrayList<>();
     private static final List<Map<String, String>> addresses = new ArrayList<>();
@@ -108,8 +109,11 @@ public class SchemaCacheTest {
     @BeforeEach
     public void testCacheSize() {
         schemaCache.restartCache(4);
+        schemaCache2.restartCache(4);
         assert schemaCache.getCacheSize() == 4;
         assert schemaCache.getNextSchemaPosition() == 0;
+        assert schemaCache2.getCacheSize() == 4;
+        assert schemaCache2.getNextSchemaPosition() == 0;
     }
 
     // In this test we add 4 schemas and try to add schema 0 again. It should not be added.
@@ -142,6 +146,21 @@ public class SchemaCacheTest {
         for (int i=1; i<5; i++){
             assert schemaCache.retrieveSchema(addresses.get(i)) == schemas.get(i);
         }
+    }
+
+    // In this test check schema overriding
+    @Test
+    public void testSchemasNonStatic() {
+        schemaCache.addSchema(addresses.get(0), tagNames.get(0), tags.get(0), schemas.get(0));
+        schemaCache2.addSchema(addresses.get(1), tagNames.get(1), tags.get(1), schemas.get(1));
+         
+        // First schema should not be present in the cache
+        assert schemaCache.retrieveSchema(addresses.get(0)) != null;
+        assert schemaCache2.retrieveSchema(addresses.get(0)) == null;
+        assert schemaCache2.retrieveSchema(addresses.get(1)) != null;
+        assert schemaCache.retrieveSchema(addresses.get(1)) == null;
+
+        assert schemaCache.retrieveSchema(addresses.get(0)) != schemaCache2.retrieveSchema(addresses.get(1));
     }
 
 

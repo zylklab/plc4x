@@ -215,6 +215,5 @@ public class Plc4xSinkRecordProcessor extends BasePlc4xProcessor {
 		}
 
 		session.transfer(resultSetFF, BasePlc4xProcessor.REL_SUCCESS);
-		session.commitAsync();
 	}
 }
