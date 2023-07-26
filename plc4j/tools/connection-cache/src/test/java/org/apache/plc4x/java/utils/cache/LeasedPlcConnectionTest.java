@@ -32,7 +32,40 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class LeasedPlcConnectionTest {
-    
+
+    /**
+     * This test tries to read and encounters any Exception. The connection should be marked as invalidated
+     * to be removed from the cache.
+     */
+    @Test
+    public void testExceptionInvalidatesConnection() {
+        PlcConnection innerConnection = Mockito.mock(PlcConnection.class);
+        PlcReadRequest.Builder builder = Mockito.mock(PlcReadRequest.Builder.class);
+        PlcReadRequest innerRequest = Mockito.mock(PlcReadRequest.class);
+        ConnectionContainer container = Mockito.mock(ConnectionContainer.class);
+
+        Mockito.when(innerRequest.execute()).thenReturn(CompletableFuture.failedFuture(new Exception()));
+
+
+        Mockito.when(builder.addTagAddress(any(), any())).thenReturn(builder);
+        Mockito.when(builder.build()).thenReturn(innerRequest);
+        Mockito.when(innerConnection.readRequestBuilder()).thenReturn(builder);
+
+        
+        try (final LeasedPlcConnection connection = new LeasedPlcConnection(container, innerConnection, Duration.ofMinutes(1000L))) {
+            PlcReadRequest request = connection.readRequestBuilder().build();
+
+
+            try {
+                request.execute().get(50, TimeUnit.MILLISECONDS);
+                Assertions.fail("Was expecting an exception here");
+            } catch (Exception e) { }
+
+            // After the timeout the connection should be invalidated
+            Assertions.assertTrue(connection.isInvalidateConnection());
+        }
+    }
+
     /**
      * This test tries to read and encounters a TimeoutException. The connection should be marked as invalidated
      * to be removed from the cache.
@@ -74,5 +107,5 @@ public class LeasedPlcConnectionTest {
             Assertions.assertTrue(connection.isInvalidateConnection());
         }
     }
-
+    
 }
