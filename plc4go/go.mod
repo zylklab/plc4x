@@ -26,7 +26,8 @@ require (
 	github.com/ajankovic/xdiff v0.0.1
 	github.com/fatih/color v1.15.0
 	github.com/gdamore/tcell/v2 v2.6.0
-	github.com/gopacket/gopacket v1.1.0
+	github.com/google/uuid v1.3.0
+	github.com/gopacket/gopacket v1.1.1
 	github.com/icza/bitio v1.1.0
 	github.com/jacobsa/go-serial v0.0.0-20180131005756-15cf729a72d4
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
@@ -42,8 +43,8 @@ require (
 	github.com/subchen/go-xmldom v1.1.2
 	github.com/viney-shih/go-lock v1.1.2
 	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb
-	golang.org/x/net v0.11.0
-	golang.org/x/tools v0.10.0
+	golang.org/x/net v0.12.0
+	golang.org/x/tools v0.11.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -70,10 +71,10 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
-	golang.org/x/mod v0.11.0 // indirect
+	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.9.0 // indirect
-	golang.org/x/term v0.9.0 // indirect
-	golang.org/x/text v0.10.0 // indirect
+	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/term v0.10.0 // indirect
+	golang.org/x/text v0.11.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )

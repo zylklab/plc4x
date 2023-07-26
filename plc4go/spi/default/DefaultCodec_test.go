@@ -22,17 +22,19 @@ package _default
 import (
 	"context"
 	"fmt"
-	"github.com/apache/plc4x/plc4go/spi/testutils"
-	"github.com/rs/zerolog/log"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/apache/plc4x/plc4go/spi"
 	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/testutils"
 	"github.com/apache/plc4x/plc4go/spi/transports"
 	"github.com/apache/plc4x/plc4go/spi/transports/test"
-	"github.com/pkg/errors"
 
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -219,7 +221,7 @@ func TestDefaultExpectation_String(t *testing.T) {
 	}{
 		{
 			name: "string it",
-			want: "Expectation(expires at 0001-01-01 00:00:00 +0000 UTC)",
+			want: "Expectation 00000000-0000-0000-0000-000000000000 (expires at 0001-01-01 00:00:00 +0000 UTC)",
 		},
 	}
 	for _, tt := range tests {
@@ -366,6 +368,7 @@ func Test_defaultCodec_Connect(t *testing.T) {
 				defaultIncomingMessageChannel: tt.fields.defaultIncomingMessageChannel,
 				expectations:                  tt.fields.expectations,
 				customMessageHandling:         tt.fields.customMessageHandling,
+				log:                           testutils.ProduceTestingLogger(t),
 			}
 			tt.wantErr(t, m.Connect(), fmt.Sprintf("Connect()"))
 		})
@@ -432,6 +435,7 @@ func Test_defaultCodec_ConnectWithContext(t *testing.T) {
 				defaultIncomingMessageChannel: tt.fields.defaultIncomingMessageChannel,
 				expectations:                  tt.fields.expectations,
 				customMessageHandling:         tt.fields.customMessageHandling,
+				log:                           testutils.ProduceTestingLogger(t),
 			}
 			tt.wantErr(t, m.ConnectWithContext(tt.args.ctx), fmt.Sprintf("ConnectWithContext(%v)", tt.args.ctx))
 		})
@@ -482,6 +486,7 @@ func Test_defaultCodec_Disconnect(t *testing.T) {
 				defaultIncomingMessageChannel: tt.fields.defaultIncomingMessageChannel,
 				expectations:                  tt.fields.expectations,
 				customMessageHandling:         tt.fields.customMessageHandling,
+				log:                           testutils.ProduceTestingLogger(t),
 			}
 			if tt.manipulator != nil {
 				tt.manipulator(t, c)
@@ -533,6 +538,7 @@ func Test_defaultCodec_Expect(t *testing.T) {
 				defaultIncomingMessageChannel: tt.fields.defaultIncomingMessageChannel,
 				expectations:                  tt.fields.expectations,
 				customMessageHandling:         tt.fields.customMessageHandling,
+				log:                           testutils.ProduceTestingLogger(t),
 			}
 			tt.wantErr(t, m.Expect(tt.args.ctx, tt.args.acceptsMessage, tt.args.handleMessage, tt.args.handleError, tt.args.ttl), fmt.Sprintf("Expect(%v, func(), func(), func(), %v)", tt.args.ctx, tt.args.ttl))
 		})
@@ -565,6 +571,7 @@ func Test_defaultCodec_GetDefaultIncomingMessageChannel(t *testing.T) {
 				defaultIncomingMessageChannel: tt.fields.defaultIncomingMessageChannel,
 				expectations:                  tt.fields.expectations,
 				customMessageHandling:         tt.fields.customMessageHandling,
+				log:                           testutils.ProduceTestingLogger(t),
 			}
 			assert.Equalf(t, tt.want, m.GetDefaultIncomingMessageChannel(), "GetDefaultIncomingMessageChannel()")
 		})
@@ -597,6 +604,7 @@ func Test_defaultCodec_GetTransportInstance(t *testing.T) {
 				defaultIncomingMessageChannel: tt.fields.defaultIncomingMessageChannel,
 				expectations:                  tt.fields.expectations,
 				customMessageHandling:         tt.fields.customMessageHandling,
+				log:                           testutils.ProduceTestingLogger(t),
 			}
 			assert.Equalf(t, tt.want, m.GetTransportInstance(), "GetTransportInstance()")
 		})
@@ -619,6 +627,7 @@ func Test_defaultCodec_HandleMessages(t *testing.T) {
 		name   string
 		fields fields
 		args   args
+		setup  func(t *testing.T, fields *fields, args *args)
 		want   bool
 	}{
 		{
@@ -629,11 +638,13 @@ func Test_defaultCodec_HandleMessages(t *testing.T) {
 			fields: fields{
 				expectations: []spi.Expectation{
 					&defaultExpectation{ // doesn't accept
+						uuid: uuid.New(),
 						AcceptsMessage: func(_ spi.Message) bool {
 							return false
 						},
 					},
 					&defaultExpectation{ // accepts but fails
+						uuid: uuid.New(),
 						AcceptsMessage: func(_ spi.Message) bool {
 							return true
 						},
@@ -645,6 +656,7 @@ func Test_defaultCodec_HandleMessages(t *testing.T) {
 						},
 					},
 					&defaultExpectation{ // accepts but fails and fails to handle the error
+						uuid: uuid.New(),
 						AcceptsMessage: func(_ spi.Message) bool {
 							return true
 						},
@@ -656,6 +668,7 @@ func Test_defaultCodec_HandleMessages(t *testing.T) {
 						},
 					},
 					&defaultExpectation{ // accepts
+						uuid: uuid.New(),
 						AcceptsMessage: func(_ spi.Message) bool {
 							return true
 						},
@@ -664,6 +677,7 @@ func Test_defaultCodec_HandleMessages(t *testing.T) {
 						},
 					},
 					&defaultExpectation{ // accepts
+						uuid: uuid.New(),
 						AcceptsMessage: func(_ spi.Message) bool {
 							return true
 						},
@@ -672,6 +686,25 @@ func Test_defaultCodec_HandleMessages(t *testing.T) {
 						},
 					},
 					&defaultExpectation{ // accepts
+						uuid: uuid.New(),
+						AcceptsMessage: func(_ spi.Message) bool {
+							return true
+						},
+						HandleMessage: func(_ spi.Message) error {
+							return nil
+						},
+					},
+					&defaultExpectation{ // not accept
+						uuid: uuid.New(),
+						AcceptsMessage: func(_ spi.Message) bool {
+							return false
+						},
+						HandleMessage: func(_ spi.Message) error {
+							return nil
+						},
+					},
+					&defaultExpectation{ // accepts
+						uuid: uuid.New(),
 						AcceptsMessage: func(_ spi.Message) bool {
 							return true
 						},
@@ -683,15 +716,122 @@ func Test_defaultCodec_HandleMessages(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "handle some (ensure everyone get's it)",
+			setup: func(t *testing.T, fields *fields, args *args) {
+				accept1 := atomic.Bool{}
+				accept2 := atomic.Bool{}
+				accept3 := atomic.Bool{}
+				accept4 := atomic.Bool{}
+				accept5 := atomic.Bool{}
+				accept6 := atomic.Bool{}
+				t.Cleanup(func() {
+					assert.True(t, accept1.Load(), "accept1 not called")
+					assert.True(t, accept2.Load(), "accept2 not called")
+					assert.True(t, accept3.Load(), "accept3 not called")
+					assert.True(t, accept4.Load(), "accept4 not called")
+					assert.True(t, accept5.Load(), "accept5 not called")
+					assert.True(t, accept6.Load(), "accept6 not called")
+				})
+				fields.expectations = []spi.Expectation{
+					&defaultExpectation{ // doesn't accept
+						uuid: uuid.New(),
+						AcceptsMessage: func(_ spi.Message) bool {
+							return false
+						},
+					},
+					&defaultExpectation{ // accepts but fails // accept1
+						uuid: uuid.New(),
+						AcceptsMessage: func(_ spi.Message) bool {
+							return true
+						},
+						HandleMessage: func(_ spi.Message) error {
+							accept1.Store(true)
+							return errors.New("oh noes")
+						},
+						HandleError: func(err error) error {
+							return nil
+						},
+					},
+					&defaultExpectation{ // accepts but fails and fails to handle the error // accept2
+						uuid: uuid.New(),
+						AcceptsMessage: func(_ spi.Message) bool {
+							return true
+						},
+						HandleMessage: func(_ spi.Message) error {
+							accept2.Store(true)
+							return errors.New("oh noes")
+						},
+						HandleError: func(err error) error {
+							return errors.New("I failed completely")
+						},
+					},
+					&defaultExpectation{ // accepts // accept3
+						uuid: uuid.New(),
+						AcceptsMessage: func(_ spi.Message) bool {
+							return true
+						},
+						HandleMessage: func(_ spi.Message) error {
+							accept3.Store(true)
+							return nil
+						},
+					},
+					&defaultExpectation{ // accepts // accept4
+						uuid: uuid.New(),
+						AcceptsMessage: func(_ spi.Message) bool {
+							return true
+						},
+						HandleMessage: func(_ spi.Message) error {
+							accept4.Store(true)
+							return nil
+						},
+					},
+					&defaultExpectation{ // not accept // accept5
+						uuid: uuid.New(),
+						AcceptsMessage: func(_ spi.Message) bool {
+							return true
+						},
+						HandleMessage: func(_ spi.Message) error {
+							accept5.Store(true)
+							return nil
+						},
+					},
+					&defaultExpectation{ // not accept
+						uuid: uuid.New(),
+						AcceptsMessage: func(_ spi.Message) bool {
+							return false
+						},
+						HandleMessage: func(_ spi.Message) error {
+							return nil
+						},
+					},
+					&defaultExpectation{ // accepts // accept6
+						uuid: uuid.New(),
+						AcceptsMessage: func(_ spi.Message) bool {
+							return true
+						},
+						HandleMessage: func(_ spi.Message) error {
+							accept6.Store(true)
+							return nil
+						},
+					},
+				}
+			},
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				tt.setup(t, &tt.fields, &tt.args)
+			}
 			m := &defaultCodec{
 				DefaultCodecRequirements:      tt.fields.DefaultCodecRequirements,
 				transportInstance:             tt.fields.transportInstance,
 				defaultIncomingMessageChannel: tt.fields.defaultIncomingMessageChannel,
 				expectations:                  tt.fields.expectations,
 				customMessageHandling:         tt.fields.customMessageHandling,
+				log:                           testutils.ProduceTestingLogger(t),
 			}
 			assert.Equalf(t, tt.want, m.HandleMessages(tt.args.message), "HandleMessages(%v)", tt.args.message)
 		})
@@ -724,6 +864,7 @@ func Test_defaultCodec_IsRunning(t *testing.T) {
 				defaultIncomingMessageChannel: tt.fields.defaultIncomingMessageChannel,
 				expectations:                  tt.fields.expectations,
 				customMessageHandling:         tt.fields.customMessageHandling,
+				log:                           testutils.ProduceTestingLogger(t),
 			}
 			assert.Equalf(t, tt.want, m.IsRunning(), "IsRunning()")
 		})
@@ -799,6 +940,7 @@ func Test_defaultCodec_SendRequest(t *testing.T) {
 				defaultIncomingMessageChannel: tt.fields.defaultIncomingMessageChannel,
 				expectations:                  tt.fields.expectations,
 				customMessageHandling:         tt.fields.customMessageHandling,
+				log:                           testutils.ProduceTestingLogger(t),
 			}
 			tt.wantErr(t, m.SendRequest(tt.args.ctx, tt.args.message, tt.args.acceptsMessage, tt.args.handleMessage, tt.args.handleError, tt.args.ttl), fmt.Sprintf("SendRequest(%v, %v, func(), func(), func(), %v)", tt.args.ctx, tt.args.message, tt.args.ttl))
 		})
@@ -821,6 +963,7 @@ func Test_defaultCodec_TimeoutExpectations(t *testing.T) {
 		name   string
 		fields fields
 		args   args
+		setup  func(t *testing.T, fields *fields, args *args)
 	}{
 		{
 			name: "timeout it (no expectations)",
@@ -863,15 +1006,82 @@ func Test_defaultCodec_TimeoutExpectations(t *testing.T) {
 			},
 			args: args{now: time.Time{}.Add(2 * time.Hour)},
 		},
+		{
+			name: "timeout some (ensure everyone is called)",
+			args: args{now: time.Time{}.Add(2 * time.Hour)},
+			setup: func(t *testing.T, fields *fields, args *args) {
+				handle1 := atomic.Bool{}
+				handle2 := atomic.Bool{}
+				handle3 := atomic.Bool{}
+				handle4 := atomic.Bool{}
+				handle5 := atomic.Bool{}
+				t.Cleanup(func() {
+					time.Sleep(100 * time.Millisecond) // TODO: doing a sleep as handle error is called in a gofunc
+					assert.True(t, handle1.Load(), "handle1 not called")
+					assert.True(t, handle2.Load(), "handle2 not called")
+					assert.False(t, handle3.Load(), "handle3 called")
+					assert.True(t, handle4.Load(), "handle4 not called")
+					assert.False(t, handle5.Load(), "handle5 called")
+				})
+				fields.expectations = []spi.Expectation{
+					&defaultExpectation{ // Expired
+						Context: context.Background(),
+						HandleError: func(err error) error {
+							handle1.Store(true)
+							return nil
+						},
+					},
+					&defaultExpectation{ // Expired errors
+						Context: context.Background(),
+						HandleError: func(err error) error {
+							handle2.Store(true)
+							return errors.New("yep")
+						},
+					},
+					&defaultExpectation{ // Fine
+						Context: context.Background(),
+						HandleError: func(err error) error {
+							handle3.Store(true)
+							return errors.New("yep")
+						},
+						Expiration: time.Time{}.Add(3 * time.Hour),
+					},
+					&defaultExpectation{ // Context error
+						Context: func() context.Context {
+							ctx, cancelFunc := context.WithCancel(context.Background())
+							cancelFunc() // Cancel it instantly
+							return ctx
+						}(),
+						HandleError: func(err error) error {
+							handle4.Store(true)
+							return errors.New("yep")
+						},
+						Expiration: time.Time{}.Add(3 * time.Hour),
+					},
+					&defaultExpectation{ // Fine
+						Context: context.Background(),
+						HandleError: func(err error) error {
+							handle5.Store(true)
+							return errors.New("yep")
+						},
+						Expiration: time.Time{}.Add(3 * time.Hour),
+					},
+				}
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				tt.setup(t, &tt.fields, &tt.args)
+			}
 			m := &defaultCodec{
 				DefaultCodecRequirements:      tt.fields.DefaultCodecRequirements,
 				transportInstance:             tt.fields.transportInstance,
 				defaultIncomingMessageChannel: tt.fields.defaultIncomingMessageChannel,
 				expectations:                  tt.fields.expectations,
 				customMessageHandling:         tt.fields.customMessageHandling,
+				log:                           testutils.ProduceTestingLogger(t),
 			}
 			m.TimeoutExpectations(tt.args.now)
 		})
@@ -1222,6 +1432,7 @@ func Test_defaultCodec_Work(t *testing.T) {
 				defaultIncomingMessageChannel: tt.fields.defaultIncomingMessageChannel,
 				expectations:                  tt.fields.expectations,
 				customMessageHandling:         tt.fields.customMessageHandling,
+				log:                           testutils.ProduceTestingLogger(t),
 			}
 			if tt.manipulator != nil {
 				tt.manipulator(t, m)
@@ -1294,6 +1505,7 @@ func Test_defaultCodec_String(t *testing.T) {
 				defaultIncomingMessageChannel: tt.fields.defaultIncomingMessageChannel,
 				expectations:                  tt.fields.expectations,
 				customMessageHandling:         tt.fields.customMessageHandling,
+				log:                           testutils.ProduceTestingLogger(t),
 			}
 			assert.Equalf(t, tt.want, m.String(), "String()")
 		})
