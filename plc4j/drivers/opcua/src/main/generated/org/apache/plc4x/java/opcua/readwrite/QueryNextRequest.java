@@ -74,14 +74,13 @@ public class QueryNextRequest extends ExtensionObjectDefinition implements Messa
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("QueryNextRequest");
 
     // Simple Field (requestHeader)
     writeSimpleField("requestHeader", requestHeader, new DataWriterComplexDefault<>(writeBuffer));
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 7));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 7));
 
     // Simple Field (releaseContinuationPoint)
     writeSimpleField(
@@ -124,8 +123,6 @@ public class QueryNextRequest extends ExtensionObjectDefinition implements Messa
       ReadBuffer readBuffer, String identifier) throws ParseException {
     readBuffer.pullContext("QueryNextRequest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     ExtensionObjectDefinition requestHeader =
@@ -135,8 +132,8 @@ public class QueryNextRequest extends ExtensionObjectDefinition implements Messa
                 () -> ExtensionObjectDefinition.staticParse(readBuffer, (String) ("391")),
                 readBuffer));
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 7), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 7), (byte) 0x00);
 
     boolean releaseContinuationPoint =
         readSimpleField("releaseContinuationPoint", readBoolean(readBuffer));

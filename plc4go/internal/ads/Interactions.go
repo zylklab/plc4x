@@ -22,6 +22,7 @@ package ads
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"time"
 
 	"github.com/apache/plc4x/plc4go/protocols/ads/readwrite/model"
@@ -29,8 +30,16 @@ import (
 )
 
 func (m *Connection) ExecuteAdsReadDeviceInfoRequest(ctx context.Context) (model.AdsReadDeviceInfoResponse, error) {
-	responseChannel := make(chan model.AdsReadDeviceInfoResponse)
+	responseChannel := make(chan model.AdsReadDeviceInfoResponse, 1)
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				m.log.Error().
+					Str("stack", string(debug.Stack())).
+					Interface("err", err).
+					Msg("panic-ed")
+			}
+		}()
 		request := m.NewAdsReadDeviceInfoRequest()
 		if err := m.messageCodec.SendRequest(
 			ctx,
@@ -65,8 +74,16 @@ func (m *Connection) ExecuteAdsReadDeviceInfoRequest(ctx context.Context) (model
 }
 
 func (m *Connection) ExecuteAdsReadRequest(ctx context.Context, indexGroup uint32, indexOffset uint32, length uint32) (model.AdsReadResponse, error) {
-	responseChannel := make(chan model.AdsReadResponse)
+	responseChannel := make(chan model.AdsReadResponse, 1)
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				m.log.Error().
+					Str("stack", string(debug.Stack())).
+					Interface("err", err).
+					Msg("panic-ed")
+			}
+		}()
 		request := m.NewAdsReadRequest(indexGroup, indexOffset, length)
 		if err := m.messageCodec.SendRequest(
 			ctx,
@@ -101,8 +118,16 @@ func (m *Connection) ExecuteAdsReadRequest(ctx context.Context, indexGroup uint3
 }
 
 func (m *Connection) ExecuteAdsWriteRequest(ctx context.Context, indexGroup uint32, indexOffset uint32, data []byte) (model.AdsWriteResponse, error) {
-	responseChannel := make(chan model.AdsWriteResponse)
+	responseChannel := make(chan model.AdsWriteResponse, 1)
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				m.log.Error().
+					Str("stack", string(debug.Stack())).
+					Interface("err", err).
+					Msg("panic-ed")
+			}
+		}()
 		request := m.NewAdsWriteRequest(indexGroup, indexOffset, data)
 		if err := m.messageCodec.SendRequest(
 			ctx,
@@ -137,8 +162,16 @@ func (m *Connection) ExecuteAdsWriteRequest(ctx context.Context, indexGroup uint
 }
 
 func (m *Connection) ExecuteAdsReadWriteRequest(ctx context.Context, indexGroup uint32, indexOffset uint32, readLength uint32, items []model.AdsMultiRequestItem, writeData []byte) (model.AdsReadWriteResponse, error) {
-	responseChannel := make(chan model.AdsReadWriteResponse)
+	responseChannel := make(chan model.AdsReadWriteResponse, 1)
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				m.log.Error().
+					Str("stack", string(debug.Stack())).
+					Interface("err", err).
+					Msg("panic-ed")
+			}
+		}()
 		request := m.NewAdsReadWriteRequest(indexGroup, indexOffset, readLength, items, writeData)
 		if err := m.messageCodec.SendRequest(
 			ctx,
@@ -173,8 +206,16 @@ func (m *Connection) ExecuteAdsReadWriteRequest(ctx context.Context, indexGroup 
 }
 
 func (m *Connection) ExecuteAdsAddDeviceNotificationRequest(ctx context.Context, indexGroup uint32, indexOffset uint32, length uint32, transmissionMode model.AdsTransMode, maxDelay uint32, cycleTime uint32) (model.AdsAddDeviceNotificationResponse, error) {
-	responseChannel := make(chan model.AdsAddDeviceNotificationResponse)
+	responseChannel := make(chan model.AdsAddDeviceNotificationResponse, 1)
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				m.log.Error().
+					Str("stack", string(debug.Stack())).
+					Interface("err", err).
+					Msg("panic-ed")
+			}
+		}()
 		request := m.NewAdsAddDeviceNotificationRequest(indexGroup, indexOffset, length, transmissionMode, maxDelay, cycleTime)
 		if err := m.messageCodec.SendRequest(
 			ctx,
@@ -209,8 +250,16 @@ func (m *Connection) ExecuteAdsAddDeviceNotificationRequest(ctx context.Context,
 }
 
 func (m *Connection) ExecuteAdsDeleteDeviceNotificationRequest(ctx context.Context, notificationHandle uint32) (model.AdsDeleteDeviceNotificationResponse, error) {
-	responseChannel := make(chan model.AdsDeleteDeviceNotificationResponse)
+	responseChannel := make(chan model.AdsDeleteDeviceNotificationResponse, 1)
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				m.log.Error().
+					Str("stack", string(debug.Stack())).
+					Interface("err", err).
+					Msg("panic-ed")
+			}
+		}()
 		request := m.NewAdsDeleteDeviceNotificationRequest(notificationHandle)
 		if err := m.messageCodec.SendRequest(
 			ctx,

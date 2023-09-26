@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataLogBuffer is the corresponding interface of BACnetConstructedDataLogBuffer
 type BACnetConstructedDataLogBuffer interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataLogBuffer(numberOfDataElements BACnetApplicationTag
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataLogBuffer(structType interface{}) BACnetConstructedDataLogBuffer {
+func CastBACnetConstructedDataLogBuffer(structType any) BACnetConstructedDataLogBuffer {
 	if casted, ok := structType.(BACnetConstructedDataLogBuffer); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataLogBuffer) GetLengthInBytes(ctx context.Context) 
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataLogBufferParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataLogBuffer, error) {
-	return BACnetConstructedDataLogBufferParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataLogBufferParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataLogBuffer, error) {
+	return BACnetConstructedDataLogBufferParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataLogBufferParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataLogBuffer, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataLogBuffer"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataLogBuffer")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataLogBufferParseWithBuffer(ctx context.Context, readBuff
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataLogBuffer")
@@ -216,7 +220,7 @@ func BACnetConstructedDataLogBufferParseWithBuffer(ctx context.Context, readBuff
 	// Terminated array
 	var floorText []BACnetLogRecord
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetLogRecordParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'floorText' field of BACnetConstructedDataLogBuffer")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataLogBuffer) Serialize() ([]byte, error) {
 func (m *_BACnetConstructedDataLogBuffer) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataLogBuffer"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataLogBuffer")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataLogBuffer) SerializeWithWriteBuffer(ctx context.C
 		}
 		for _curItem, _element := range m.GetFloorText() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetFloorText()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetFloorText()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

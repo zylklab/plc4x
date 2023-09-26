@@ -39,8 +39,8 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
     extends OpenProtocolMessageApplicationCommunicationStartAcknowledge implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 6;
+  public Integer getRevision() {
+    return (int) 6;
   }
 
   // Constant values.
@@ -65,7 +65,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
   protected final long cellId;
   protected final int channelId;
   protected final String controllerName;
-  protected final long supplierCode;
+  protected final int supplierCode;
   protected final String openProtocolVersion;
   protected final String controllerSoftwareVersion;
   protected final String toolSoftwareVersion;
@@ -80,7 +80,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
   protected final short clientId;
 
   public OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -90,7 +90,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
       long cellId,
       int channelId,
       String controllerName,
-      long supplierCode,
+      int supplierCode,
       String openProtocolVersion,
       String controllerSoftwareVersion,
       String toolSoftwareVersion,
@@ -141,7 +141,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
     return controllerName;
   }
 
-  public long getSupplierCode() {
+  public int getSupplierCode() {
     return supplierCode;
   }
 
@@ -262,7 +262,6 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
       WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6");
 
     // Const Field (blockIdCellId)
@@ -315,7 +314,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
     writeSimpleField(
         "supplierCode",
         supplierCode,
-        writeUnsignedLong(writeBuffer, 24),
+        writeUnsignedInt(writeBuffer, 24),
         WithOption.WithEncoding("ASCII"));
 
     // Const Field (blockIdOpenProtocolVersion)
@@ -418,7 +417,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
         WithOption.WithEncoding("ASCII"));
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 7));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 7));
 
     // Simple Field (sequenceNumberSupport)
     writeSimpleField("sequenceNumberSupport", sequenceNumberSupport, writeBoolean(writeBuffer));
@@ -431,7 +430,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
         WithOption.WithEncoding("ASCII"));
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 7));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 7));
 
     // Simple Field (linkingHandlingSupport)
     writeSimpleField("linkingHandlingSupport", linkingHandlingSupport, writeBoolean(writeBuffer));
@@ -593,11 +592,9 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
 
   public static OpenProtocolMessageApplicationCommunicationStartAcknowledgeBuilder
       staticParseOpenProtocolMessageApplicationCommunicationStartAcknowledgeBuilder(
-          ReadBuffer readBuffer, Long revision) throws ParseException {
+          ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     int blockIdCellId =
@@ -640,9 +637,9 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
             OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6.BLOCKIDSUPPLIERCODE,
             WithOption.WithEncoding("ASCII"));
 
-    long supplierCode =
+    int supplierCode =
         readSimpleField(
-            "supplierCode", readUnsignedLong(readBuffer, 24), WithOption.WithEncoding("ASCII"));
+            "supplierCode", readUnsignedInt(readBuffer, 24), WithOption.WithEncoding("ASCII"));
 
     int blockIdOpenProtocolVersion =
         readConstField(
@@ -733,8 +730,8 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
                 .BLOCKIDSEQUENCENUMBERSUPPORT,
             WithOption.WithEncoding("ASCII"));
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 7), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 7), (byte) 0x00);
 
     boolean sequenceNumberSupport =
         readSimpleField("sequenceNumberSupport", readBoolean(readBuffer));
@@ -747,8 +744,8 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
                 .BLOCKIDLINKINGHANDLINGSUPPORT,
             WithOption.WithEncoding("ASCII"));
 
-    Short reservedField1 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 7), (short) 0x00);
+    Byte reservedField1 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 7), (byte) 0x00);
 
     boolean linkingHandlingSupport =
         readSimpleField("linkingHandlingSupport", readBoolean(readBuffer));
@@ -812,7 +809,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
     private final long cellId;
     private final int channelId;
     private final String controllerName;
-    private final long supplierCode;
+    private final int supplierCode;
     private final String openProtocolVersion;
     private final String controllerSoftwareVersion;
     private final String toolSoftwareVersion;
@@ -830,7 +827,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
         long cellId,
         int channelId,
         String controllerName,
-        long supplierCode,
+        int supplierCode,
         String openProtocolVersion,
         String controllerSoftwareVersion,
         String toolSoftwareVersion,
@@ -862,7 +859,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6
     }
 
     public OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev6 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

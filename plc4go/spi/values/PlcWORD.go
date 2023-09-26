@@ -30,7 +30,7 @@ import (
 )
 
 type PlcWORD struct {
-	PlcSimpleValueAdapter
+	PlcSimpleNumericValueAdapter
 	value uint16
 }
 
@@ -38,6 +38,10 @@ func NewPlcWORD(value uint16) PlcWORD {
 	return PlcWORD{
 		value: value,
 	}
+}
+
+func (m PlcWORD) IsRaw() bool {
+	return true
 }
 
 func (m PlcWORD) GetRaw() []byte {

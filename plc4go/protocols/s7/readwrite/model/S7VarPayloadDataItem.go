@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"math"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // S7VarPayloadDataItem is the corresponding interface of S7VarPayloadDataItem
 type S7VarPayloadDataItem interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetReturnCode returns ReturnCode (property field)
@@ -83,7 +85,7 @@ func NewS7VarPayloadDataItem(returnCode DataTransportErrorCode, transportSize Da
 }
 
 // Deprecated: use the interface for direct cast
-func CastS7VarPayloadDataItem(structType interface{}) S7VarPayloadDataItem {
+func CastS7VarPayloadDataItem(structType any) S7VarPayloadDataItem {
 	if casted, ok := structType.(S7VarPayloadDataItem); ok {
 		return casted
 	}
@@ -115,7 +117,7 @@ func (m *_S7VarPayloadDataItem) GetLengthInBits(ctx context.Context) uint16 {
 	}
 
 	// Padding Field (padding)
-	_timesPadding := uint8(utils.InlineIf((!(spiContext.GetLastItemFromContext(ctx))), func() interface{} { return int32((int32(int32(len(m.GetData()))) % int32(int32(2)))) }, func() interface{} { return int32(int32(0)) }).(int32))
+	_timesPadding := uint8(utils.InlineIf((!(utils.GetLastItemFromContext(ctx))), func() any { return int32((int32(int32(len(m.GetData()))) % int32(int32(2)))) }, func() any { return int32(int32(0)) }).(int32))
 	for ; _timesPadding > 0; _timesPadding-- {
 		lengthInBits += 8
 	}
@@ -127,13 +129,15 @@ func (m *_S7VarPayloadDataItem) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func S7VarPayloadDataItemParse(theBytes []byte) (S7VarPayloadDataItem, error) {
-	return S7VarPayloadDataItemParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func S7VarPayloadDataItemParse(ctx context.Context, theBytes []byte) (S7VarPayloadDataItem, error) {
+	return S7VarPayloadDataItemParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func S7VarPayloadDataItemParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (S7VarPayloadDataItem, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("S7VarPayloadDataItem"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for S7VarPayloadDataItem")
 	}
@@ -173,7 +177,7 @@ func S7VarPayloadDataItemParseWithBuffer(ctx context.Context, readBuffer utils.R
 		return nil, errors.Wrap(_dataLengthErr, "Error parsing 'dataLength' field of S7VarPayloadDataItem")
 	}
 	// Byte Array field (data)
-	numberOfBytesdata := int(utils.InlineIf(transportSize.SizeInBits(), func() interface{} { return uint16(math.Ceil(float64(dataLength) / float64(float64(8.0)))) }, func() interface{} { return uint16(dataLength) }).(uint16))
+	numberOfBytesdata := int(utils.InlineIf(transportSize.SizeInBits(), func() any { return uint16(math.Ceil(float64(dataLength) / float64(float64(8.0)))) }, func() any { return uint16(dataLength) }).(uint16))
 	data, _readArrayErr := readBuffer.ReadByteArray("data", numberOfBytesdata)
 	if _readArrayErr != nil {
 		return nil, errors.Wrap(_readArrayErr, "Error parsing 'data' field of S7VarPayloadDataItem")
@@ -184,7 +188,7 @@ func S7VarPayloadDataItemParseWithBuffer(ctx context.Context, readBuffer utils.R
 		if pullErr := readBuffer.PullContext("padding", utils.WithRenderAsList(true)); pullErr != nil {
 			return nil, errors.Wrap(pullErr, "Error pulling for padding")
 		}
-		_timesPadding := (utils.InlineIf((!(spiContext.GetLastItemFromContext(ctx))), func() interface{} { return int32((int32(int32(len(data))) % int32(int32(2)))) }, func() interface{} { return int32(int32(0)) }).(int32))
+		_timesPadding := (utils.InlineIf((!(utils.GetLastItemFromContext(ctx))), func() any { return int32((int32(int32(len(data))) % int32(int32(2)))) }, func() any { return int32(int32(0)) }).(int32))
 		for ; (readBuffer.HasMore(8)) && (_timesPadding > 0); _timesPadding-- {
 			// Just read the padding data and ignore it
 			_, _err := readBuffer.ReadUint8("", 8)
@@ -220,6 +224,8 @@ func (m *_S7VarPayloadDataItem) Serialize() ([]byte, error) {
 func (m *_S7VarPayloadDataItem) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("S7VarPayloadDataItem"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for S7VarPayloadDataItem")
 	}
@@ -249,8 +255,8 @@ func (m *_S7VarPayloadDataItem) SerializeWithWriteBuffer(ctx context.Context, wr
 	}
 
 	// Implicit Field (dataLength) (Used for parsing, but it's value is not stored as it's implicitly given by the objects content)
-	dataLength := uint16(uint16(uint16(len(m.GetData()))) * uint16((utils.InlineIf((bool((m.GetTransportSize()) == (DataTransportSize_BIT))), func() interface{} { return uint16(uint16(1)) }, func() interface{} {
-		return uint16((utils.InlineIf(m.GetTransportSize().SizeInBits(), func() interface{} { return uint16(uint16(8)) }, func() interface{} { return uint16(uint16(1)) }).(uint16)))
+	dataLength := uint16(uint16(uint16(len(m.GetData()))) * uint16((utils.InlineIf((bool((m.GetTransportSize()) == (DataTransportSize_BIT))), func() any { return uint16(uint16(1)) }, func() any {
+		return uint16((utils.InlineIf(m.GetTransportSize().SizeInBits(), func() any { return uint16(uint16(8)) }, func() any { return uint16(uint16(1)) }).(uint16)))
 	}).(uint16))))
 	_dataLengthErr := writeBuffer.WriteUint16("dataLength", 16, (dataLength))
 	if _dataLengthErr != nil {
@@ -268,7 +274,7 @@ func (m *_S7VarPayloadDataItem) SerializeWithWriteBuffer(ctx context.Context, wr
 		if pushErr := writeBuffer.PushContext("padding", utils.WithRenderAsList(true)); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for padding")
 		}
-		_timesPadding := uint8(utils.InlineIf((!(spiContext.GetLastItemFromContext(ctx))), func() interface{} { return int32((int32(int32(len(m.GetData()))) % int32(int32(2)))) }, func() interface{} { return int32(int32(0)) }).(int32))
+		_timesPadding := uint8(utils.InlineIf((!(utils.GetLastItemFromContext(ctx))), func() any { return int32((int32(int32(len(m.GetData()))) % int32(int32(2)))) }, func() any { return int32(int32(0)) }).(int32))
 		for ; _timesPadding > 0; _timesPadding-- {
 			_paddingValue := uint8(0x00)
 			_paddingErr := writeBuffer.WriteUint8("", 8, (_paddingValue))

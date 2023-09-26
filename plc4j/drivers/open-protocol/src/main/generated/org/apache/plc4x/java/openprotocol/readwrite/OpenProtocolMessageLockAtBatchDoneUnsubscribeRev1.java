@@ -39,12 +39,12 @@ public class OpenProtocolMessageLockAtBatchDoneUnsubscribeRev1
     extends OpenProtocolMessageLockAtBatchDoneUnsubscribe implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 1;
+  public Integer getRevision() {
+    return (int) 1;
   }
 
   public OpenProtocolMessageLockAtBatchDoneUnsubscribeRev1(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -66,7 +66,6 @@ public class OpenProtocolMessageLockAtBatchDoneUnsubscribeRev1
       WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageLockAtBatchDoneUnsubscribeRev1");
 
     writeBuffer.popContext("OpenProtocolMessageLockAtBatchDoneUnsubscribeRev1");
@@ -88,11 +87,9 @@ public class OpenProtocolMessageLockAtBatchDoneUnsubscribeRev1
 
   public static OpenProtocolMessageLockAtBatchDoneUnsubscribeBuilder
       staticParseOpenProtocolMessageLockAtBatchDoneUnsubscribeBuilder(
-          ReadBuffer readBuffer, Long revision) throws ParseException {
+          ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageLockAtBatchDoneUnsubscribeRev1");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     readBuffer.closeContext("OpenProtocolMessageLockAtBatchDoneUnsubscribeRev1");
@@ -107,7 +104,7 @@ public class OpenProtocolMessageLockAtBatchDoneUnsubscribeRev1
     public OpenProtocolMessageLockAtBatchDoneUnsubscribeRev1BuilderImpl() {}
 
     public OpenProtocolMessageLockAtBatchDoneUnsubscribeRev1 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

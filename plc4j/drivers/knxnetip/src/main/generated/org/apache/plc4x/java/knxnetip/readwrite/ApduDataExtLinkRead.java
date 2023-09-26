@@ -38,8 +38,8 @@ import org.apache.plc4x.java.spi.generation.*;
 public class ApduDataExtLinkRead extends ApduDataExt implements Message {
 
   // Accessors for discriminator values.
-  public Short getExtApciType() {
-    return (short) 0x25;
+  public Byte getExtApciType() {
+    return (byte) 0x25;
   }
 
   public ApduDataExtLinkRead() {
@@ -50,7 +50,6 @@ public class ApduDataExtLinkRead extends ApduDataExt implements Message {
   protected void serializeApduDataExtChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ApduDataExtLinkRead");
 
     writeBuffer.popContext("ApduDataExtLinkRead");
@@ -74,8 +73,6 @@ public class ApduDataExtLinkRead extends ApduDataExt implements Message {
       ReadBuffer readBuffer, Short length) throws ParseException {
     readBuffer.pullContext("ApduDataExtLinkRead");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     readBuffer.closeContext("ApduDataExtLinkRead");

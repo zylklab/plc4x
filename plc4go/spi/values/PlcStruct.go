@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"strings"
 
 	apiValues "github.com/apache/plc4x/plc4go/pkg/api/values"
@@ -35,11 +36,30 @@ type PlcStruct struct {
 	PlcValueAdapter
 }
 
-func NewPlcStruct(value map[string]apiValues.PlcValue) apiValues.PlcValue {
+func NewPlcStruct(value map[string]apiValues.PlcValue) PlcStruct {
 	return PlcStruct{
 		values: value,
 	}
 }
+
+////
+// Raw Access
+
+func (m PlcStruct) IsRaw() bool {
+	return true
+}
+
+func (m PlcStruct) GetRaw() []byte {
+	if theBytes, err := m.Serialize(); err != nil {
+		log.Error().Err(err).Msg("Error getting raw")
+		return nil
+	} else {
+		return theBytes
+	}
+}
+
+//
+///
 
 func (m PlcStruct) IsStruct() bool {
 	return true
@@ -69,6 +89,10 @@ func (m PlcStruct) GetValue(key string) apiValues.PlcValue {
 
 func (m PlcStruct) GetStruct() map[string]apiValues.PlcValue {
 	return m.values
+}
+
+func (m PlcStruct) IsString() bool {
+	return true
 }
 
 func (m PlcStruct) GetString() string {

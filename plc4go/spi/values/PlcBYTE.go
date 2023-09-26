@@ -30,7 +30,7 @@ import (
 )
 
 type PlcBYTE struct {
-	PlcSimpleValueAdapter
+	PlcSimpleNumericValueAdapter
 	value uint8
 }
 
@@ -38,6 +38,10 @@ func NewPlcBYTE(value uint8) PlcBYTE {
 	return PlcBYTE{
 		value: value,
 	}
+}
+
+func (m PlcBYTE) IsRaw() bool {
+	return true
 }
 
 func (m PlcBYTE) GetRaw() []byte {

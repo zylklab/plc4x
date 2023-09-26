@@ -39,12 +39,12 @@ public class OpenProtocolMessageLastTighteningResultDataSubscribeRev1
     extends OpenProtocolMessageLastTighteningResultDataSubscribe implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 1;
+  public Integer getRevision() {
+    return (int) 1;
   }
 
   public OpenProtocolMessageLastTighteningResultDataSubscribeRev1(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -66,7 +66,6 @@ public class OpenProtocolMessageLastTighteningResultDataSubscribeRev1
       WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageLastTighteningResultDataSubscribeRev1");
 
     writeBuffer.popContext("OpenProtocolMessageLastTighteningResultDataSubscribeRev1");
@@ -88,11 +87,9 @@ public class OpenProtocolMessageLastTighteningResultDataSubscribeRev1
 
   public static OpenProtocolMessageLastTighteningResultDataSubscribeBuilder
       staticParseOpenProtocolMessageLastTighteningResultDataSubscribeBuilder(
-          ReadBuffer readBuffer, Long revision) throws ParseException {
+          ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageLastTighteningResultDataSubscribeRev1");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     readBuffer.closeContext("OpenProtocolMessageLastTighteningResultDataSubscribeRev1");
@@ -107,7 +104,7 @@ public class OpenProtocolMessageLastTighteningResultDataSubscribeRev1
     public OpenProtocolMessageLastTighteningResultDataSubscribeRev1BuilderImpl() {}
 
     public OpenProtocolMessageLastTighteningResultDataSubscribeRev1 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

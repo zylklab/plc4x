@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetNotificationParametersExtendedParameters is the corresponding interface of BACnetNotificationParametersExtendedParameters
 type BACnetNotificationParametersExtendedParameters interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetOpeningTag returns OpeningTag (property field)
@@ -300,7 +303,7 @@ func NewBACnetNotificationParametersExtendedParameters(openingTag BACnetOpeningT
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetNotificationParametersExtendedParameters(structType interface{}) BACnetNotificationParametersExtendedParameters {
+func CastBACnetNotificationParametersExtendedParameters(structType any) BACnetNotificationParametersExtendedParameters {
 	if casted, ok := structType.(BACnetNotificationParametersExtendedParameters); ok {
 		return casted
 	}
@@ -406,13 +409,15 @@ func (m *_BACnetNotificationParametersExtendedParameters) GetLengthInBytes(ctx c
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetNotificationParametersExtendedParametersParse(theBytes []byte, tagNumber uint8) (BACnetNotificationParametersExtendedParameters, error) {
-	return BACnetNotificationParametersExtendedParametersParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber)
+func BACnetNotificationParametersExtendedParametersParse(ctx context.Context, theBytes []byte, tagNumber uint8) (BACnetNotificationParametersExtendedParameters, error) {
+	return BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber)
 }
 
 func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8) (BACnetNotificationParametersExtendedParameters, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetNotificationParametersExtendedParameters"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetNotificationParametersExtendedParameters")
 	}
@@ -465,7 +470,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'nullValue' field of BACnetNotificationParametersExtendedParameters")
@@ -487,7 +492,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'realValue' field of BACnetNotificationParametersExtendedParameters")
@@ -509,7 +514,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'unsignedValue' field of BACnetNotificationParametersExtendedParameters")
@@ -531,7 +536,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'booleanValue' field of BACnetNotificationParametersExtendedParameters")
@@ -553,7 +558,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'integerValue' field of BACnetNotificationParametersExtendedParameters")
@@ -575,7 +580,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'doubleValue' field of BACnetNotificationParametersExtendedParameters")
@@ -597,7 +602,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'octetStringValue' field of BACnetNotificationParametersExtendedParameters")
@@ -619,7 +624,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'characterStringValue' field of BACnetNotificationParametersExtendedParameters")
@@ -641,7 +646,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'bitStringValue' field of BACnetNotificationParametersExtendedParameters")
@@ -663,7 +668,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'enumeratedValue' field of BACnetNotificationParametersExtendedParameters")
@@ -685,7 +690,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'dateValue' field of BACnetNotificationParametersExtendedParameters")
@@ -707,7 +712,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'timeValue' field of BACnetNotificationParametersExtendedParameters")
@@ -729,7 +734,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'objectIdentifier' field of BACnetNotificationParametersExtendedParameters")
@@ -751,7 +756,7 @@ func BACnetNotificationParametersExtendedParametersParseWithBuffer(ctx context.C
 		_val, _err := BACnetDeviceObjectPropertyReferenceEnclosedParseWithBuffer(ctx, readBuffer, uint8(0))
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'reference' field of BACnetNotificationParametersExtendedParameters")
@@ -814,6 +819,8 @@ func (m *_BACnetNotificationParametersExtendedParameters) Serialize() ([]byte, e
 func (m *_BACnetNotificationParametersExtendedParameters) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetNotificationParametersExtendedParameters"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetNotificationParametersExtendedParameters")
 	}
@@ -830,14 +837,20 @@ func (m *_BACnetNotificationParametersExtendedParameters) SerializeWithWriteBuff
 		return errors.Wrap(_openingTagErr, "Error serializing 'openingTag' field")
 	}
 	// Virtual field
+	peekedTagNumber := m.GetPeekedTagNumber()
+	_ = peekedTagNumber
 	if _peekedTagNumberErr := writeBuffer.WriteVirtual(ctx, "peekedTagNumber", m.GetPeekedTagNumber()); _peekedTagNumberErr != nil {
 		return errors.Wrap(_peekedTagNumberErr, "Error serializing 'peekedTagNumber' field")
 	}
 	// Virtual field
+	isOpeningTag := m.GetIsOpeningTag()
+	_ = isOpeningTag
 	if _isOpeningTagErr := writeBuffer.WriteVirtual(ctx, "isOpeningTag", m.GetIsOpeningTag()); _isOpeningTagErr != nil {
 		return errors.Wrap(_isOpeningTagErr, "Error serializing 'isOpeningTag' field")
 	}
 	// Virtual field
+	isClosingTag := m.GetIsClosingTag()
+	_ = isClosingTag
 	if _isClosingTagErr := writeBuffer.WriteVirtual(ctx, "isClosingTag", m.GetIsClosingTag()); _isClosingTagErr != nil {
 		return errors.Wrap(_isClosingTagErr, "Error serializing 'isClosingTag' field")
 	}

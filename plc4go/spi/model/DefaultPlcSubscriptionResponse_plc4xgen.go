@@ -42,9 +42,6 @@ func (d *DefaultPlcSubscriptionResponse) SerializeWithWriteBuffer(ctx context.Co
 	if err := writeBuffer.PushContext("PlcSubscriptionResponse"); err != nil {
 		return err
 	}
-	if err := d.DefaultResponse.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
-		return err
-	}
 
 	if d.request != nil {
 		if serializableField, ok := d.request.(utils.Serializable); ok {
@@ -67,9 +64,10 @@ func (d *DefaultPlcSubscriptionResponse) SerializeWithWriteBuffer(ctx context.Co
 	if err := writeBuffer.PushContext("values", utils.WithRenderAsList(true)); err != nil {
 		return err
 	}
-	for name, elem := range d.values {
+	for _name, elem := range d.values {
+		name := _name
 
-		var elem interface{} = elem
+		var elem any = elem
 		if serializable, ok := elem.(utils.Serializable); ok {
 			if err := writeBuffer.PushContext(name); err != nil {
 				return err

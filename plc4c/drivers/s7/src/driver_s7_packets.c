@@ -25,7 +25,7 @@
 #include <tpkt_packet.h>
 
 #include "plc4c/driver_s7_packets.h"
-#include "plc4c/driver_s7_encode_decode.h"
+#include "szl_data_tree_item.h"
 
 // undef to use pointer to plc4c_data item on writes
 // probably safe to comment out but on for now.
@@ -975,7 +975,6 @@ void plc4c_driver_s7_time_transport_size(plc4c_s7_read_write_transport_size *tra
       *transport_size = plc4c_s7_read_write_transport_size_UINT;
       break;
     case plc4c_s7_read_write_transport_size_TIME_OF_DAY:
-    case plc4c_s7_read_write_transport_size_TOD:
       *transport_size = plc4c_s7_read_write_transport_size_UDINT;
       break;
   }

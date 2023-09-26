@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataShedLevels is the corresponding interface of BACnetConstructedDataShedLevels
 type BACnetConstructedDataShedLevels interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataShedLevels(numberOfDataElements BACnetApplicationTa
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataShedLevels(structType interface{}) BACnetConstructedDataShedLevels {
+func CastBACnetConstructedDataShedLevels(structType any) BACnetConstructedDataShedLevels {
 	if casted, ok := structType.(BACnetConstructedDataShedLevels); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataShedLevels) GetLengthInBytes(ctx context.Context)
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataShedLevelsParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataShedLevels, error) {
-	return BACnetConstructedDataShedLevelsParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataShedLevelsParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataShedLevels, error) {
+	return BACnetConstructedDataShedLevelsParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataShedLevelsParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataShedLevels, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataShedLevels"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataShedLevels")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataShedLevelsParseWithBuffer(ctx context.Context, readBuf
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataShedLevels")
@@ -216,7 +220,7 @@ func BACnetConstructedDataShedLevelsParseWithBuffer(ctx context.Context, readBuf
 	// Terminated array
 	var shedLevels []BACnetApplicationTagUnsignedInteger
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'shedLevels' field of BACnetConstructedDataShedLevels")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataShedLevels) Serialize() ([]byte, error) {
 func (m *_BACnetConstructedDataShedLevels) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataShedLevels"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataShedLevels")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataShedLevels) SerializeWithWriteBuffer(ctx context.
 		}
 		for _curItem, _element := range m.GetShedLevels() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetShedLevels()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetShedLevels()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

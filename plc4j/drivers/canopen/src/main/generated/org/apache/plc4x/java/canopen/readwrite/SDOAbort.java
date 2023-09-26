@@ -58,11 +58,10 @@ public class SDOAbort implements Message {
   public void serialize(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("SDOAbort");
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 5));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 5));
 
     // Simple Field (address)
     writeSimpleField("address", address, new DataWriterComplexDefault<>(writeBuffer));
@@ -104,12 +103,10 @@ public class SDOAbort implements Message {
   public static SDOAbort staticParse(ReadBuffer readBuffer) throws ParseException {
     readBuffer.pullContext("SDOAbort");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 5), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 5), (byte) 0x00);
 
     IndexAddress address =
         readSimpleField(

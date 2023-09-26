@@ -42,8 +42,8 @@ public class ModbusPDUWriteMultipleHoldingRegistersRequest extends ModbusPDU imp
     return (boolean) false;
   }
 
-  public Short getFunctionFlag() {
-    return (short) 0x10;
+  public Byte getFunctionFlag() {
+    return (byte) 0x10;
   }
 
   public Boolean getResponse() {
@@ -79,7 +79,6 @@ public class ModbusPDUWriteMultipleHoldingRegistersRequest extends ModbusPDU imp
   protected void serializeModbusPDUChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ModbusPDUWriteMultipleHoldingRegistersRequest");
 
     // Simple Field (startingAddress)
@@ -131,8 +130,6 @@ public class ModbusPDUWriteMultipleHoldingRegistersRequest extends ModbusPDU imp
       ReadBuffer readBuffer, Boolean response) throws ParseException {
     readBuffer.pullContext("ModbusPDUWriteMultipleHoldingRegistersRequest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     int startingAddress = readSimpleField("startingAddress", readUnsignedInt(readBuffer, 16));

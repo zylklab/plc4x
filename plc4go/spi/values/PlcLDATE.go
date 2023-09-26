@@ -34,7 +34,7 @@ type PlcLDATE struct {
 	value time.Time
 }
 
-func NewPlcLDATE(value interface{}) PlcLDATE {
+func NewPlcLDATE(value any) PlcLDATE {
 	var timeValue time.Time
 	switch value.(type) {
 	case time.Time:
@@ -54,6 +54,10 @@ func NewPlcLDATE(value interface{}) PlcLDATE {
 
 func NewPlcLDATEFromNanosecondsSinceEpoch(nanosecondsSinceEpoch uint64) PlcDATE {
 	return NewPlcDATE(nanosecondsSinceEpoch)
+}
+
+func (m PlcLDATE) IsRaw() bool {
+	return true
 }
 
 func (m PlcLDATE) GetRaw() []byte {

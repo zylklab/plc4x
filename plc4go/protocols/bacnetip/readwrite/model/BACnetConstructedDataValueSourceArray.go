@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataValueSourceArray is the corresponding interface of BACnetConstructedDataValueSourceArray
 type BACnetConstructedDataValueSourceArray interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataValueSourceArray(numberOfDataElements BACnetApplica
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataValueSourceArray(structType interface{}) BACnetConstructedDataValueSourceArray {
+func CastBACnetConstructedDataValueSourceArray(structType any) BACnetConstructedDataValueSourceArray {
 	if casted, ok := structType.(BACnetConstructedDataValueSourceArray); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataValueSourceArray) GetLengthInBytes(ctx context.Co
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataValueSourceArrayParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataValueSourceArray, error) {
-	return BACnetConstructedDataValueSourceArrayParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataValueSourceArrayParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataValueSourceArray, error) {
+	return BACnetConstructedDataValueSourceArrayParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataValueSourceArrayParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataValueSourceArray, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataValueSourceArray"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataValueSourceArray")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataValueSourceArrayParseWithBuffer(ctx context.Context, r
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataValueSourceArray")
@@ -216,7 +220,7 @@ func BACnetConstructedDataValueSourceArrayParseWithBuffer(ctx context.Context, r
 	// Terminated array
 	var vtClassesSupported []BACnetValueSource
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetValueSourceParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'vtClassesSupported' field of BACnetConstructedDataValueSourceArray")
@@ -261,11 +265,15 @@ func (m *_BACnetConstructedDataValueSourceArray) Serialize() ([]byte, error) {
 func (m *_BACnetConstructedDataValueSourceArray) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataValueSourceArray"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataValueSourceArray")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -292,7 +300,7 @@ func (m *_BACnetConstructedDataValueSourceArray) SerializeWithWriteBuffer(ctx co
 		}
 		for _curItem, _element := range m.GetVtClassesSupported() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetVtClassesSupported()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetVtClassesSupported()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

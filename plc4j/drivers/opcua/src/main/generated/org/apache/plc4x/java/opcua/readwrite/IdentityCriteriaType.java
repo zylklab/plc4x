@@ -30,7 +30,8 @@ public enum IdentityCriteriaType {
   identityCriteriaTypeGroupId((long) 4L),
   identityCriteriaTypeAnonymous((long) 5L),
   identityCriteriaTypeAuthenticatedUser((long) 6L),
-  identityCriteriaTypeApplication((long) 7L);
+  identityCriteriaTypeApplication((long) 7L),
+  identityCriteriaTypeX509Subject((long) 8L);
   private static final Map<Long, IdentityCriteriaType> map;
 
   static {
@@ -40,7 +41,7 @@ public enum IdentityCriteriaType {
     }
   }
 
-  private long value;
+  private final long value;
 
   IdentityCriteriaType(long value) {
     this.value = value;

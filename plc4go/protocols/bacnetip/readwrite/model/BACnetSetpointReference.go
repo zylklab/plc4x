@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetSetpointReference is the corresponding interface of BACnetSetpointReference
 type BACnetSetpointReference interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetSetPointReference returns SetPointReference (property field)
@@ -68,7 +71,7 @@ func NewBACnetSetpointReference(setPointReference BACnetObjectPropertyReferenceE
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetSetpointReference(structType interface{}) BACnetSetpointReference {
+func CastBACnetSetpointReference(structType any) BACnetSetpointReference {
 	if casted, ok := structType.(BACnetSetpointReference); ok {
 		return casted
 	}
@@ -97,13 +100,15 @@ func (m *_BACnetSetpointReference) GetLengthInBytes(ctx context.Context) uint16 
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetSetpointReferenceParse(theBytes []byte) (BACnetSetpointReference, error) {
-	return BACnetSetpointReferenceParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func BACnetSetpointReferenceParse(ctx context.Context, theBytes []byte) (BACnetSetpointReference, error) {
+	return BACnetSetpointReferenceParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func BACnetSetpointReferenceParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (BACnetSetpointReference, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetSetpointReference"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetSetpointReference")
 	}
@@ -120,7 +125,7 @@ func BACnetSetpointReferenceParseWithBuffer(ctx context.Context, readBuffer util
 		_val, _err := BACnetObjectPropertyReferenceEnclosedParseWithBuffer(ctx, readBuffer, uint8(0))
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'setPointReference' field of BACnetSetpointReference")
@@ -153,6 +158,8 @@ func (m *_BACnetSetpointReference) Serialize() ([]byte, error) {
 func (m *_BACnetSetpointReference) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetSetpointReference"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetSetpointReference")
 	}

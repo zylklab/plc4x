@@ -18,6 +18,7 @@
  */
 package org.apache.plc4x.test.driver.internal.handlers;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.plc4x.java.api.PlcConnection;
 import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
 import org.apache.plc4x.java.api.messages.PlcReadRequest;
@@ -52,7 +53,7 @@ public class ApiRequestHandler {
                     }
                 }
                 final PlcReadRequest plc4xRequest = builder.build();
-                // Currently we can only process one response at at time, throw an error if more
+                // Currently we can only process one response at a time, throw an error if more
                 // are submitted.
                 if (synchronizer.responseFuture != null) {
                     throw new DriverTestsuiteException("Previous response not handled.");
@@ -83,6 +84,10 @@ public class ApiRequestHandler {
                 // Save the response for being used later on.
                 synchronizer.responseFuture = plc4xRequest.execute();
                 break;
+            }
+            case "TestSubscriptionRequest":{
+                // TODO: chris add your stuff here...
+                throw new NotImplementedException();
             }
             default:
                 throw new PlcRuntimeException("Unknown class name" + typeName);

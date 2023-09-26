@@ -39,8 +39,8 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2
     extends OpenProtocolMessageApplicationCommunicationStartAcknowledge implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 2;
+  public Integer getRevision() {
+    return (int) 2;
   }
 
   // Constant values.
@@ -53,10 +53,10 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2
   protected final long cellId;
   protected final int channelId;
   protected final String controllerName;
-  protected final long supplierCode;
+  protected final int supplierCode;
 
   public OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -66,7 +66,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2
       long cellId,
       int channelId,
       String controllerName,
-      long supplierCode) {
+      int supplierCode) {
     super(
         midRevision,
         noAckFlag,
@@ -93,7 +93,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2
     return controllerName;
   }
 
-  public long getSupplierCode() {
+  public int getSupplierCode() {
     return supplierCode;
   }
 
@@ -118,7 +118,6 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2
       WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2");
 
     // Const Field (blockIdCellId)
@@ -171,7 +170,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2
     writeSimpleField(
         "supplierCode",
         supplierCode,
-        writeUnsignedLong(writeBuffer, 24),
+        writeUnsignedInt(writeBuffer, 24),
         WithOption.WithEncoding("ASCII"));
 
     writeBuffer.popContext("OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2");
@@ -217,11 +216,9 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2
 
   public static OpenProtocolMessageApplicationCommunicationStartAcknowledgeBuilder
       staticParseOpenProtocolMessageApplicationCommunicationStartAcknowledgeBuilder(
-          ReadBuffer readBuffer, Long revision) throws ParseException {
+          ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     int blockIdCellId =
@@ -264,9 +261,9 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2
             OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2.BLOCKIDSUPPLIERCODE,
             WithOption.WithEncoding("ASCII"));
 
-    long supplierCode =
+    int supplierCode =
         readSimpleField(
-            "supplierCode", readUnsignedLong(readBuffer, 24), WithOption.WithEncoding("ASCII"));
+            "supplierCode", readUnsignedInt(readBuffer, 24), WithOption.WithEncoding("ASCII"));
 
     readBuffer.closeContext("OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2");
     // Create the instance
@@ -280,10 +277,10 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2
     private final long cellId;
     private final int channelId;
     private final String controllerName;
-    private final long supplierCode;
+    private final int supplierCode;
 
     public OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2BuilderImpl(
-        long cellId, int channelId, String controllerName, long supplierCode) {
+        long cellId, int channelId, String controllerName, int supplierCode) {
       this.cellId = cellId;
       this.channelId = channelId;
       this.controllerName = controllerName;
@@ -291,7 +288,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2
     }
 
     public OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev2 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

@@ -21,11 +21,9 @@ package org.apache.plc4x.java.profinet.gsdml;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonRootName;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 
 import java.util.List;
-import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonRootName("VirtualSubmoduleItem")
@@ -38,7 +36,7 @@ public class ProfinetVirtualSubmoduleItem {
     private String submoduleIdentNumber;
 
     @JacksonXmlProperty(isAttribute=true, localName="SubslotNumber")
-    private int subslotNumber = 1;
+    private final int subslotNumber = 1;
 
     @JacksonXmlProperty(isAttribute=true, localName="Writeable_IM_Records")
     private String writeableImRecords;

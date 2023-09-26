@@ -87,16 +87,16 @@ public class CALDataStatusExtended extends CALData implements Message {
     return levelInformation;
   }
 
-  public short getNumberOfStatusBytes() {
-    return (short)
+  public byte getNumberOfStatusBytes() {
+    return (byte)
         ((((((getCoding()) == (StatusCoding.BINARY_BY_THIS_SERIAL_INTERFACE))
                 || ((getCoding()) == (StatusCoding.BINARY_BY_ELSEWHERE))))
             ? ((commandTypeContainer.getNumBytes()) - (3))
             : (0)));
   }
 
-  public short getNumberOfLevelInformation() {
-    return (short)
+  public byte getNumberOfLevelInformation() {
+    return (byte)
         ((((((getCoding()) == (StatusCoding.LEVEL_BY_THIS_SERIAL_INTERFACE))
                 || ((getCoding()) == (StatusCoding.LEVEL_BY_ELSEWHERE))))
             ? ((((commandTypeContainer.getNumBytes()) - (3))) / (2))
@@ -107,7 +107,6 @@ public class CALDataStatusExtended extends CALData implements Message {
   protected void serializeCALDataChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("CALDataStatusExtended");
 
     // Simple Field (coding)
@@ -132,11 +131,11 @@ public class CALDataStatusExtended extends CALData implements Message {
     writeSimpleField("blockStart", blockStart, writeUnsignedShort(writeBuffer, 8));
 
     // Virtual field (doesn't actually serialize anything, just makes the value available)
-    short numberOfStatusBytes = getNumberOfStatusBytes();
+    byte numberOfStatusBytes = getNumberOfStatusBytes();
     writeBuffer.writeVirtual("numberOfStatusBytes", numberOfStatusBytes);
 
     // Virtual field (doesn't actually serialize anything, just makes the value available)
-    short numberOfLevelInformation = getNumberOfLevelInformation();
+    byte numberOfLevelInformation = getNumberOfLevelInformation();
     writeBuffer.writeVirtual("numberOfLevelInformation", numberOfLevelInformation);
 
     // Array Field (statusBytes)
@@ -200,8 +199,6 @@ public class CALDataStatusExtended extends CALData implements Message {
       throws ParseException {
     readBuffer.pullContext("CALDataStatusExtended");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     StatusCoding coding =
@@ -218,18 +215,18 @@ public class CALDataStatusExtended extends CALData implements Message {
                 ApplicationIdContainer::enumForValue, readUnsignedShort(readBuffer, 8)));
 
     short blockStart = readSimpleField("blockStart", readUnsignedShort(readBuffer, 8));
-    short numberOfStatusBytes =
+    byte numberOfStatusBytes =
         readVirtualField(
             "numberOfStatusBytes",
-            short.class,
+            byte.class,
             (((((coding) == (StatusCoding.BINARY_BY_THIS_SERIAL_INTERFACE))
                     || ((coding) == (StatusCoding.BINARY_BY_ELSEWHERE))))
                 ? ((commandTypeContainer.getNumBytes()) - (3))
                 : (0)));
-    short numberOfLevelInformation =
+    byte numberOfLevelInformation =
         readVirtualField(
             "numberOfLevelInformation",
-            short.class,
+            byte.class,
             (((((coding) == (StatusCoding.LEVEL_BY_THIS_SERIAL_INTERFACE))
                     || ((coding) == (StatusCoding.LEVEL_BY_ELSEWHERE))))
                 ? ((((commandTypeContainer.getNumBytes()) - (3))) / (2))

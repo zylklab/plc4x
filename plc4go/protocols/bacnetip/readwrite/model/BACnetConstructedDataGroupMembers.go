@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataGroupMembers is the corresponding interface of BACnetConstructedDataGroupMembers
 type BACnetConstructedDataGroupMembers interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataGroupMembers(numberOfDataElements BACnetApplication
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataGroupMembers(structType interface{}) BACnetConstructedDataGroupMembers {
+func CastBACnetConstructedDataGroupMembers(structType any) BACnetConstructedDataGroupMembers {
 	if casted, ok := structType.(BACnetConstructedDataGroupMembers); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataGroupMembers) GetLengthInBytes(ctx context.Contex
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataGroupMembersParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataGroupMembers, error) {
-	return BACnetConstructedDataGroupMembersParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataGroupMembersParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataGroupMembers, error) {
+	return BACnetConstructedDataGroupMembersParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataGroupMembersParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataGroupMembers, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataGroupMembers"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataGroupMembers")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataGroupMembersParseWithBuffer(ctx context.Context, readB
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataGroupMembers")
@@ -216,7 +220,7 @@ func BACnetConstructedDataGroupMembersParseWithBuffer(ctx context.Context, readB
 	// Terminated array
 	var groupMembers []BACnetApplicationTagObjectIdentifier
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'groupMembers' field of BACnetConstructedDataGroupMembers")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataGroupMembers) Serialize() ([]byte, error) {
 func (m *_BACnetConstructedDataGroupMembers) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataGroupMembers"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataGroupMembers")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataGroupMembers) SerializeWithWriteBuffer(ctx contex
 		}
 		for _curItem, _element := range m.GetGroupMembers() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetGroupMembers()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetGroupMembers()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

@@ -21,6 +21,10 @@ package knxnetip
 
 import (
 	"context"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"runtime/debug"
 	"time"
 
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
@@ -28,29 +32,44 @@ import (
 	driverModel "github.com/apache/plc4x/plc4go/protocols/knxnetip/readwrite/model"
 	spiModel "github.com/apache/plc4x/plc4go/spi/model"
 	"github.com/apache/plc4x/plc4go/spi/utils"
-	values2 "github.com/apache/plc4x/plc4go/spi/values"
+	spiValues "github.com/apache/plc4x/plc4go/spi/values"
 )
 
+//go:generate go run ../../tools/plc4xgenerator/gen.go -type=Subscriber
 type Subscriber struct {
 	connection *Connection
 	consumers  map[*spiModel.DefaultPlcConsumerRegistration]apiModel.PlcSubscriptionEventConsumer
+
+	passLogToModel bool
+	log            zerolog.Logger       `ignore:"true"`
+	_options       []options.WithOption // Used to pass them downstream
 }
 
-func NewSubscriber(connection *Connection) *Subscriber {
+func NewSubscriber(connection *Connection, _options ...options.WithOption) *Subscriber {
+	passLoggerToModel, _ := options.ExtractPassLoggerToModel(_options...)
+	customLogger := options.ExtractCustomLoggerOrDefaultToGlobal(_options...)
 	return &Subscriber{
-		connection: connection,
-		consumers:  make(map[*spiModel.DefaultPlcConsumerRegistration]apiModel.PlcSubscriptionEventConsumer),
+		connection:     connection,
+		consumers:      make(map[*spiModel.DefaultPlcConsumerRegistration]apiModel.PlcSubscriptionEventConsumer),
+		passLogToModel: passLoggerToModel,
+		log:            customLogger,
+		_options:       _options,
 	}
 }
 
-func (m *Subscriber) Subscribe(ctx context.Context, subscriptionRequest apiModel.PlcSubscriptionRequest) <-chan apiModel.PlcSubscriptionRequestResult {
+func (s *Subscriber) Subscribe(ctx context.Context, subscriptionRequest apiModel.PlcSubscriptionRequest) <-chan apiModel.PlcSubscriptionRequestResult {
 	// TODO: handle context
-	result := make(chan apiModel.PlcSubscriptionRequestResult)
+	result := make(chan apiModel.PlcSubscriptionRequestResult, 1)
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				result <- spiModel.NewDefaultPlcSubscriptionRequestResult(subscriptionRequest, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
+			}
+		}()
 		internalPlcSubscriptionRequest := subscriptionRequest.(*spiModel.DefaultPlcSubscriptionRequest)
 
 		// Add this subscriber to the connection.
-		m.connection.addSubscriber(m)
+		s.connection.addSubscriber(s)
 
 		// Just populate all requests with an OK
 		responseCodes := map[string]apiModel.PlcResponseCode{}
@@ -58,22 +77,27 @@ func (m *Subscriber) Subscribe(ctx context.Context, subscriptionRequest apiModel
 		for _, tagName := range internalPlcSubscriptionRequest.GetTagNames() {
 			responseCodes[tagName] = apiModel.PlcResponseCode_OK
 			tagType := internalPlcSubscriptionRequest.GetType(tagName)
-			subscriptionValues[tagName] = NewSubscriptionHandle(m, tagName, internalPlcSubscriptionRequest.GetTag(tagName), tagType, internalPlcSubscriptionRequest.GetInterval(tagName))
+			subscriptionValues[tagName] = NewSubscriptionHandle(s, tagName, internalPlcSubscriptionRequest.GetTag(tagName), tagType, internalPlcSubscriptionRequest.GetInterval(tagName))
 		}
 
-		result <- &spiModel.DefaultPlcSubscriptionRequestResult{
-			Request:  subscriptionRequest,
-			Response: spiModel.NewDefaultPlcSubscriptionResponse(subscriptionRequest, responseCodes, subscriptionValues),
-			Err:      nil,
-		}
+		result <- spiModel.NewDefaultPlcSubscriptionRequestResult(
+			subscriptionRequest,
+			spiModel.NewDefaultPlcSubscriptionResponse(
+				subscriptionRequest,
+				responseCodes,
+				subscriptionValues,
+				append(s._options, options.WithCustomLogger(s.log))...,
+			),
+			nil,
+		)
 	}()
 	return result
 }
 
-func (m *Subscriber) Unsubscribe(ctx context.Context, unsubscriptionRequest apiModel.PlcUnsubscriptionRequest) <-chan apiModel.PlcUnsubscriptionRequestResult {
+func (s *Subscriber) Unsubscribe(ctx context.Context, unsubscriptionRequest apiModel.PlcUnsubscriptionRequest) <-chan apiModel.PlcUnsubscriptionRequestResult {
 	// TODO: handle context
-	result := make(chan apiModel.PlcUnsubscriptionRequestResult)
-
+	result := make(chan apiModel.PlcUnsubscriptionRequestResult, 1)
+	result <- spiModel.NewDefaultPlcUnsubscriptionRequestResult(unsubscriptionRequest, nil, errors.New("Not Implemented"))
 	// TODO: As soon as we establish a connection, we start getting data...
 	// subscriptions are more an internal handling of which values to pass where.
 
@@ -83,27 +107,28 @@ func (m *Subscriber) Unsubscribe(ctx context.Context, unsubscriptionRequest apiM
 /*
  * Callback for incoming value change events from the KNX bus
  */
-func (m *Subscriber) handleValueChange(destinationAddress []byte, payload []byte, changed bool) {
+func (s *Subscriber) handleValueChange(ctx context.Context, destinationAddress []byte, payload []byte, changed bool) {
 	// Decode the group-address according to the settings in the driver
 	// Group addresses can be 1, 2 or 3 levels (3 being the default)
-	groupAddress, err := driverModel.KnxGroupAddressParse(destinationAddress, m.connection.getGroupAddressNumLevels())
+	ctxForModel := options.GetLoggerContextForModel(ctx, s.log, options.WithPassLoggerToModel(s.passLogToModel))
+	groupAddress, err := driverModel.KnxGroupAddressParse(ctxForModel, destinationAddress, s.connection.getGroupAddressNumLevels())
 	if err != nil {
 		return
 	}
 
 	// TODO: aggregate tags and send it to a consumer which want's all of them
-	for registration, consumer := range m.consumers {
+	for registration, consumer := range s.consumers {
 		for _, subscriptionHandle := range registration.GetSubscriptionHandles() {
 			subscriptionHandle := subscriptionHandle.(*SubscriptionHandle)
 			groupAddressTag, ok := subscriptionHandle.tag.(GroupAddressTag)
 			if !ok || !groupAddressTag.matches(groupAddress) {
 				continue
 			}
-			if subscriptionHandle.tagType != spiModel.SubscriptionChangeOfState || !changed {
+			if subscriptionHandle.tagType != apiModel.SubscriptionChangeOfState || !changed {
 				continue
 			}
 			tags := map[string]apiModel.PlcTag{}
-			types := map[string]spiModel.SubscriptionType{}
+			types := map[string]apiModel.PlcSubscriptionType{}
 			intervals := map[string]time.Duration{}
 			responseCodes := map[string]apiModel.PlcResponseCode{}
 			addresses := map[string][]byte{}
@@ -140,7 +165,7 @@ func (m *Subscriber) handleValueChange(destinationAddress []byte, payload []byte
 					if !rb.HasMore(1) {
 						rb.Reset(0)
 					}
-					plcValue := values2.NewPlcRawByteArray(rb.GetBytes())
+					plcValue := spiValues.NewPlcRawByteArray(rb.GetBytes())
 					plcValueList = append(plcValueList, plcValue)
 				} else {
 					plcValue, err2 := driverModel.KnxDatapointParseWithBuffer(context.Background(), rb, elementType)
@@ -158,21 +183,29 @@ func (m *Subscriber) handleValueChange(destinationAddress []byte, payload []byte
 				if len(plcValueList) == 1 {
 					plcValues[tagName] = plcValueList[0]
 				} else {
-					plcValues[tagName] = values2.NewPlcList(plcValueList)
+					plcValues[tagName] = spiValues.NewPlcList(plcValueList)
 				}
 			}
-			event := NewSubscriptionEvent(tags, types, intervals, responseCodes, addresses, plcValues)
+			event := NewSubscriptionEvent(
+				tags,
+				types,
+				intervals,
+				responseCodes,
+				addresses,
+				plcValues,
+				append(s._options, options.WithCustomLogger(s.log))...,
+			)
 			consumer(&event)
 		}
 	}
 }
 
-func (m *Subscriber) Register(consumer apiModel.PlcSubscriptionEventConsumer, handles []apiModel.PlcSubscriptionHandle) apiModel.PlcConsumerRegistration {
-	consumerRegistration := spiModel.NewDefaultPlcConsumerRegistration(m, consumer, handles...)
-	m.consumers[consumerRegistration] = consumer
+func (s *Subscriber) Register(consumer apiModel.PlcSubscriptionEventConsumer, handles []apiModel.PlcSubscriptionHandle) apiModel.PlcConsumerRegistration {
+	consumerRegistration := spiModel.NewDefaultPlcConsumerRegistration(s, consumer, handles...)
+	s.consumers[consumerRegistration.(*spiModel.DefaultPlcConsumerRegistration)] = consumer
 	return consumerRegistration
 }
 
-func (m *Subscriber) Unregister(registration apiModel.PlcConsumerRegistration) {
-	delete(m.consumers, registration.(*spiModel.DefaultPlcConsumerRegistration))
+func (s *Subscriber) Unregister(registration apiModel.PlcConsumerRegistration) {
+	delete(s.consumers, registration.(*spiModel.DefaultPlcConsumerRegistration))
 }

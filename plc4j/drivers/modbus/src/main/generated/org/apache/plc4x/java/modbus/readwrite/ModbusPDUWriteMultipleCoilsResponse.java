@@ -42,8 +42,8 @@ public class ModbusPDUWriteMultipleCoilsResponse extends ModbusPDU implements Me
     return (boolean) false;
   }
 
-  public Short getFunctionFlag() {
-    return (short) 0x0F;
+  public Byte getFunctionFlag() {
+    return (byte) 0x0F;
   }
 
   public Boolean getResponse() {
@@ -72,7 +72,6 @@ public class ModbusPDUWriteMultipleCoilsResponse extends ModbusPDU implements Me
   protected void serializeModbusPDUChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ModbusPDUWriteMultipleCoilsResponse");
 
     // Simple Field (startingAddress)
@@ -108,8 +107,6 @@ public class ModbusPDUWriteMultipleCoilsResponse extends ModbusPDU implements Me
       ReadBuffer readBuffer, Boolean response) throws ParseException {
     readBuffer.pullContext("ModbusPDUWriteMultipleCoilsResponse");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     int startingAddress = readSimpleField("startingAddress", readUnsignedInt(readBuffer, 16));

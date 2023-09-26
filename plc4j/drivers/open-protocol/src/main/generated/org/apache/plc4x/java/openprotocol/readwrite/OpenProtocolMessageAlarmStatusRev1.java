@@ -39,8 +39,8 @@ public class OpenProtocolMessageAlarmStatusRev1 extends OpenProtocolMessageAlarm
     implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 1;
+  public Integer getRevision() {
+    return (int) 1;
   }
 
   // Constant values.
@@ -58,7 +58,7 @@ public class OpenProtocolMessageAlarmStatusRev1 extends OpenProtocolMessageAlarm
   protected final String alarmTime;
 
   public OpenProtocolMessageAlarmStatusRev1(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -130,7 +130,6 @@ public class OpenProtocolMessageAlarmStatusRev1 extends OpenProtocolMessageAlarm
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageAlarmStatusRev1");
 
     // Const Field (blockIdAlarmStatus)
@@ -253,12 +252,10 @@ public class OpenProtocolMessageAlarmStatusRev1 extends OpenProtocolMessageAlarm
   }
 
   public static OpenProtocolMessageAlarmStatusBuilder
-      staticParseOpenProtocolMessageAlarmStatusBuilder(ReadBuffer readBuffer, Long revision)
+      staticParseOpenProtocolMessageAlarmStatusBuilder(ReadBuffer readBuffer, Integer revision)
           throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageAlarmStatusRev1");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     int blockIdAlarmStatus =
@@ -352,7 +349,7 @@ public class OpenProtocolMessageAlarmStatusRev1 extends OpenProtocolMessageAlarm
     }
 
     public OpenProtocolMessageAlarmStatusRev1 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

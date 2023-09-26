@@ -29,22 +29,19 @@ import (
 
 	"github.com/apache/plc4x/plc4go/internal/bacnetip"
 	"github.com/apache/plc4x/plc4go/pkg/api"
-	"github.com/apache/plc4x/plc4go/pkg/api/config"
-	"github.com/apache/plc4x/plc4go/pkg/api/logging"
-	"github.com/apache/plc4x/plc4go/pkg/api/model"
+	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
 	"github.com/apache/plc4x/plc4go/spi"
+	"github.com/apache/plc4x/plc4go/spi/options/converter"
+	"github.com/apache/plc4x/plc4go/spi/testutils"
 	"github.com/apache/plc4x/plc4go/spi/transports/pcap"
-	"github.com/rs/zerolog/log"
+
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBacnetDriverWithPcap(t *testing.T) {
 	t.Skip() // Manual test don't check in un-skipped
 
-	config.TraceTransactionManagerWorkers = false
-	config.TraceTransactionManagerTransactions = false
-	config.TraceDefaultMessageCodecWorker = false
-	logging.InfoLevel()
 	file := path.Join(os.TempDir(), "bacnet-stack-services.cap")
 	_, err := os.Stat(file)
 	if os.IsNotExist(err) {
@@ -53,9 +50,14 @@ func TestBacnetDriverWithPcap(t *testing.T) {
 			panic(err)
 		}
 	}
-	driverManager := plc4go.NewPlcDriverManager()
-	driverManager.RegisterDriver(bacnetip.NewDriver())
-	driverManager.(spi.TransportAware).RegisterTransport(pcap.NewTransport())
+	optionsForTesting := testutils.EnrichOptionsWithOptionsForTesting(t)
+
+	driverManager := plc4go.NewPlcDriverManager(converter.WithOptionToExternal(optionsForTesting...)...)
+	t.Cleanup(func() {
+		assert.NoError(t, driverManager.Close())
+	})
+	driverManager.RegisterDriver(bacnetip.NewDriver(optionsForTesting...))
+	driverManager.(spi.TransportAware).RegisterTransport(pcap.NewTransport(optionsForTesting...))
 	result := <-driverManager.GetConnection("bacnet-ip:pcap://" + file + "?transport-type=udp&speed-factor=0")
 	if result.GetErr() != nil {
 		panic(result.GetErr())
@@ -64,7 +66,7 @@ func TestBacnetDriverWithPcap(t *testing.T) {
 	defer connection.Close()
 	build, err := connection.SubscriptionRequestBuilder().
 		AddEventTagAddress("furz", "*/*/*").
-		AddPreRegisteredConsumer("furz", func(event model.PlcSubscriptionEvent) {
+		AddPreRegisteredConsumer("furz", func(event apiModel.PlcSubscriptionEvent) {
 			println(event)
 		}).
 		Build()
@@ -73,10 +75,10 @@ func TestBacnetDriverWithPcap(t *testing.T) {
 	if requestResult.GetErr() != nil {
 		panic(requestResult.GetErr())
 	}
-	log.Info().Msgf("got response %v", requestResult.GetResponse())
+	t.Logf("got response %v", requestResult.GetResponse())
 
 	for connection.IsConnected() {
-		log.Debug().Msg("Still sleeping")
+		t.Log("Still sleeping")
 		time.Sleep(time.Second)
 	}
 }

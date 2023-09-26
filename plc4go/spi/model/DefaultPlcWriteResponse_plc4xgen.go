@@ -42,9 +42,6 @@ func (d *DefaultPlcWriteResponse) SerializeWithWriteBuffer(ctx context.Context, 
 	if err := writeBuffer.PushContext("PlcWriteResponse"); err != nil {
 		return err
 	}
-	if err := d.DefaultResponse.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
-		return err
-	}
 
 	if d.request != nil {
 		if serializableField, ok := d.request.(utils.Serializable); ok {
@@ -63,6 +60,33 @@ func (d *DefaultPlcWriteResponse) SerializeWithWriteBuffer(ctx context.Context, 
 				return err
 			}
 		}
+	}
+	if err := writeBuffer.PushContext("responseCodes", utils.WithRenderAsList(true)); err != nil {
+		return err
+	}
+	for _name, elem := range d.responseCodes {
+		name := _name
+
+		var elem any = elem
+		if serializable, ok := elem.(utils.Serializable); ok {
+			if err := writeBuffer.PushContext(name); err != nil {
+				return err
+			}
+			if err := serializable.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
+				return err
+			}
+			if err := writeBuffer.PopContext(name); err != nil {
+				return err
+			}
+		} else {
+			elemAsString := fmt.Sprintf("%v", elem)
+			if err := writeBuffer.WriteString(name, uint32(len(elemAsString)*8), "UTF-8", elemAsString); err != nil {
+				return err
+			}
+		}
+	}
+	if err := writeBuffer.PopContext("responseCodes", utils.WithRenderAsList(true)); err != nil {
+		return err
 	}
 	if err := writeBuffer.PopContext("PlcWriteResponse"); err != nil {
 		return err

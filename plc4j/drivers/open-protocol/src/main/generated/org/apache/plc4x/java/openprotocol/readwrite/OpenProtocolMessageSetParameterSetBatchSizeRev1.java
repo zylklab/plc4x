@@ -39,23 +39,23 @@ public class OpenProtocolMessageSetParameterSetBatchSizeRev1
     extends OpenProtocolMessageSetParameterSetBatchSize implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 1;
+  public Integer getRevision() {
+    return (int) 1;
   }
 
   // Properties.
-  protected final long parameterSetId;
+  protected final int parameterSetId;
   protected final int batchSize;
 
   public OpenProtocolMessageSetParameterSetBatchSizeRev1(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
       Integer sequenceNumber,
       Short numberOfMessageParts,
       Short messagePartNumber,
-      long parameterSetId,
+      int parameterSetId,
       int batchSize) {
     super(
         midRevision,
@@ -69,7 +69,7 @@ public class OpenProtocolMessageSetParameterSetBatchSizeRev1
     this.batchSize = batchSize;
   }
 
-  public long getParameterSetId() {
+  public int getParameterSetId() {
     return parameterSetId;
   }
 
@@ -82,14 +82,13 @@ public class OpenProtocolMessageSetParameterSetBatchSizeRev1
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageSetParameterSetBatchSizeRev1");
 
     // Simple Field (parameterSetId)
     writeSimpleField(
         "parameterSetId",
         parameterSetId,
-        writeUnsignedLong(writeBuffer, 24),
+        writeUnsignedInt(writeBuffer, 24),
         WithOption.WithEncoding("ASCII"));
 
     // Simple Field (batchSize)
@@ -124,16 +123,14 @@ public class OpenProtocolMessageSetParameterSetBatchSizeRev1
 
   public static OpenProtocolMessageSetParameterSetBatchSizeBuilder
       staticParseOpenProtocolMessageSetParameterSetBatchSizeBuilder(
-          ReadBuffer readBuffer, Long revision) throws ParseException {
+          ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageSetParameterSetBatchSizeRev1");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
-    long parameterSetId =
+    int parameterSetId =
         readSimpleField(
-            "parameterSetId", readUnsignedLong(readBuffer, 24), WithOption.WithEncoding("ASCII"));
+            "parameterSetId", readUnsignedInt(readBuffer, 24), WithOption.WithEncoding("ASCII"));
 
     int batchSize =
         readSimpleField(
@@ -148,17 +145,17 @@ public class OpenProtocolMessageSetParameterSetBatchSizeRev1
   public static class OpenProtocolMessageSetParameterSetBatchSizeRev1BuilderImpl
       implements OpenProtocolMessageSetParameterSetBatchSize
           .OpenProtocolMessageSetParameterSetBatchSizeBuilder {
-    private final long parameterSetId;
+    private final int parameterSetId;
     private final int batchSize;
 
     public OpenProtocolMessageSetParameterSetBatchSizeRev1BuilderImpl(
-        long parameterSetId, int batchSize) {
+        int parameterSetId, int batchSize) {
       this.parameterSetId = parameterSetId;
       this.batchSize = batchSize;
     }
 
     public OpenProtocolMessageSetParameterSetBatchSizeRev1 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

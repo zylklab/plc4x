@@ -48,10 +48,10 @@ public class IdentifyReplyCommandSummary extends IdentifyReplyCommand implements
   protected final String version;
 
   // Arguments.
-  protected final Short numBytes;
+  protected final Byte numBytes;
 
   public IdentifyReplyCommandSummary(
-      String partName, byte unitServiceType, String version, Short numBytes) {
+      String partName, byte unitServiceType, String version, Byte numBytes) {
     super(numBytes);
     this.partName = partName;
     this.unitServiceType = unitServiceType;
@@ -76,7 +76,6 @@ public class IdentifyReplyCommandSummary extends IdentifyReplyCommand implements
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("IdentifyReplyCommandSummary");
 
     // Simple Field (partName)
@@ -115,11 +114,9 @@ public class IdentifyReplyCommandSummary extends IdentifyReplyCommand implements
   }
 
   public static IdentifyReplyCommandBuilder staticParseIdentifyReplyCommandBuilder(
-      ReadBuffer readBuffer, Attribute attribute, Short numBytes) throws ParseException {
+      ReadBuffer readBuffer, Attribute attribute, Byte numBytes) throws ParseException {
     readBuffer.pullContext("IdentifyReplyCommandSummary");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     String partName = readSimpleField("partName", readString(readBuffer, 48));
@@ -138,17 +135,17 @@ public class IdentifyReplyCommandSummary extends IdentifyReplyCommand implements
     private final String partName;
     private final byte unitServiceType;
     private final String version;
-    private final Short numBytes;
+    private final Byte numBytes;
 
     public IdentifyReplyCommandSummaryBuilderImpl(
-        String partName, byte unitServiceType, String version, Short numBytes) {
+        String partName, byte unitServiceType, String version, Byte numBytes) {
       this.partName = partName;
       this.unitServiceType = unitServiceType;
       this.version = version;
       this.numBytes = numBytes;
     }
 
-    public IdentifyReplyCommandSummary build(Short numBytes) {
+    public IdentifyReplyCommandSummary build(Byte numBytes) {
 
       IdentifyReplyCommandSummary identifyReplyCommandSummary =
           new IdentifyReplyCommandSummary(partName, unitServiceType, version, numBytes);

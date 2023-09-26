@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetPriorityArray is the corresponding interface of BACnetPriorityArray
 type BACnetPriorityArray interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetNumberOfDataElements returns NumberOfDataElements (property field)
@@ -130,7 +132,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue01() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (0)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[0]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (0)), func() any { return CastBACnetPriorityValue(m.GetData()[0]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue02() BACnetPriorityValue {
@@ -138,7 +140,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue02() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (1)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[1]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (1)), func() any { return CastBACnetPriorityValue(m.GetData()[1]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue03() BACnetPriorityValue {
@@ -146,7 +148,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue03() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (2)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[2]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (2)), func() any { return CastBACnetPriorityValue(m.GetData()[2]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue04() BACnetPriorityValue {
@@ -154,7 +156,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue04() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (3)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[3]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (3)), func() any { return CastBACnetPriorityValue(m.GetData()[3]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue05() BACnetPriorityValue {
@@ -162,7 +164,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue05() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (4)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[4]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (4)), func() any { return CastBACnetPriorityValue(m.GetData()[4]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue06() BACnetPriorityValue {
@@ -170,7 +172,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue06() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (5)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[5]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (5)), func() any { return CastBACnetPriorityValue(m.GetData()[5]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue07() BACnetPriorityValue {
@@ -178,7 +180,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue07() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (6)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[6]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (6)), func() any { return CastBACnetPriorityValue(m.GetData()[6]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue08() BACnetPriorityValue {
@@ -186,7 +188,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue08() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (7)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[7]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (7)), func() any { return CastBACnetPriorityValue(m.GetData()[7]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue09() BACnetPriorityValue {
@@ -194,7 +196,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue09() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (8)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[8]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (8)), func() any { return CastBACnetPriorityValue(m.GetData()[8]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue10() BACnetPriorityValue {
@@ -202,7 +204,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue10() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (9)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[9]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (9)), func() any { return CastBACnetPriorityValue(m.GetData()[9]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue11() BACnetPriorityValue {
@@ -210,7 +212,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue11() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (10)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[10]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (10)), func() any { return CastBACnetPriorityValue(m.GetData()[10]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue12() BACnetPriorityValue {
@@ -218,7 +220,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue12() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (11)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[11]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (11)), func() any { return CastBACnetPriorityValue(m.GetData()[11]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue13() BACnetPriorityValue {
@@ -226,7 +228,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue13() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (12)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[12]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (12)), func() any { return CastBACnetPriorityValue(m.GetData()[12]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue14() BACnetPriorityValue {
@@ -234,7 +236,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue14() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (13)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[13]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (13)), func() any { return CastBACnetPriorityValue(m.GetData()[13]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue15() BACnetPriorityValue {
@@ -242,7 +244,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue15() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (14)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[14]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (14)), func() any { return CastBACnetPriorityValue(m.GetData()[14]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetPriorityValue16() BACnetPriorityValue {
@@ -250,7 +252,7 @@ func (m *_BACnetPriorityArray) GetPriorityValue16() BACnetPriorityValue {
 	_ = ctx
 	numberOfDataElements := m.NumberOfDataElements
 	_ = numberOfDataElements
-	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (15)), func() interface{} { return CastBACnetPriorityValue(m.GetData()[15]) }, func() interface{} { return CastBACnetPriorityValue(nil) })))
+	return CastBACnetPriorityValue(CastBACnetPriorityValue(utils.InlineIf(bool((len(m.GetData())) > (15)), func() any { return CastBACnetPriorityValue(m.GetData()[15]) }, func() any { return CastBACnetPriorityValue(nil) })))
 }
 
 func (m *_BACnetPriorityArray) GetIsIndexedAccess() bool {
@@ -280,7 +282,7 @@ func NewBACnetPriorityArray(numberOfDataElements BACnetApplicationTagUnsignedInt
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetPriorityArray(structType interface{}) BACnetPriorityArray {
+func CastBACnetPriorityArray(structType any) BACnetPriorityArray {
 	if casted, ok := structType.(BACnetPriorityArray); ok {
 		return casted
 	}
@@ -354,13 +356,15 @@ func (m *_BACnetPriorityArray) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetPriorityArrayParse(theBytes []byte, objectTypeArgument BACnetObjectType, tagNumber uint8, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetPriorityArray, error) {
-	return BACnetPriorityArrayParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), objectTypeArgument, tagNumber, arrayIndexArgument)
+func BACnetPriorityArrayParse(ctx context.Context, theBytes []byte, objectTypeArgument BACnetObjectType, tagNumber uint8, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetPriorityArray, error) {
+	return BACnetPriorityArrayParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), objectTypeArgument, tagNumber, arrayIndexArgument)
 }
 
 func BACnetPriorityArrayParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, objectTypeArgument BACnetObjectType, tagNumber uint8, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetPriorityArray, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetPriorityArray"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetPriorityArray")
 	}
@@ -382,7 +386,7 @@ func BACnetPriorityArrayParseWithBuffer(ctx context.Context, readBuffer utils.Re
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetPriorityArray")
@@ -401,7 +405,7 @@ func BACnetPriorityArrayParseWithBuffer(ctx context.Context, readBuffer utils.Re
 	// Terminated array
 	var data []BACnetPriorityValue
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetPriorityValueParseWithBuffer(ctx, readBuffer, objectTypeArgument)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'data' field of BACnetPriorityArray")
@@ -414,82 +418,82 @@ func BACnetPriorityArrayParseWithBuffer(ctx context.Context, readBuffer utils.Re
 	}
 
 	// Virtual field
-	_priorityValue01 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (0)), func() interface{} { return CastBACnetPriorityValue(data[0]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue01 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (0)), func() any { return CastBACnetPriorityValue(data[0]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue01 := _priorityValue01
 	_ = priorityValue01
 
 	// Virtual field
-	_priorityValue02 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (1)), func() interface{} { return CastBACnetPriorityValue(data[1]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue02 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (1)), func() any { return CastBACnetPriorityValue(data[1]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue02 := _priorityValue02
 	_ = priorityValue02
 
 	// Virtual field
-	_priorityValue03 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (2)), func() interface{} { return CastBACnetPriorityValue(data[2]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue03 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (2)), func() any { return CastBACnetPriorityValue(data[2]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue03 := _priorityValue03
 	_ = priorityValue03
 
 	// Virtual field
-	_priorityValue04 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (3)), func() interface{} { return CastBACnetPriorityValue(data[3]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue04 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (3)), func() any { return CastBACnetPriorityValue(data[3]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue04 := _priorityValue04
 	_ = priorityValue04
 
 	// Virtual field
-	_priorityValue05 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (4)), func() interface{} { return CastBACnetPriorityValue(data[4]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue05 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (4)), func() any { return CastBACnetPriorityValue(data[4]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue05 := _priorityValue05
 	_ = priorityValue05
 
 	// Virtual field
-	_priorityValue06 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (5)), func() interface{} { return CastBACnetPriorityValue(data[5]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue06 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (5)), func() any { return CastBACnetPriorityValue(data[5]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue06 := _priorityValue06
 	_ = priorityValue06
 
 	// Virtual field
-	_priorityValue07 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (6)), func() interface{} { return CastBACnetPriorityValue(data[6]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue07 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (6)), func() any { return CastBACnetPriorityValue(data[6]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue07 := _priorityValue07
 	_ = priorityValue07
 
 	// Virtual field
-	_priorityValue08 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (7)), func() interface{} { return CastBACnetPriorityValue(data[7]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue08 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (7)), func() any { return CastBACnetPriorityValue(data[7]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue08 := _priorityValue08
 	_ = priorityValue08
 
 	// Virtual field
-	_priorityValue09 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (8)), func() interface{} { return CastBACnetPriorityValue(data[8]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue09 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (8)), func() any { return CastBACnetPriorityValue(data[8]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue09 := _priorityValue09
 	_ = priorityValue09
 
 	// Virtual field
-	_priorityValue10 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (9)), func() interface{} { return CastBACnetPriorityValue(data[9]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue10 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (9)), func() any { return CastBACnetPriorityValue(data[9]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue10 := _priorityValue10
 	_ = priorityValue10
 
 	// Virtual field
-	_priorityValue11 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (10)), func() interface{} { return CastBACnetPriorityValue(data[10]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue11 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (10)), func() any { return CastBACnetPriorityValue(data[10]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue11 := _priorityValue11
 	_ = priorityValue11
 
 	// Virtual field
-	_priorityValue12 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (11)), func() interface{} { return CastBACnetPriorityValue(data[11]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue12 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (11)), func() any { return CastBACnetPriorityValue(data[11]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue12 := _priorityValue12
 	_ = priorityValue12
 
 	// Virtual field
-	_priorityValue13 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (12)), func() interface{} { return CastBACnetPriorityValue(data[12]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue13 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (12)), func() any { return CastBACnetPriorityValue(data[12]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue13 := _priorityValue13
 	_ = priorityValue13
 
 	// Virtual field
-	_priorityValue14 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (13)), func() interface{} { return CastBACnetPriorityValue(data[13]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue14 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (13)), func() any { return CastBACnetPriorityValue(data[13]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue14 := _priorityValue14
 	_ = priorityValue14
 
 	// Virtual field
-	_priorityValue15 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (14)), func() interface{} { return CastBACnetPriorityValue(data[14]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue15 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (14)), func() any { return CastBACnetPriorityValue(data[14]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue15 := _priorityValue15
 	_ = priorityValue15
 
 	// Virtual field
-	_priorityValue16 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (15)), func() interface{} { return CastBACnetPriorityValue(data[15]) }, func() interface{} { return CastBACnetPriorityValue(nil) }))
+	_priorityValue16 := CastBACnetPriorityValue(utils.InlineIf(bool((len(data)) > (15)), func() any { return CastBACnetPriorityValue(data[15]) }, func() any { return CastBACnetPriorityValue(nil) }))
 	priorityValue16 := _priorityValue16
 	_ = priorityValue16
 
@@ -533,10 +537,14 @@ func (m *_BACnetPriorityArray) Serialize() ([]byte, error) {
 func (m *_BACnetPriorityArray) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetPriorityArray"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetPriorityArray")
 	}
 	// Virtual field
+	zero := m.GetZero()
+	_ = zero
 	if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 		return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 	}
@@ -563,7 +571,7 @@ func (m *_BACnetPriorityArray) SerializeWithWriteBuffer(ctx context.Context, wri
 	}
 	for _curItem, _element := range m.GetData() {
 		_ = _curItem
-		arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetData()), _curItem)
+		arrayCtx := utils.CreateArrayContext(ctx, len(m.GetData()), _curItem)
 		_ = arrayCtx
 		_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 		if _elementErr != nil {
@@ -574,74 +582,110 @@ func (m *_BACnetPriorityArray) SerializeWithWriteBuffer(ctx context.Context, wri
 		return errors.Wrap(popErr, "Error popping for data")
 	}
 	// Virtual field
+	priorityValue01 := m.GetPriorityValue01()
+	_ = priorityValue01
 	if _priorityValue01Err := writeBuffer.WriteVirtual(ctx, "priorityValue01", m.GetPriorityValue01()); _priorityValue01Err != nil {
 		return errors.Wrap(_priorityValue01Err, "Error serializing 'priorityValue01' field")
 	}
 	// Virtual field
+	priorityValue02 := m.GetPriorityValue02()
+	_ = priorityValue02
 	if _priorityValue02Err := writeBuffer.WriteVirtual(ctx, "priorityValue02", m.GetPriorityValue02()); _priorityValue02Err != nil {
 		return errors.Wrap(_priorityValue02Err, "Error serializing 'priorityValue02' field")
 	}
 	// Virtual field
+	priorityValue03 := m.GetPriorityValue03()
+	_ = priorityValue03
 	if _priorityValue03Err := writeBuffer.WriteVirtual(ctx, "priorityValue03", m.GetPriorityValue03()); _priorityValue03Err != nil {
 		return errors.Wrap(_priorityValue03Err, "Error serializing 'priorityValue03' field")
 	}
 	// Virtual field
+	priorityValue04 := m.GetPriorityValue04()
+	_ = priorityValue04
 	if _priorityValue04Err := writeBuffer.WriteVirtual(ctx, "priorityValue04", m.GetPriorityValue04()); _priorityValue04Err != nil {
 		return errors.Wrap(_priorityValue04Err, "Error serializing 'priorityValue04' field")
 	}
 	// Virtual field
+	priorityValue05 := m.GetPriorityValue05()
+	_ = priorityValue05
 	if _priorityValue05Err := writeBuffer.WriteVirtual(ctx, "priorityValue05", m.GetPriorityValue05()); _priorityValue05Err != nil {
 		return errors.Wrap(_priorityValue05Err, "Error serializing 'priorityValue05' field")
 	}
 	// Virtual field
+	priorityValue06 := m.GetPriorityValue06()
+	_ = priorityValue06
 	if _priorityValue06Err := writeBuffer.WriteVirtual(ctx, "priorityValue06", m.GetPriorityValue06()); _priorityValue06Err != nil {
 		return errors.Wrap(_priorityValue06Err, "Error serializing 'priorityValue06' field")
 	}
 	// Virtual field
+	priorityValue07 := m.GetPriorityValue07()
+	_ = priorityValue07
 	if _priorityValue07Err := writeBuffer.WriteVirtual(ctx, "priorityValue07", m.GetPriorityValue07()); _priorityValue07Err != nil {
 		return errors.Wrap(_priorityValue07Err, "Error serializing 'priorityValue07' field")
 	}
 	// Virtual field
+	priorityValue08 := m.GetPriorityValue08()
+	_ = priorityValue08
 	if _priorityValue08Err := writeBuffer.WriteVirtual(ctx, "priorityValue08", m.GetPriorityValue08()); _priorityValue08Err != nil {
 		return errors.Wrap(_priorityValue08Err, "Error serializing 'priorityValue08' field")
 	}
 	// Virtual field
+	priorityValue09 := m.GetPriorityValue09()
+	_ = priorityValue09
 	if _priorityValue09Err := writeBuffer.WriteVirtual(ctx, "priorityValue09", m.GetPriorityValue09()); _priorityValue09Err != nil {
 		return errors.Wrap(_priorityValue09Err, "Error serializing 'priorityValue09' field")
 	}
 	// Virtual field
+	priorityValue10 := m.GetPriorityValue10()
+	_ = priorityValue10
 	if _priorityValue10Err := writeBuffer.WriteVirtual(ctx, "priorityValue10", m.GetPriorityValue10()); _priorityValue10Err != nil {
 		return errors.Wrap(_priorityValue10Err, "Error serializing 'priorityValue10' field")
 	}
 	// Virtual field
+	priorityValue11 := m.GetPriorityValue11()
+	_ = priorityValue11
 	if _priorityValue11Err := writeBuffer.WriteVirtual(ctx, "priorityValue11", m.GetPriorityValue11()); _priorityValue11Err != nil {
 		return errors.Wrap(_priorityValue11Err, "Error serializing 'priorityValue11' field")
 	}
 	// Virtual field
+	priorityValue12 := m.GetPriorityValue12()
+	_ = priorityValue12
 	if _priorityValue12Err := writeBuffer.WriteVirtual(ctx, "priorityValue12", m.GetPriorityValue12()); _priorityValue12Err != nil {
 		return errors.Wrap(_priorityValue12Err, "Error serializing 'priorityValue12' field")
 	}
 	// Virtual field
+	priorityValue13 := m.GetPriorityValue13()
+	_ = priorityValue13
 	if _priorityValue13Err := writeBuffer.WriteVirtual(ctx, "priorityValue13", m.GetPriorityValue13()); _priorityValue13Err != nil {
 		return errors.Wrap(_priorityValue13Err, "Error serializing 'priorityValue13' field")
 	}
 	// Virtual field
+	priorityValue14 := m.GetPriorityValue14()
+	_ = priorityValue14
 	if _priorityValue14Err := writeBuffer.WriteVirtual(ctx, "priorityValue14", m.GetPriorityValue14()); _priorityValue14Err != nil {
 		return errors.Wrap(_priorityValue14Err, "Error serializing 'priorityValue14' field")
 	}
 	// Virtual field
+	priorityValue15 := m.GetPriorityValue15()
+	_ = priorityValue15
 	if _priorityValue15Err := writeBuffer.WriteVirtual(ctx, "priorityValue15", m.GetPriorityValue15()); _priorityValue15Err != nil {
 		return errors.Wrap(_priorityValue15Err, "Error serializing 'priorityValue15' field")
 	}
 	// Virtual field
+	priorityValue16 := m.GetPriorityValue16()
+	_ = priorityValue16
 	if _priorityValue16Err := writeBuffer.WriteVirtual(ctx, "priorityValue16", m.GetPriorityValue16()); _priorityValue16Err != nil {
 		return errors.Wrap(_priorityValue16Err, "Error serializing 'priorityValue16' field")
 	}
 	// Virtual field
+	isIndexedAccess := m.GetIsIndexedAccess()
+	_ = isIndexedAccess
 	if _isIndexedAccessErr := writeBuffer.WriteVirtual(ctx, "isIndexedAccess", m.GetIsIndexedAccess()); _isIndexedAccessErr != nil {
 		return errors.Wrap(_isIndexedAccessErr, "Error serializing 'isIndexedAccess' field")
 	}
 	// Virtual field
+	indexEntry := m.GetIndexEntry()
+	_ = indexEntry
 	if _indexEntryErr := writeBuffer.WriteVirtual(ctx, "indexEntry", m.GetIndexEntry()); _indexEntryErr != nil {
 		return errors.Wrap(_indexEntryErr, "Error serializing 'indexEntry' field")
 	}

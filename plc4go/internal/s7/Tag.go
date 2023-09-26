@@ -20,18 +20,20 @@
 package s7
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 
-	"github.com/apache/plc4x/plc4go/pkg/api/model"
-	"github.com/apache/plc4x/plc4go/pkg/api/values"
+	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
+	apiValues "github.com/apache/plc4x/plc4go/pkg/api/values"
 	readWriteModel "github.com/apache/plc4x/plc4go/protocols/s7/readwrite/model"
-	model2 "github.com/apache/plc4x/plc4go/spi/model"
+	spiModel "github.com/apache/plc4x/plc4go/spi/model"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 )
 
 type PlcTag interface {
-	model.PlcTag
+	apiModel.PlcTag
+	utils.Serializable
 
 	GetDataType() readWriteModel.TransportSize
 	GetNumElements() uint16
@@ -88,23 +90,23 @@ func (m plcTag) GetAddressString() string {
 	return fmt.Sprintf("%d:%s[%d]", m.TagType, m.Datatype, m.NumElements)
 }
 
-func (m plcTag) GetValueType() values.PlcValueType {
-	if plcValueByName, ok := values.PlcValueByName(m.Datatype.String()); ok {
+func (m plcTag) GetValueType() apiValues.PlcValueType {
+	if plcValueByName, ok := apiValues.PlcValueByName(m.Datatype.String()); ok {
 		return plcValueByName
 	}
-	return values.NULL
+	return apiValues.NULL
 }
 
-func (m plcTag) GetArrayInfo() []model.ArrayInfo {
+func (m plcTag) GetArrayInfo() []apiModel.ArrayInfo {
 	if m.NumElements != 1 {
-		return []model.ArrayInfo{
-			model2.DefaultArrayInfo{
+		return []apiModel.ArrayInfo{
+			&spiModel.DefaultArrayInfo{
 				LowerBound: 0,
 				UpperBound: uint32(m.NumElements),
 			},
 		}
 	}
-	return []model.ArrayInfo{}
+	return []apiModel.ArrayInfo{}
 }
 
 func (m plcTag) GetDataType() readWriteModel.TransportSize {
@@ -134,15 +136,16 @@ func (m plcTag) GetBitOffset() uint8 {
 func (m plcTag) GetQuantity() uint16 {
 	return m.NumElements
 }
+
 func (m plcTag) Serialize() ([]byte, error) {
 	wb := utils.NewWriteBufferByteBased(utils.WithByteOrderForByteBasedBuffer(binary.BigEndian))
-	if err := m.SerializeWithWriteBuffer(wb); err != nil {
+	if err := m.SerializeWithWriteBuffer(context.Background(), wb); err != nil {
 		return nil, err
 	}
 	return wb.GetBytes(), nil
 }
 
-func (m plcTag) SerializeWithWriteBuffer(writeBuffer utils.WriteBuffer) error {
+func (m plcTag) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	if err := writeBuffer.PushContext(m.TagType.GetName()); err != nil {
 		return err
 	}
@@ -172,15 +175,23 @@ func (m plcTag) SerializeWithWriteBuffer(writeBuffer utils.WriteBuffer) error {
 	return nil
 }
 
+func (m plcTag) String() string {
+	writeBuffer := utils.NewWriteBufferBoxBasedWithOptions(true, true)
+	if err := writeBuffer.WriteSerializable(context.Background(), m); err != nil {
+		return err.Error()
+	}
+	return writeBuffer.GetBox().String()
+}
+
 func (m PlcStringTag) Serialize() ([]byte, error) {
 	wb := utils.NewWriteBufferByteBased(utils.WithByteOrderForByteBasedBuffer(binary.BigEndian))
-	if err := m.SerializeWithWriteBuffer(wb); err != nil {
+	if err := m.SerializeWithWriteBuffer(context.Background(), wb); err != nil {
 		return nil, err
 	}
 	return wb.GetBytes(), nil
 }
 
-func (m PlcStringTag) SerializeWithWriteBuffer(writeBuffer utils.WriteBuffer) error {
+func (m PlcStringTag) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	if err := writeBuffer.PushContext(m.TagType.GetName()); err != nil {
 		return err
 	}
@@ -211,4 +222,12 @@ func (m PlcStringTag) SerializeWithWriteBuffer(writeBuffer utils.WriteBuffer) er
 		return err
 	}
 	return nil
+}
+
+func (m PlcStringTag) String() string {
+	writeBuffer := utils.NewWriteBufferBoxBasedWithOptions(true, true)
+	if err := writeBuffer.WriteSerializable(context.Background(), m); err != nil {
+		return err.Error()
+	}
+	return writeBuffer.GetBox().String()
 }

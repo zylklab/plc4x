@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // AirConditioningDataSetZoneHvacMode is the corresponding interface of AirConditioningDataSetZoneHvacMode
 type AirConditioningDataSetZoneHvacMode interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	AirConditioningData
@@ -141,7 +144,7 @@ func NewAirConditioningDataSetZoneHvacMode(zoneGroup byte, zoneList HVACZoneList
 }
 
 // Deprecated: use the interface for direct cast
-func CastAirConditioningDataSetZoneHvacMode(structType interface{}) AirConditioningDataSetZoneHvacMode {
+func CastAirConditioningDataSetZoneHvacMode(structType any) AirConditioningDataSetZoneHvacMode {
 	if casted, ok := structType.(AirConditioningDataSetZoneHvacMode); ok {
 		return casted
 	}
@@ -192,13 +195,15 @@ func (m *_AirConditioningDataSetZoneHvacMode) GetLengthInBytes(ctx context.Conte
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func AirConditioningDataSetZoneHvacModeParse(theBytes []byte) (AirConditioningDataSetZoneHvacMode, error) {
-	return AirConditioningDataSetZoneHvacModeParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func AirConditioningDataSetZoneHvacModeParse(ctx context.Context, theBytes []byte) (AirConditioningDataSetZoneHvacMode, error) {
+	return AirConditioningDataSetZoneHvacModeParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func AirConditioningDataSetZoneHvacModeParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (AirConditioningDataSetZoneHvacMode, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("AirConditioningDataSetZoneHvacMode"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for AirConditioningDataSetZoneHvacMode")
 	}
@@ -261,7 +266,7 @@ func AirConditioningDataSetZoneHvacModeParseWithBuffer(ctx context.Context, read
 		_val, _err := HVACTemperatureParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'level' field of AirConditioningDataSetZoneHvacMode")
@@ -283,7 +288,7 @@ func AirConditioningDataSetZoneHvacModeParseWithBuffer(ctx context.Context, read
 		_val, _err := HVACRawLevelsParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'rawLevel' field of AirConditioningDataSetZoneHvacMode")
@@ -305,7 +310,7 @@ func AirConditioningDataSetZoneHvacModeParseWithBuffer(ctx context.Context, read
 		_val, _err := HVACAuxiliaryLevelParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'auxLevel' field of AirConditioningDataSetZoneHvacMode")
@@ -347,6 +352,8 @@ func (m *_AirConditioningDataSetZoneHvacMode) Serialize() ([]byte, error) {
 func (m *_AirConditioningDataSetZoneHvacMode) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("AirConditioningDataSetZoneHvacMode"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for AirConditioningDataSetZoneHvacMode")

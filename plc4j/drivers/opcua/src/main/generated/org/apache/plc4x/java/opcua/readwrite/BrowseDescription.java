@@ -95,7 +95,6 @@ public class BrowseDescription extends ExtensionObjectDefinition implements Mess
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("BrowseDescription");
 
     // Simple Field (nodeId)
@@ -114,7 +113,7 @@ public class BrowseDescription extends ExtensionObjectDefinition implements Mess
         "referenceTypeId", referenceTypeId, new DataWriterComplexDefault<>(writeBuffer));
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 7));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 7));
 
     // Simple Field (includeSubtypes)
     writeSimpleField("includeSubtypes", includeSubtypes, writeBoolean(writeBuffer));
@@ -167,8 +166,6 @@ public class BrowseDescription extends ExtensionObjectDefinition implements Mess
       ReadBuffer readBuffer, String identifier) throws ParseException {
     readBuffer.pullContext("BrowseDescription");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     NodeId nodeId =
@@ -188,8 +185,8 @@ public class BrowseDescription extends ExtensionObjectDefinition implements Mess
             "referenceTypeId",
             new DataReaderComplexDefault<>(() -> NodeId.staticParse(readBuffer), readBuffer));
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 7), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 7), (byte) 0x00);
 
     boolean includeSubtypes = readSimpleField("includeSubtypes", readBoolean(readBuffer));
 

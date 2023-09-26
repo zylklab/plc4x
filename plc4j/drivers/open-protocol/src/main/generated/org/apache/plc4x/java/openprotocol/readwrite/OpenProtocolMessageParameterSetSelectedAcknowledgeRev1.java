@@ -39,12 +39,12 @@ public class OpenProtocolMessageParameterSetSelectedAcknowledgeRev1
     extends OpenProtocolMessageParameterSetSelectedAcknowledge implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 1;
+  public Integer getRevision() {
+    return (int) 1;
   }
 
   public OpenProtocolMessageParameterSetSelectedAcknowledgeRev1(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -66,7 +66,6 @@ public class OpenProtocolMessageParameterSetSelectedAcknowledgeRev1
       WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageParameterSetSelectedAcknowledgeRev1");
 
     writeBuffer.popContext("OpenProtocolMessageParameterSetSelectedAcknowledgeRev1");
@@ -88,11 +87,9 @@ public class OpenProtocolMessageParameterSetSelectedAcknowledgeRev1
 
   public static OpenProtocolMessageParameterSetSelectedAcknowledgeBuilder
       staticParseOpenProtocolMessageParameterSetSelectedAcknowledgeBuilder(
-          ReadBuffer readBuffer, Long revision) throws ParseException {
+          ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageParameterSetSelectedAcknowledgeRev1");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     readBuffer.closeContext("OpenProtocolMessageParameterSetSelectedAcknowledgeRev1");
@@ -107,7 +104,7 @@ public class OpenProtocolMessageParameterSetSelectedAcknowledgeRev1
     public OpenProtocolMessageParameterSetSelectedAcknowledgeRev1BuilderImpl() {}
 
     public OpenProtocolMessageParameterSetSelectedAcknowledgeRev1 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

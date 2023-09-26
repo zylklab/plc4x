@@ -46,9 +46,9 @@ public class IdentifyReplyCommandGAVValuesCurrent extends IdentifyReplyCommand i
   protected final byte[] values;
 
   // Arguments.
-  protected final Short numBytes;
+  protected final Byte numBytes;
 
-  public IdentifyReplyCommandGAVValuesCurrent(byte[] values, Short numBytes) {
+  public IdentifyReplyCommandGAVValuesCurrent(byte[] values, Byte numBytes) {
     super(numBytes);
     this.values = values;
     this.numBytes = numBytes;
@@ -63,7 +63,6 @@ public class IdentifyReplyCommandGAVValuesCurrent extends IdentifyReplyCommand i
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("IdentifyReplyCommandGAVValuesCurrent");
 
     // Array Field (values)
@@ -92,11 +91,9 @@ public class IdentifyReplyCommandGAVValuesCurrent extends IdentifyReplyCommand i
   }
 
   public static IdentifyReplyCommandBuilder staticParseIdentifyReplyCommandBuilder(
-      ReadBuffer readBuffer, Attribute attribute, Short numBytes) throws ParseException {
+      ReadBuffer readBuffer, Attribute attribute, Byte numBytes) throws ParseException {
     readBuffer.pullContext("IdentifyReplyCommandGAVValuesCurrent");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     byte[] values = readBuffer.readByteArray("values", Math.toIntExact(numBytes));
@@ -109,14 +106,14 @@ public class IdentifyReplyCommandGAVValuesCurrent extends IdentifyReplyCommand i
   public static class IdentifyReplyCommandGAVValuesCurrentBuilderImpl
       implements IdentifyReplyCommand.IdentifyReplyCommandBuilder {
     private final byte[] values;
-    private final Short numBytes;
+    private final Byte numBytes;
 
-    public IdentifyReplyCommandGAVValuesCurrentBuilderImpl(byte[] values, Short numBytes) {
+    public IdentifyReplyCommandGAVValuesCurrentBuilderImpl(byte[] values, Byte numBytes) {
       this.values = values;
       this.numBytes = numBytes;
     }
 
-    public IdentifyReplyCommandGAVValuesCurrent build(Short numBytes) {
+    public IdentifyReplyCommandGAVValuesCurrent build(Byte numBytes) {
 
       IdentifyReplyCommandGAVValuesCurrent identifyReplyCommandGAVValuesCurrent =
           new IdentifyReplyCommandGAVValuesCurrent(values, numBytes);

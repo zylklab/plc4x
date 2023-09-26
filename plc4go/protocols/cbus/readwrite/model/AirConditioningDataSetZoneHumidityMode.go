@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // AirConditioningDataSetZoneHumidityMode is the corresponding interface of AirConditioningDataSetZoneHumidityMode
 type AirConditioningDataSetZoneHumidityMode interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	AirConditioningData
@@ -141,7 +144,7 @@ func NewAirConditioningDataSetZoneHumidityMode(zoneGroup byte, zoneList HVACZone
 }
 
 // Deprecated: use the interface for direct cast
-func CastAirConditioningDataSetZoneHumidityMode(structType interface{}) AirConditioningDataSetZoneHumidityMode {
+func CastAirConditioningDataSetZoneHumidityMode(structType any) AirConditioningDataSetZoneHumidityMode {
 	if casted, ok := structType.(AirConditioningDataSetZoneHumidityMode); ok {
 		return casted
 	}
@@ -192,13 +195,15 @@ func (m *_AirConditioningDataSetZoneHumidityMode) GetLengthInBytes(ctx context.C
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func AirConditioningDataSetZoneHumidityModeParse(theBytes []byte) (AirConditioningDataSetZoneHumidityMode, error) {
-	return AirConditioningDataSetZoneHumidityModeParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func AirConditioningDataSetZoneHumidityModeParse(ctx context.Context, theBytes []byte) (AirConditioningDataSetZoneHumidityMode, error) {
+	return AirConditioningDataSetZoneHumidityModeParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func AirConditioningDataSetZoneHumidityModeParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (AirConditioningDataSetZoneHumidityMode, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("AirConditioningDataSetZoneHumidityMode"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for AirConditioningDataSetZoneHumidityMode")
 	}
@@ -261,7 +266,7 @@ func AirConditioningDataSetZoneHumidityModeParseWithBuffer(ctx context.Context, 
 		_val, _err := HVACHumidityParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'level' field of AirConditioningDataSetZoneHumidityMode")
@@ -283,7 +288,7 @@ func AirConditioningDataSetZoneHumidityModeParseWithBuffer(ctx context.Context, 
 		_val, _err := HVACRawLevelsParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'rawLevel' field of AirConditioningDataSetZoneHumidityMode")
@@ -305,7 +310,7 @@ func AirConditioningDataSetZoneHumidityModeParseWithBuffer(ctx context.Context, 
 		_val, _err := HVACAuxiliaryLevelParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'auxLevel' field of AirConditioningDataSetZoneHumidityMode")
@@ -347,6 +352,8 @@ func (m *_AirConditioningDataSetZoneHumidityMode) Serialize() ([]byte, error) {
 func (m *_AirConditioningDataSetZoneHumidityMode) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("AirConditioningDataSetZoneHumidityMode"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for AirConditioningDataSetZoneHumidityMode")

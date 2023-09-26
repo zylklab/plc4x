@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetConfirmedServiceRequestConfirmedEventNotification is the corresponding interface of BACnetConfirmedServiceRequestConfirmedEventNotification
 type BACnetConfirmedServiceRequestConfirmedEventNotification interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConfirmedServiceRequest
@@ -192,7 +195,7 @@ func NewBACnetConfirmedServiceRequestConfirmedEventNotification(processIdentifie
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConfirmedServiceRequestConfirmedEventNotification(structType interface{}) BACnetConfirmedServiceRequestConfirmedEventNotification {
+func CastBACnetConfirmedServiceRequestConfirmedEventNotification(structType any) BACnetConfirmedServiceRequestConfirmedEventNotification {
 	if casted, ok := structType.(BACnetConfirmedServiceRequestConfirmedEventNotification); ok {
 		return casted
 	}
@@ -263,13 +266,15 @@ func (m *_BACnetConfirmedServiceRequestConfirmedEventNotification) GetLengthInBy
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConfirmedServiceRequestConfirmedEventNotificationParse(theBytes []byte, serviceRequestLength uint32) (BACnetConfirmedServiceRequestConfirmedEventNotification, error) {
-	return BACnetConfirmedServiceRequestConfirmedEventNotificationParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), serviceRequestLength)
+func BACnetConfirmedServiceRequestConfirmedEventNotificationParse(ctx context.Context, theBytes []byte, serviceRequestLength uint32) (BACnetConfirmedServiceRequestConfirmedEventNotification, error) {
+	return BACnetConfirmedServiceRequestConfirmedEventNotificationParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), serviceRequestLength)
 }
 
 func BACnetConfirmedServiceRequestConfirmedEventNotificationParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, serviceRequestLength uint32) (BACnetConfirmedServiceRequestConfirmedEventNotification, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConfirmedServiceRequestConfirmedEventNotification"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConfirmedServiceRequestConfirmedEventNotification")
 	}
@@ -377,7 +382,7 @@ func BACnetConfirmedServiceRequestConfirmedEventNotificationParseWithBuffer(ctx 
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(7), BACnetDataType_CHARACTER_STRING)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'messageText' field of BACnetConfirmedServiceRequestConfirmedEventNotification")
@@ -412,7 +417,7 @@ func BACnetConfirmedServiceRequestConfirmedEventNotificationParseWithBuffer(ctx 
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(9), BACnetDataType_BOOLEAN)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'ackRequired' field of BACnetConfirmedServiceRequestConfirmedEventNotification")
@@ -434,7 +439,7 @@ func BACnetConfirmedServiceRequestConfirmedEventNotificationParseWithBuffer(ctx 
 		_val, _err := BACnetEventStateTaggedParseWithBuffer(ctx, readBuffer, uint8(10), TagClass_CONTEXT_SPECIFIC_TAGS)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'fromState' field of BACnetConfirmedServiceRequestConfirmedEventNotification")
@@ -469,7 +474,7 @@ func BACnetConfirmedServiceRequestConfirmedEventNotificationParseWithBuffer(ctx 
 		_val, _err := BACnetNotificationParametersParseWithBuffer(ctx, readBuffer, uint8(12), eventObjectIdentifier.GetObjectType())
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'eventValues' field of BACnetConfirmedServiceRequestConfirmedEventNotification")
@@ -519,6 +524,8 @@ func (m *_BACnetConfirmedServiceRequestConfirmedEventNotification) Serialize() (
 func (m *_BACnetConfirmedServiceRequestConfirmedEventNotification) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConfirmedServiceRequestConfirmedEventNotification"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConfirmedServiceRequestConfirmedEventNotification")

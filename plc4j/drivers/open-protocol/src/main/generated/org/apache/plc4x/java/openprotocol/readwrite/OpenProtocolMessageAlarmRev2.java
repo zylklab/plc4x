@@ -38,8 +38,8 @@ import org.apache.plc4x.java.spi.generation.*;
 public class OpenProtocolMessageAlarmRev2 extends OpenProtocolMessageAlarm implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 2;
+  public Integer getRevision() {
+    return (int) 2;
   }
 
   // Constant values.
@@ -57,7 +57,7 @@ public class OpenProtocolMessageAlarmRev2 extends OpenProtocolMessageAlarm imple
   protected final String alarmText;
 
   public OpenProtocolMessageAlarmRev2(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -129,7 +129,6 @@ public class OpenProtocolMessageAlarmRev2 extends OpenProtocolMessageAlarm imple
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageAlarmRev2");
 
     // Const Field (blockIdErrorCode)
@@ -245,11 +244,9 @@ public class OpenProtocolMessageAlarmRev2 extends OpenProtocolMessageAlarm imple
   }
 
   public static OpenProtocolMessageAlarmBuilder staticParseOpenProtocolMessageAlarmBuilder(
-      ReadBuffer readBuffer, Long revision) throws ParseException {
+      ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageAlarmRev2");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     int blockIdErrorCode =
@@ -338,7 +335,7 @@ public class OpenProtocolMessageAlarmRev2 extends OpenProtocolMessageAlarm imple
     }
 
     public OpenProtocolMessageAlarmRev2 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

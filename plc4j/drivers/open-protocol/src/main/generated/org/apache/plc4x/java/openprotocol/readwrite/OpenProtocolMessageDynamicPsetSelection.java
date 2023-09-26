@@ -42,11 +42,12 @@ public abstract class OpenProtocolMessageDynamicPsetSelection extends OpenProtoc
   public Mid getMid() {
     return Mid.DynamicPsetSelection;
   }
+
   // Abstract accessors for discriminator values.
-  public abstract Long getRevision();
+  public abstract Integer getRevision();
 
   public OpenProtocolMessageDynamicPsetSelection(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -71,7 +72,6 @@ public abstract class OpenProtocolMessageDynamicPsetSelection extends OpenProtoc
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageDynamicPsetSelection");
 
     // Switch field (Serialize the sub-type)
@@ -97,16 +97,14 @@ public abstract class OpenProtocolMessageDynamicPsetSelection extends OpenProtoc
   }
 
   public static OpenProtocolMessageBuilder staticParseOpenProtocolMessageBuilder(
-      ReadBuffer readBuffer, Long revision) throws ParseException {
+      ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageDynamicPsetSelection");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     // Switch Field (Depending on the discriminator values, passes the instantiation to a sub-type)
     OpenProtocolMessageDynamicPsetSelectionBuilder builder = null;
-    if (EvaluationHelper.equals(revision, (long) 1)) {
+    if (EvaluationHelper.equals(revision, (int) 1)) {
       builder =
           OpenProtocolMessageDynamicPsetSelectionRev1
               .staticParseOpenProtocolMessageDynamicPsetSelectionBuilder(readBuffer, revision);
@@ -127,7 +125,7 @@ public abstract class OpenProtocolMessageDynamicPsetSelection extends OpenProtoc
 
   public interface OpenProtocolMessageDynamicPsetSelectionBuilder {
     OpenProtocolMessageDynamicPsetSelection build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,
@@ -146,7 +144,7 @@ public abstract class OpenProtocolMessageDynamicPsetSelection extends OpenProtoc
     }
 
     public OpenProtocolMessageDynamicPsetSelection build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // ReplyOrConfirmationConfirmation is the corresponding interface of ReplyOrConfirmationConfirmation
 type ReplyOrConfirmationConfirmation interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	ReplyOrConfirmation
@@ -101,7 +104,7 @@ func NewReplyOrConfirmationConfirmation(confirmation Confirmation, embeddedReply
 }
 
 // Deprecated: use the interface for direct cast
-func CastReplyOrConfirmationConfirmation(structType interface{}) ReplyOrConfirmationConfirmation {
+func CastReplyOrConfirmationConfirmation(structType any) ReplyOrConfirmationConfirmation {
 	if casted, ok := structType.(ReplyOrConfirmationConfirmation); ok {
 		return casted
 	}
@@ -133,13 +136,15 @@ func (m *_ReplyOrConfirmationConfirmation) GetLengthInBytes(ctx context.Context)
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func ReplyOrConfirmationConfirmationParse(theBytes []byte, cBusOptions CBusOptions, requestContext RequestContext) (ReplyOrConfirmationConfirmation, error) {
-	return ReplyOrConfirmationConfirmationParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), cBusOptions, requestContext)
+func ReplyOrConfirmationConfirmationParse(ctx context.Context, theBytes []byte, cBusOptions CBusOptions, requestContext RequestContext) (ReplyOrConfirmationConfirmation, error) {
+	return ReplyOrConfirmationConfirmationParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), cBusOptions, requestContext)
 }
 
 func ReplyOrConfirmationConfirmationParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, cBusOptions CBusOptions, requestContext RequestContext) (ReplyOrConfirmationConfirmation, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("ReplyOrConfirmationConfirmation"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for ReplyOrConfirmationConfirmation")
 	}
@@ -169,7 +174,7 @@ func ReplyOrConfirmationConfirmationParseWithBuffer(ctx context.Context, readBuf
 		_val, _err := ReplyOrConfirmationParseWithBuffer(ctx, readBuffer, cBusOptions, requestContext)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'embeddedReply' field of ReplyOrConfirmationConfirmation")
@@ -209,6 +214,8 @@ func (m *_ReplyOrConfirmationConfirmation) Serialize() ([]byte, error) {
 func (m *_ReplyOrConfirmationConfirmation) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("ReplyOrConfirmationConfirmation"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for ReplyOrConfirmationConfirmation")

@@ -45,44 +45,6 @@ func (d *DefaultPlcReadRequest) SerializeWithWriteBuffer(ctx context.Context, wr
 	if err := d.DefaultPlcTagRequest.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
 		return err
 	}
-
-	if d.reader != nil {
-		if serializableField, ok := d.reader.(utils.Serializable); ok {
-			if err := writeBuffer.PushContext("reader"); err != nil {
-				return err
-			}
-			if err := serializableField.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
-				return err
-			}
-			if err := writeBuffer.PopContext("reader"); err != nil {
-				return err
-			}
-		} else {
-			stringValue := fmt.Sprintf("%v", d.reader)
-			if err := writeBuffer.WriteString("reader", uint32(len(stringValue)*8), "UTF-8", stringValue); err != nil {
-				return err
-			}
-		}
-	}
-
-	if d.readRequestInterceptor != nil {
-		if serializableField, ok := d.readRequestInterceptor.(utils.Serializable); ok {
-			if err := writeBuffer.PushContext("readRequestInterceptor"); err != nil {
-				return err
-			}
-			if err := serializableField.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
-				return err
-			}
-			if err := writeBuffer.PopContext("readRequestInterceptor"); err != nil {
-				return err
-			}
-		} else {
-			stringValue := fmt.Sprintf("%v", d.readRequestInterceptor)
-			if err := writeBuffer.WriteString("readRequestInterceptor", uint32(len(stringValue)*8), "UTF-8", stringValue); err != nil {
-				return err
-			}
-		}
-	}
 	if err := writeBuffer.PopContext("PlcReadRequest"); err != nil {
 		return err
 	}

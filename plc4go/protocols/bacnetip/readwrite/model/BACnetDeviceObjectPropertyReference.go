@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetDeviceObjectPropertyReference is the corresponding interface of BACnetDeviceObjectPropertyReference
 type BACnetDeviceObjectPropertyReference interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetObjectIdentifier returns ObjectIdentifier (property field)
@@ -89,7 +92,7 @@ func NewBACnetDeviceObjectPropertyReference(objectIdentifier BACnetContextTagObj
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetDeviceObjectPropertyReference(structType interface{}) BACnetDeviceObjectPropertyReference {
+func CastBACnetDeviceObjectPropertyReference(structType any) BACnetDeviceObjectPropertyReference {
 	if casted, ok := structType.(BACnetDeviceObjectPropertyReference); ok {
 		return casted
 	}
@@ -129,13 +132,15 @@ func (m *_BACnetDeviceObjectPropertyReference) GetLengthInBytes(ctx context.Cont
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetDeviceObjectPropertyReferenceParse(theBytes []byte) (BACnetDeviceObjectPropertyReference, error) {
-	return BACnetDeviceObjectPropertyReferenceParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func BACnetDeviceObjectPropertyReferenceParse(ctx context.Context, theBytes []byte) (BACnetDeviceObjectPropertyReference, error) {
+	return BACnetDeviceObjectPropertyReferenceParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func BACnetDeviceObjectPropertyReferenceParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (BACnetDeviceObjectPropertyReference, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetDeviceObjectPropertyReference"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetDeviceObjectPropertyReference")
 	}
@@ -178,7 +183,7 @@ func BACnetDeviceObjectPropertyReferenceParseWithBuffer(ctx context.Context, rea
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(2), BACnetDataType_UNSIGNED_INTEGER)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'arrayIndex' field of BACnetDeviceObjectPropertyReference")
@@ -200,7 +205,7 @@ func BACnetDeviceObjectPropertyReferenceParseWithBuffer(ctx context.Context, rea
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(3), BACnetDataType_BACNET_OBJECT_IDENTIFIER)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'deviceIdentifier' field of BACnetDeviceObjectPropertyReference")
@@ -236,6 +241,8 @@ func (m *_BACnetDeviceObjectPropertyReference) Serialize() ([]byte, error) {
 func (m *_BACnetDeviceObjectPropertyReference) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetDeviceObjectPropertyReference"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetDeviceObjectPropertyReference")
 	}

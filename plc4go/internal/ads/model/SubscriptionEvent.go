@@ -20,6 +20,7 @@
 package model
 
 import (
+	"github.com/apache/plc4x/plc4go/spi/options"
 	"time"
 
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
@@ -28,11 +29,19 @@ import (
 )
 
 type SubscriptionEvent struct {
-	spiModel.DefaultPlcSubscriptionEvent
+	*spiModel.DefaultPlcSubscriptionEvent
 }
 
-func NewSubscriptionEvent(tags map[string]apiModel.PlcTag, types map[string]spiModel.SubscriptionType, intervals map[string]time.Duration, responseCodes map[string]apiModel.PlcResponseCode, values map[string]values.PlcValue) SubscriptionEvent {
+func NewSubscriptionEvent(
+	tags map[string]apiModel.PlcTag,
+	types map[string]apiModel.PlcSubscriptionType,
+	intervals map[string]time.Duration,
+	responseCodes map[string]apiModel.PlcResponseCode,
+	values map[string]values.PlcValue,
+	_options ...options.WithOption,
+) SubscriptionEvent {
 	subscriptionEvent := SubscriptionEvent{}
-	subscriptionEvent.DefaultPlcSubscriptionEvent = spiModel.NewDefaultPlcSubscriptionEvent(&subscriptionEvent, tags, types, intervals, responseCodes, values)
+	event := spiModel.NewDefaultPlcSubscriptionEvent(&subscriptionEvent, tags, types, intervals, responseCodes, values, _options...)
+	subscriptionEvent.DefaultPlcSubscriptionEvent = event.(*spiModel.DefaultPlcSubscriptionEvent)
 	return subscriptionEvent
 }

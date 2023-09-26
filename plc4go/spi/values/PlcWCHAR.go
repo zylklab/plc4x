@@ -39,6 +39,10 @@ func NewPlcWCHAR(value string) PlcWCHAR {
 	}
 }
 
+func (m PlcWCHAR) IsRaw() bool {
+	return true
+}
+
 func (m PlcWCHAR) GetRaw() []byte {
 	theBytes, _ := m.Serialize()
 	return theBytes
@@ -49,7 +53,7 @@ func (m PlcWCHAR) IsString() bool {
 }
 
 func (m PlcWCHAR) GetString() string {
-	return string(m.value)
+	return m.value
 }
 
 func (m PlcWCHAR) GetPlcValueType() apiValues.PlcValueType {
@@ -65,7 +69,7 @@ func (m PlcWCHAR) Serialize() ([]byte, error) {
 }
 
 func (m PlcWCHAR) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
-	return writeBuffer.WriteString("PlcWCHAR", uint32(16), "UTF-16", string(m.value))
+	return writeBuffer.WriteString("PlcWCHAR", uint32(16), "UTF-16", m.value)
 }
 
 func (m PlcWCHAR) String() string {

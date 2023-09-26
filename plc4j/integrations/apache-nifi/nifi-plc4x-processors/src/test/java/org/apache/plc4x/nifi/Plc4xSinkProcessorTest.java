@@ -32,7 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class Plc4xSinkProcessorTest {
 
     private TestRunner testRunner;
-    private static int NUMBER_OF_CALLS = 5;
+    private static final int NUMBER_OF_CALLS = 5;
 
     @BeforeEach
     public void init() {
@@ -41,6 +41,7 @@ public class Plc4xSinkProcessorTest {
         testRunner.setValidateExpressionUsage(false);
 
         testRunner.setProperty(Plc4xSinkProcessor.PLC_CONNECTION_STRING, "simulated://127.0.0.1");
+        testRunner.setProperty(Plc4xSinkRecordProcessor.PLC_FUTURE_TIMEOUT_MILISECONDS, "1000");
 
         testRunner.addConnection(Plc4xSinkProcessor.REL_SUCCESS);
         testRunner.addConnection(Plc4xSinkProcessor.REL_FAILURE);

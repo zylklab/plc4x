@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetServiceAckConfirmedPrivateTransfer is the corresponding interface of BACnetServiceAckConfirmedPrivateTransfer
 type BACnetServiceAckConfirmedPrivateTransfer interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetServiceAck
@@ -111,7 +114,7 @@ func NewBACnetServiceAckConfirmedPrivateTransfer(vendorId BACnetVendorIdTagged, 
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetServiceAckConfirmedPrivateTransfer(structType interface{}) BACnetServiceAckConfirmedPrivateTransfer {
+func CastBACnetServiceAckConfirmedPrivateTransfer(structType any) BACnetServiceAckConfirmedPrivateTransfer {
 	if casted, ok := structType.(BACnetServiceAckConfirmedPrivateTransfer); ok {
 		return casted
 	}
@@ -146,13 +149,15 @@ func (m *_BACnetServiceAckConfirmedPrivateTransfer) GetLengthInBytes(ctx context
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetServiceAckConfirmedPrivateTransferParse(theBytes []byte, serviceAckLength uint32) (BACnetServiceAckConfirmedPrivateTransfer, error) {
-	return BACnetServiceAckConfirmedPrivateTransferParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), serviceAckLength)
+func BACnetServiceAckConfirmedPrivateTransferParse(ctx context.Context, theBytes []byte, serviceAckLength uint32) (BACnetServiceAckConfirmedPrivateTransfer, error) {
+	return BACnetServiceAckConfirmedPrivateTransferParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), serviceAckLength)
 }
 
 func BACnetServiceAckConfirmedPrivateTransferParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, serviceAckLength uint32) (BACnetServiceAckConfirmedPrivateTransfer, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetServiceAckConfirmedPrivateTransfer"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetServiceAckConfirmedPrivateTransfer")
 	}
@@ -195,7 +200,7 @@ func BACnetServiceAckConfirmedPrivateTransferParseWithBuffer(ctx context.Context
 		_val, _err := BACnetConstructedDataParseWithBuffer(ctx, readBuffer, uint8(2), BACnetObjectType_VENDOR_PROPRIETARY_VALUE, BACnetPropertyIdentifier_VENDOR_PROPRIETARY_VALUE, nil)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'resultBlock' field of BACnetServiceAckConfirmedPrivateTransfer")
@@ -235,6 +240,8 @@ func (m *_BACnetServiceAckConfirmedPrivateTransfer) Serialize() ([]byte, error) 
 func (m *_BACnetServiceAckConfirmedPrivateTransfer) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetServiceAckConfirmedPrivateTransfer"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetServiceAckConfirmedPrivateTransfer")

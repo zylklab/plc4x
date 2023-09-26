@@ -18,32 +18,27 @@
  */
 package org.apache.plc4x.java.spi.messages;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.apache.plc4x.java.api.messages.PlcWriteRequest;
 import org.apache.plc4x.java.api.messages.PlcWriteResponse;
 import org.apache.plc4x.java.api.model.PlcTag;
 import org.apache.plc4x.java.api.types.PlcResponseCode;
-import org.apache.plc4x.java.spi.codegen.WithOption;
 import org.apache.plc4x.java.spi.generation.SerializationException;
 import org.apache.plc4x.java.spi.generation.WriteBuffer;
 import org.apache.plc4x.java.spi.utils.Serializable;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Map;
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "className")
+import static org.apache.plc4x.java.spi.generation.WithReaderWriterArgs.WithAdditionalStringRepresentation;
+import static org.apache.plc4x.java.spi.generation.WithReaderWriterArgs.WithRenderAsList;
+
 public class DefaultPlcWriteResponse implements PlcWriteResponse, Serializable {
 
     private final PlcWriteRequest request;
     private final Map<String, PlcResponseCode> responseCodes;
 
-    @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
-    public DefaultPlcWriteResponse(@JsonProperty("request") PlcWriteRequest request,
-                                   @JsonProperty("responseCodes") Map<String, PlcResponseCode> responseCodes) {
+    public DefaultPlcWriteResponse(PlcWriteRequest request,
+                                   Map<String, PlcResponseCode> responseCodes) {
         this.request = request;
         this.responseCodes = responseCodes;
     }
@@ -54,19 +49,16 @@ public class DefaultPlcWriteResponse implements PlcWriteResponse, Serializable {
     }
 
     @Override
-    @JsonIgnore
     public Collection<String> getTagNames() {
         return request.getTagNames();
     }
 
     @Override
-    @JsonIgnore
     public PlcTag getTag(String name) {
         return request.getTag(name);
     }
 
     @Override
-    @JsonIgnore
     public PlcResponseCode getResponseCode(String name) {
         return responseCodes.get(name);
     }
@@ -75,19 +67,21 @@ public class DefaultPlcWriteResponse implements PlcWriteResponse, Serializable {
     public void serialize(WriteBuffer writeBuffer) throws SerializationException {
         writeBuffer.pushContext("PlcWriteResponse");
 
+        writeBuffer.pushContext("request");
         if (request instanceof Serializable) {
             ((Serializable) request).serialize(writeBuffer);
         }
-        writeBuffer.pushContext("tags");
+        writeBuffer.popContext("request");
+
+        writeBuffer.pushContext("responseCodes", WithRenderAsList(true));
         for (Map.Entry<String, PlcResponseCode> tagEntry : responseCodes.entrySet()) {
             String tagName = tagEntry.getKey();
+            writeBuffer.pushContext(tagName);
             final PlcResponseCode tagResponseCode = tagEntry.getValue();
-            String result = tagResponseCode.name();
-            writeBuffer.writeString(tagName,
-                result.getBytes(StandardCharsets.UTF_8).length * 8,
-                result, WithOption.WithEncoding(StandardCharsets.UTF_8.name()));
+            writeBuffer.writeUnsignedByte("ResponseCode", 8, (byte) tagResponseCode.getValue(), WithAdditionalStringRepresentation(tagResponseCode.name()));
+            writeBuffer.popContext(tagName);
         }
-        writeBuffer.popContext("tags");
+        writeBuffer.popContext("responseCodes");
 
         writeBuffer.popContext("PlcWriteResponse");
     }

@@ -42,80 +42,13 @@ func (d *DefaultPlcSubscriptionEvent) SerializeWithWriteBuffer(ctx context.Conte
 	if err := writeBuffer.PushContext("PlcSubscriptionEvent"); err != nil {
 		return err
 	}
-	if err := d.DefaultResponse.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
-		return err
-	}
-	if err := writeBuffer.PushContext("tags", utils.WithRenderAsList(true)); err != nil {
-		return err
-	}
-	for name, elem := range d.tags {
-
-		var elem interface{} = elem
-		if serializable, ok := elem.(utils.Serializable); ok {
-			if err := writeBuffer.PushContext(name); err != nil {
-				return err
-			}
-			if err := serializable.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
-				return err
-			}
-			if err := writeBuffer.PopContext(name); err != nil {
-				return err
-			}
-		} else {
-			elemAsString := fmt.Sprintf("%v", elem)
-			if err := writeBuffer.WriteString(name, uint32(len(elemAsString)*8), "UTF-8", elemAsString); err != nil {
-				return err
-			}
-		}
-	}
-	if err := writeBuffer.PopContext("tags", utils.WithRenderAsList(true)); err != nil {
-		return err
-	}
-	if err := writeBuffer.PushContext("types", utils.WithRenderAsList(true)); err != nil {
-		return err
-	}
-	for name, elem := range d.types {
-		_value := fmt.Sprintf("%v", elem)
-
-		if err := writeBuffer.WriteString(name, uint32(len(_value)*8), "UTF-8", _value); err != nil {
-			return err
-		}
-	}
-	if err := writeBuffer.PopContext("types", utils.WithRenderAsList(true)); err != nil {
-		return err
-	}
-	if err := writeBuffer.PushContext("intervals", utils.WithRenderAsList(true)); err != nil {
-		return err
-	}
-	for name, elem := range d.intervals {
-
-		var elem interface{} = elem
-		if serializable, ok := elem.(utils.Serializable); ok {
-			if err := writeBuffer.PushContext(name); err != nil {
-				return err
-			}
-			if err := serializable.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
-				return err
-			}
-			if err := writeBuffer.PopContext(name); err != nil {
-				return err
-			}
-		} else {
-			elemAsString := fmt.Sprintf("%v", elem)
-			if err := writeBuffer.WriteString(name, uint32(len(elemAsString)*8), "UTF-8", elemAsString); err != nil {
-				return err
-			}
-		}
-	}
-	if err := writeBuffer.PopContext("intervals", utils.WithRenderAsList(true)); err != nil {
-		return err
-	}
 	if err := writeBuffer.PushContext("values", utils.WithRenderAsList(true)); err != nil {
 		return err
 	}
-	for name, elem := range d.values {
+	for _name, elem := range d.values {
+		name := _name
 
-		var elem interface{} = elem
+		var elem any = elem
 		if serializable, ok := elem.(utils.Serializable); ok {
 			if err := writeBuffer.PushContext(name); err != nil {
 				return err

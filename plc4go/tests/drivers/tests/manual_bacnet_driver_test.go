@@ -20,35 +20,29 @@
 package tests
 
 import (
+	"testing"
+
 	"github.com/apache/plc4x/plc4go/internal/bacnetip"
 	"github.com/apache/plc4x/plc4go/pkg/api"
-	"github.com/apache/plc4x/plc4go/pkg/api/config"
 	"github.com/apache/plc4x/plc4go/pkg/api/transports"
+	"github.com/apache/plc4x/plc4go/spi/options/converter"
 	"github.com/apache/plc4x/plc4go/spi/testutils"
-	_ "github.com/apache/plc4x/plc4go/tests/initializetest"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/rs/zerolog/pkgerrors"
-	"os"
-	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestManualBacnetDriver(t *testing.T) {
 	t.Skip()
-	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-	log.Logger = log.
-		With().Caller().Logger().
-		Output(zerolog.ConsoleWriter{Out: os.Stderr}).
-		Level(zerolog.DebugLevel)
-	config.TraceTransactionManagerWorkers = false
-	config.TraceTransactionManagerTransactions = false
-	config.TraceDefaultMessageCodecWorker = false
 
 	connectionString := "bacnet-ip://192.168.178.101"
-	driverManager := plc4go.NewPlcDriverManager()
-	driverManager.RegisterDriver(bacnetip.NewDriver())
-	transports.RegisterUdpTransport(driverManager)
-	test := testutils.NewManualTestSuite(connectionString, driverManager, t)
+	optionsForTesting := testutils.EnrichOptionsWithOptionsForTesting(t)
+	driverManager := plc4go.NewPlcDriverManager(converter.WithOptionToExternal(optionsForTesting...)...)
+	t.Cleanup(func() {
+		assert.NoError(t, driverManager.Close())
+	})
+	driverManager.RegisterDriver(bacnetip.NewDriver(optionsForTesting...))
+	transports.RegisterUdpTransport(driverManager, converter.WithOptionToExternal(optionsForTesting...)...)
+	test := testutils.NewManualTestSuite(t, connectionString, driverManager)
 
 	test.AddTestCase("ANALOG_OUTPUT,133/PRESENT_VALUE", true)
 	test.AddTestCase("DEVICE,133/LOCATION&DESCRIPTION", true)

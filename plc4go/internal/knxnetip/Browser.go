@@ -23,6 +23,8 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/rs/zerolog"
 	"strconv"
 	"strings"
 	"time"
@@ -33,10 +35,9 @@ import (
 	"github.com/apache/plc4x/plc4go/pkg/api/values"
 	driverModel "github.com/apache/plc4x/plc4go/protocols/knxnetip/readwrite/model"
 	"github.com/apache/plc4x/plc4go/spi"
-	"github.com/apache/plc4x/plc4go/spi/model"
+	spiModel "github.com/apache/plc4x/plc4go/spi/model"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 type Browser struct {
@@ -44,24 +45,31 @@ type Browser struct {
 	connection      *Connection
 	messageCodec    spi.MessageCodec
 	sequenceCounter uint8
+
+	passLogToModel bool
+	log            zerolog.Logger
 }
 
-func NewBrowser(connection *Connection, messageCodec spi.MessageCodec) *Browser {
+func NewBrowser(connection *Connection, messageCodec spi.MessageCodec, _options ...options.WithOption) *Browser {
+	passLoggerToModel, _ := options.ExtractPassLoggerToModel(_options...)
+	extractCustomLogger := options.ExtractCustomLoggerOrDefaultToGlobal(_options...)
 	browser := Browser{
 		connection:      connection,
 		messageCodec:    messageCodec,
 		sequenceCounter: 0,
+		passLogToModel:  passLoggerToModel,
+		log:             extractCustomLogger,
 	}
-	browser.DefaultBrowser = _default.NewDefaultBrowser(browser)
+	browser.DefaultBrowser = _default.NewDefaultBrowser(browser, _options...)
 	return &browser
 }
 
-func (m Browser) BrowseQuery(ctx context.Context, browseRequest apiModel.PlcBrowseRequest, interceptor func(result apiModel.PlcBrowseItem) bool, queryName string, query apiModel.PlcQuery) (apiModel.PlcResponseCode, []apiModel.PlcBrowseItem) {
+func (m Browser) BrowseQuery(ctx context.Context, interceptor func(result apiModel.PlcBrowseItem) bool, _ string, query apiModel.PlcQuery) (apiModel.PlcResponseCode, []apiModel.PlcBrowseItem) {
 	switch query.(type) {
 	case DeviceQuery:
-		queryResults, err := m.executeDeviceQuery(ctx, query.(DeviceQuery), browseRequest, queryName, interceptor)
+		queryResults, err := m.executeDeviceQuery(ctx, query.(DeviceQuery), interceptor)
 		if err != nil {
-			log.Warn().Err(err).Msg("Error executing device query")
+			m.log.Warn().Err(err).Msg("Error executing device query")
 			return apiModel.PlcResponseCode_INTERNAL_ERROR, nil
 		} else {
 			return apiModel.PlcResponseCode_OK, queryResults
@@ -69,7 +77,7 @@ func (m Browser) BrowseQuery(ctx context.Context, browseRequest apiModel.PlcBrow
 	case CommunicationObjectQuery:
 		queryResults, err := m.executeCommunicationObjectQuery(ctx, query.(CommunicationObjectQuery))
 		if err != nil {
-			log.Warn().Err(err).Msg("Error executing device query")
+			m.log.Warn().Err(err).Msg("Error executing device query")
 			return apiModel.PlcResponseCode_INTERNAL_ERROR, nil
 		} else {
 			return apiModel.PlcResponseCode_OK, queryResults
@@ -79,7 +87,7 @@ func (m Browser) BrowseQuery(ctx context.Context, browseRequest apiModel.PlcBrow
 	}
 }
 
-func (m Browser) executeDeviceQuery(ctx context.Context, query DeviceQuery, browseRequest apiModel.PlcBrowseRequest, queryName string, interceptor func(result apiModel.PlcBrowseItem) bool) ([]apiModel.PlcBrowseItem, error) {
+func (m Browser) executeDeviceQuery(ctx context.Context, query DeviceQuery, interceptor func(result apiModel.PlcBrowseItem) bool) ([]apiModel.PlcBrowseItem, error) {
 	// Create a list of address strings, which doesn't contain any ranges, lists or wildcards
 	knxAddresses, err := m.calculateAddresses(query)
 	if err != nil {
@@ -103,13 +111,20 @@ func (m Browser) executeDeviceQuery(ctx context.Context, query DeviceQuery, brow
 			// If the request returned a connection, process it,
 			// otherwise just ignore it.
 			if deviceConnection.connection != nil {
-				queryResult := &model.DefaultPlcBrowseItem{
-					Tag: NewDeviceQuery(
+				queryResult := spiModel.NewDefaultPlcBrowseItem(
+					NewDeviceQuery(
 						strconv.Itoa(int(knxAddress.GetMainGroup())),
 						strconv.Itoa(int(knxAddress.GetMiddleGroup())),
 						strconv.Itoa(int(knxAddress.GetSubGroup())),
 					),
-				}
+					"",
+					"",
+					false,
+					false,
+					false,
+					nil,
+					nil,
+				)
 
 				// Pass it to the callback
 				add := true
@@ -122,7 +137,7 @@ func (m Browser) executeDeviceQuery(ctx context.Context, query DeviceQuery, brow
 					queryResults = append(queryResults, queryResult)
 				}
 
-				disconnectTtlTimer := time.NewTimer(m.connection.defaultTtl * 10)
+				disconnectTtlTimer := time.NewTimer(10 * m.connection.defaultTtl)
 				deviceDisconnections := m.connection.DeviceDisconnect(ctx, knxAddress)
 				select {
 				case _ = <-deviceDisconnections:
@@ -236,13 +251,14 @@ func (m Browser) executeCommunicationObjectQuery(ctx context.Context, query Comm
 			readResult.GetResponse().GetResponseCode("groupAddressTable").GetName())
 	}
 	var knxGroupAddresses []driverModel.KnxGroupAddress
+	ctxForModel := options.GetLoggerContextForModel(ctx, m.log, options.WithPassLoggerToModel(m.passLogToModel))
 	if readResult.GetResponse().GetValue("groupAddressTable").IsList() {
 		for _, groupAddress := range readResult.GetResponse().GetValue("groupAddressTable").GetList() {
-			groupAddress := Uint16ToKnxGroupAddress(groupAddress.GetUint16(), 3)
+			groupAddress := Uint16ToKnxGroupAddress(ctxForModel, groupAddress.GetUint16(), 3)
 			knxGroupAddresses = append(knxGroupAddresses, groupAddress)
 		}
 	} else {
-		groupAddress := Uint16ToKnxGroupAddress(readResult.GetResponse().GetValue("groupAddressTable").GetUint16(), 3)
+		groupAddress := Uint16ToKnxGroupAddress(ctxForModel, readResult.GetResponse().GetValue("groupAddressTable").GetUint16(), 3)
 		knxGroupAddresses = append(knxGroupAddresses, groupAddress)
 	}
 
@@ -367,9 +383,10 @@ func (m Browser) executeCommunicationObjectQuery(ctx context.Context, query Comm
 			}
 			comObjectSettings := readResult.GetResponse().GetValue(strconv.Itoa(int(comObjectNumber))).GetUint16()
 			data := []uint8{uint8((comObjectSettings >> 8) & 0xFF), uint8(comObjectSettings & 0xFF)}
-			descriptor, err := driverModel.GroupObjectDescriptorRealisationTypeBParse(data)
+			ctxForModel := options.GetLoggerContextForModel(ctx, m.log, options.WithPassLoggerToModel(m.passLogToModel))
+			descriptor, err := driverModel.GroupObjectDescriptorRealisationTypeBParse(ctxForModel, data)
 			if err != nil {
-				log.Info().Err(err).Msg("error parsing com object descriptor")
+				m.log.Info().Err(err).Msg("error parsing com object descriptor")
 				continue
 			}
 
@@ -398,13 +415,16 @@ func (m Browser) executeCommunicationObjectQuery(ctx context.Context, query Comm
 					&tagType)
 			}
 
-			results = append(results, &model.DefaultPlcBrowseItem{
-				Tag:          tag,
-				Name:         fmt.Sprintf("#%d", comObjectNumber),
-				Readable:     readable,
-				Writable:     writable,
-				Subscribable: subscribable,
-			})
+			results = append(results, spiModel.NewDefaultPlcBrowseItem(
+				tag,
+				fmt.Sprintf("#%d", comObjectNumber),
+				"",
+				readable,
+				writable,
+				subscribable,
+				nil,
+				nil,
+			))
 		}
 	} else if (m.connection.DeviceConnections[knxAddress].deviceDescriptor & 0xFFF0) == uint16(0x0700) /* System7 */ {
 		// For System 7 Devices we unfortunately can't access the information of where the memory address for the
@@ -458,7 +478,8 @@ func (m Browser) executeCommunicationObjectQuery(ctx context.Context, query Comm
 
 		for _, tagName := range readResult.GetResponse().GetTagNames() {
 			array := utils.PlcValueUint8ListToByteArray(readResult.GetResponse().GetValue(tagName))
-			descriptor, err := driverModel.GroupObjectDescriptorRealisationType7Parse(array)
+			ctxForModel := options.GetLoggerContextForModel(ctx, m.log, options.WithPassLoggerToModel(m.passLogToModel))
+			descriptor, err := driverModel.GroupObjectDescriptorRealisationType7Parse(ctxForModel, array)
 			if err != nil {
 				return nil, errors.Wrap(err, "error creating read request")
 			}
@@ -477,13 +498,16 @@ func (m Browser) executeCommunicationObjectQuery(ctx context.Context, query Comm
 			for _, groupAddress := range groupAddresses {
 				tag := m.getTagForGroupAddress(groupAddress, tagType)
 
-				results = append(results, &model.DefaultPlcBrowseItem{
-					Tag:          tag,
-					Name:         fmt.Sprintf("#%d", comObjectNumber),
-					Readable:     readable,
-					Writable:     writable,
-					Subscribable: subscribable,
-				})
+				results = append(results, spiModel.NewDefaultPlcBrowseItem(
+					tag,
+					fmt.Sprintf("#%d", comObjectNumber),
+					"",
+					readable,
+					writable,
+					subscribable,
+					nil,
+					nil,
+				))
 			}
 		}
 	} else {
@@ -496,8 +520,8 @@ func (m Browser) executeCommunicationObjectQuery(ctx context.Context, query Comm
 		rrr = readRequest.Execute()
 		readResult = <-rrr
 		if readResult.GetResponse().GetResponseCode("comObjectTableAddress") == apiModel.PlcResponseCode_OK {
-			comObjectTableAddress := readResult.GetResponse().GetValue("comObjectTableAddress").GetUint16()
-			log.Info().Msgf("Com Object Table Address: %x", comObjectTableAddress)
+			comObjectTableAddress := readResult.GetResponse().GetValue("comObjectTableAddress")
+			m.log.Info().Stringer("comObjectTableAddress", comObjectTableAddress).Msg("Com Object Table Address")
 		}
 	}
 
@@ -537,10 +561,10 @@ func (m Browser) calculateAddresses(query DeviceQuery) ([]driverModel.KnxAddress
 }
 
 func (m Browser) explodeSegment(segment string, min uint8, max uint8) ([]uint8, error) {
-	var options []uint8
+	var segmentOptions []uint8
 	if strings.Contains(segment, "*") {
 		for i := min; i <= max; i++ {
-			options = append(options, i)
+			segmentOptions = append(segmentOptions, i)
 		}
 	} else if strings.HasPrefix(segment, "[") && strings.HasSuffix(segment, "]") {
 		segment = strings.TrimPrefix(segment, "[")
@@ -557,14 +581,14 @@ func (m Browser) explodeSegment(segment string, min uint8, max uint8) ([]uint8, 
 					return nil, err
 				}
 				for i := localMin; i <= localMax; i++ {
-					options = append(options, uint8(i))
+					segmentOptions = append(segmentOptions, uint8(i))
 				}
 			} else {
 				option, err := strconv.ParseUint(segment, 10, 8)
 				if err != nil {
 					return nil, err
 				}
-				options = append(options, uint8(option))
+				segmentOptions = append(segmentOptions, uint8(option))
 			}
 		}
 	} else {
@@ -573,10 +597,10 @@ func (m Browser) explodeSegment(segment string, min uint8, max uint8) ([]uint8, 
 			return nil, err
 		}
 		if uint8(value) >= min && uint8(value) <= max {
-			options = append(options, uint8(value))
+			segmentOptions = append(segmentOptions, uint8(value))
 		}
 	}
-	return options, nil
+	return segmentOptions, nil
 }
 
 func (m Browser) parseAssociationTable(deviceDescriptor uint16, knxGroupAddresses []driverModel.KnxGroupAddress, value values.PlcValue) (driverModel.KnxGroupAddress, uint16) {

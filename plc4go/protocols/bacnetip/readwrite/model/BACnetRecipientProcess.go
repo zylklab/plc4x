@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetRecipientProcess is the corresponding interface of BACnetRecipientProcess
 type BACnetRecipientProcess interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetRecipient returns Recipient (property field)
@@ -75,7 +78,7 @@ func NewBACnetRecipientProcess(recipient BACnetRecipientEnclosed, processIdentif
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetRecipientProcess(structType interface{}) BACnetRecipientProcess {
+func CastBACnetRecipientProcess(structType any) BACnetRecipientProcess {
 	if casted, ok := structType.(BACnetRecipientProcess); ok {
 		return casted
 	}
@@ -107,13 +110,15 @@ func (m *_BACnetRecipientProcess) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetRecipientProcessParse(theBytes []byte) (BACnetRecipientProcess, error) {
-	return BACnetRecipientProcessParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func BACnetRecipientProcessParse(ctx context.Context, theBytes []byte) (BACnetRecipientProcess, error) {
+	return BACnetRecipientProcessParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func BACnetRecipientProcessParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (BACnetRecipientProcess, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetRecipientProcess"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetRecipientProcess")
 	}
@@ -143,7 +148,7 @@ func BACnetRecipientProcessParseWithBuffer(ctx context.Context, readBuffer utils
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(1), BACnetDataType_UNSIGNED_INTEGER)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'processIdentifier' field of BACnetRecipientProcess")
@@ -177,6 +182,8 @@ func (m *_BACnetRecipientProcess) Serialize() ([]byte, error) {
 func (m *_BACnetRecipientProcess) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetRecipientProcess"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetRecipientProcess")
 	}

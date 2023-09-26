@@ -90,6 +90,7 @@
         ['0x00120F' TlvOrgSpecificIeee8023
             [simple     TlvOrgSpecificIeee8023Unit      specificUnit               ]
         ]
+//        ['0x0012BB' TODO: Seen this code, but not sure where it's defined ...
     ]
 ]
 
@@ -115,6 +116,7 @@
             [simple     uint 32                         remotePortRxDelay]
             [simple     uint 32                         localPortTxDelay]
             [simple     uint 32                         remotePortTxDelay]
+            [simple     uint 32                         portCableDelay]
         ]
         ['PORT_STATUS'  TlvProfibusSubTypePortStatus
             [simple     uint 16                         rtClass2PortStatus]

@@ -47,9 +47,9 @@ public class DataItem {
 
       // Reserved Field (Compartmentalized so the "reserved" variable can't leak)
       {
-        short reserved = /*TODO: migrate me*/ /*TODO: migrate me*/
-            readBuffer.readUnsignedShort("", 7);
-        if (reserved != (short) 0x00) {
+        byte reserved = /*TODO: migrate me*/ /*TODO: migrate me*/
+            readBuffer.readUnsignedByte("", 7);
+        if (reserved != (byte) 0x00) {
           LOGGER.info(
               "Expected constant value " + 0x00 + " but got " + reserved + " for reserved field.");
         }
@@ -268,8 +268,7 @@ public class DataItem {
     if (EvaluationHelper.equals(dataProtocolId, "IEC61131_BOOL")) { // BOOL
       // Reserved Field
       /*TODO: migrate me*/
-      /*TODO: migrate me*/ writeBuffer.writeUnsignedShort(
-          "", 7, ((Number) (short) 0x00).shortValue());
+      /*TODO: migrate me*/ writeBuffer.writeUnsignedByte("", 7, ((Number) (byte) 0x00).byteValue());
       // Simple Field (value)
       boolean value = (boolean) _value.getBoolean();
       /*TODO: migrate me*/
@@ -377,7 +376,7 @@ public class DataItem {
       /*TODO: migrate me*/ writeBuffer.writeUnsignedBigInteger("", 64, (BigInteger) (nanoseconds));
     } else if (EvaluationHelper.equals(dataProtocolId, "IEC61131_DATE")) { // DATE
       // Simple Field (daysSinceSiemensEpoch)
-      int daysSinceSiemensEpoch = (int) _value.getInt();
+      int daysSinceSiemensEpoch = (int) ((PlcDATE) _value).getDaysSinceSiemensEpoch();
       /*TODO: migrate me*/
       /*TODO: migrate me*/ writeBuffer.writeUnsignedInt(
           "", 16, ((Number) (daysSinceSiemensEpoch)).intValue());
@@ -492,10 +491,10 @@ public class DataItem {
       sizeInBits += 16;
     } else if (EvaluationHelper.equals(dataProtocolId, "IEC61131_STRING")) { // STRING
       // Manual Field (value)
-      sizeInBits += (STR_LEN(_value)) + (2);
+      sizeInBits += (((stringLength) * (8))) + (16);
     } else if (EvaluationHelper.equals(dataProtocolId, "IEC61131_WSTRING")) { // STRING
       // Manual Field (value)
-      sizeInBits += (((STR_LEN(_value)) * (2))) + (2);
+      sizeInBits += (((stringLength) * (16))) + (32);
     } else if (EvaluationHelper.equals(dataProtocolId, "IEC61131_TIME")) { // TIME
       // Simple Field (milliseconds)
       sizeInBits += 32;

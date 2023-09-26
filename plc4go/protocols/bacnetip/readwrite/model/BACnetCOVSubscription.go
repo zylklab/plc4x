@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetCOVSubscription is the corresponding interface of BACnetCOVSubscription
 type BACnetCOVSubscription interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetRecipient returns Recipient (property field)
@@ -96,7 +99,7 @@ func NewBACnetCOVSubscription(recipient BACnetRecipientProcessEnclosed, monitore
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetCOVSubscription(structType interface{}) BACnetCOVSubscription {
+func CastBACnetCOVSubscription(structType any) BACnetCOVSubscription {
 	if casted, ok := structType.(BACnetCOVSubscription); ok {
 		return casted
 	}
@@ -137,13 +140,15 @@ func (m *_BACnetCOVSubscription) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetCOVSubscriptionParse(theBytes []byte) (BACnetCOVSubscription, error) {
-	return BACnetCOVSubscriptionParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func BACnetCOVSubscriptionParse(ctx context.Context, theBytes []byte) (BACnetCOVSubscription, error) {
+	return BACnetCOVSubscriptionParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func BACnetCOVSubscriptionParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (BACnetCOVSubscription, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetCOVSubscription"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetCOVSubscription")
 	}
@@ -212,7 +217,7 @@ func BACnetCOVSubscriptionParseWithBuffer(ctx context.Context, readBuffer utils.
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(4), BACnetDataType_REAL)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'covIncrement' field of BACnetCOVSubscription")
@@ -249,6 +254,8 @@ func (m *_BACnetCOVSubscription) Serialize() ([]byte, error) {
 func (m *_BACnetCOVSubscription) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetCOVSubscription"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetCOVSubscription")
 	}

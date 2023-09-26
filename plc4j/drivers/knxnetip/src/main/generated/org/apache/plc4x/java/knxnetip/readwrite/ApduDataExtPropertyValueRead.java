@@ -38,17 +38,18 @@ import org.apache.plc4x.java.spi.generation.*;
 public class ApduDataExtPropertyValueRead extends ApduDataExt implements Message {
 
   // Accessors for discriminator values.
-  public Short getExtApciType() {
-    return (short) 0x15;
+  public Byte getExtApciType() {
+    return (byte) 0x15;
   }
 
   // Properties.
   protected final short objectIndex;
   protected final short propertyId;
   protected final byte count;
-  protected final int index;
+  protected final short index;
 
-  public ApduDataExtPropertyValueRead(short objectIndex, short propertyId, byte count, int index) {
+  public ApduDataExtPropertyValueRead(
+      short objectIndex, short propertyId, byte count, short index) {
     super();
     this.objectIndex = objectIndex;
     this.propertyId = propertyId;
@@ -68,7 +69,7 @@ public class ApduDataExtPropertyValueRead extends ApduDataExt implements Message
     return count;
   }
 
-  public int getIndex() {
+  public short getIndex() {
     return index;
   }
 
@@ -76,7 +77,6 @@ public class ApduDataExtPropertyValueRead extends ApduDataExt implements Message
   protected void serializeApduDataExtChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ApduDataExtPropertyValueRead");
 
     // Simple Field (objectIndex)
@@ -89,7 +89,7 @@ public class ApduDataExtPropertyValueRead extends ApduDataExt implements Message
     writeSimpleField("count", count, writeUnsignedByte(writeBuffer, 4));
 
     // Simple Field (index)
-    writeSimpleField("index", index, writeUnsignedInt(writeBuffer, 12));
+    writeSimpleField("index", index, writeUnsignedShort(writeBuffer, 12));
 
     writeBuffer.popContext("ApduDataExtPropertyValueRead");
   }
@@ -124,8 +124,6 @@ public class ApduDataExtPropertyValueRead extends ApduDataExt implements Message
       ReadBuffer readBuffer, Short length) throws ParseException {
     readBuffer.pullContext("ApduDataExtPropertyValueRead");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     short objectIndex = readSimpleField("objectIndex", readUnsignedShort(readBuffer, 8));
@@ -134,7 +132,7 @@ public class ApduDataExtPropertyValueRead extends ApduDataExt implements Message
 
     byte count = readSimpleField("count", readUnsignedByte(readBuffer, 4));
 
-    int index = readSimpleField("index", readUnsignedInt(readBuffer, 12));
+    short index = readSimpleField("index", readUnsignedShort(readBuffer, 12));
 
     readBuffer.closeContext("ApduDataExtPropertyValueRead");
     // Create the instance
@@ -146,10 +144,10 @@ public class ApduDataExtPropertyValueRead extends ApduDataExt implements Message
     private final short objectIndex;
     private final short propertyId;
     private final byte count;
-    private final int index;
+    private final short index;
 
     public ApduDataExtPropertyValueReadBuilderImpl(
-        short objectIndex, short propertyId, byte count, int index) {
+        short objectIndex, short propertyId, byte count, short index) {
       this.objectIndex = objectIndex;
       this.propertyId = propertyId;
       this.count = count;

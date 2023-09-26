@@ -37,7 +37,7 @@
       <plugin>
         <groupId>org.codehaus.gmavenplus</groupId>
         <artifactId>gmavenplus-plugin</artifactId>
-        <version>2.1.0</version>
+        <version>3.0.0</version>
         <executions>
           <execution>
             <goals>
@@ -72,6 +72,9 @@
         <artifactId>maven-dependency-plugin</artifactId>
         <configuration>
           <usedDependencies combine.children="append">
+            <usedDependency>org.apache.plc4x:plc4j-driver-s7</usedDependency>
+            <usedDependency>org.apache.plc4x:plc4j-driver-eip</usedDependency>
+            <usedDependency>org.apache.plc4x:plc4j-driver-iec-60870</usedDependency>
             <usedDependency>org.apache.plc4x:plc4j-utils-pcap-shared</usedDependency>
           </usedDependencies>
         </configuration>
@@ -93,6 +96,17 @@
 
   <dependencies>
     <dependency>
+      <groupId>org.apache.plc4x</groupId>
+      <artifactId>plc4j-spi</artifactId>
+      <version>0.11.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.plc4x</groupId>
+      <artifactId>plc4j-utils-pcap-shared</artifactId>
+      <version>0.11.0-SNAPSHOT</version>
+    </dependency>
+
+    <dependency>
       <groupId>org.apache.groovy</groupId>
       <artifactId>groovy-xml</artifactId>
       <version>${groovy.version}</version>
@@ -102,15 +116,40 @@
       <artifactId>pcap4j-core</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.xmlunit</groupId>
+      <artifactId>xmlunit-matchers</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <!-- Explicitly managing this back to "compile" -->
+      <scope>compile</scope>
+    </dependency>
+
+    <dependency>
       <groupId>org.apache.plc4x</groupId>
-      <artifactId>plc4j-utils-pcap-shared</artifactId>
+      <artifactId>plc4j-driver-s7</artifactId>
       <version>0.11.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.apache.plc4x</groupId>
-      <artifactId>plc4j-spi</artifactId>
+      <artifactId>plc4j-driver-eip</artifactId>
       <version>0.11.0-SNAPSHOT</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.plc4x</groupId>
+      <artifactId>plc4j-driver-iec-60870</artifactId>
+      <version>0.11.0-SNAPSHOT</version>
+    </dependency>
+
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
@@ -120,10 +159,6 @@
       <groupId>org.spockframework</groupId>
       <artifactId>spock-core</artifactId>
       <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.xmlunit</groupId>
-      <artifactId>xmlunit-matchers</artifactId>
     </dependency>
   </dependencies>
 

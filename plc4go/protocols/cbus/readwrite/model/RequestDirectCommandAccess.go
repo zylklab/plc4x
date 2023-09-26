@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -34,6 +35,7 @@ const RequestDirectCommandAccess_AT byte = 0x40
 
 // RequestDirectCommandAccess is the corresponding interface of RequestDirectCommandAccess
 type RequestDirectCommandAccess interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	Request
@@ -141,7 +143,7 @@ func NewRequestDirectCommandAccess(calData CALData, alpha Alpha, peekedByte Requ
 }
 
 // Deprecated: use the interface for direct cast
-func CastRequestDirectCommandAccess(structType interface{}) RequestDirectCommandAccess {
+func CastRequestDirectCommandAccess(structType any) RequestDirectCommandAccess {
 	if casted, ok := structType.(RequestDirectCommandAccess); ok {
 		return casted
 	}
@@ -178,13 +180,15 @@ func (m *_RequestDirectCommandAccess) GetLengthInBytes(ctx context.Context) uint
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func RequestDirectCommandAccessParse(theBytes []byte, cBusOptions CBusOptions) (RequestDirectCommandAccess, error) {
-	return RequestDirectCommandAccessParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), cBusOptions)
+func RequestDirectCommandAccessParse(ctx context.Context, theBytes []byte, cBusOptions CBusOptions) (RequestDirectCommandAccess, error) {
+	return RequestDirectCommandAccessParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), cBusOptions)
 }
 
 func RequestDirectCommandAccessParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, cBusOptions CBusOptions) (RequestDirectCommandAccess, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("RequestDirectCommandAccess"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for RequestDirectCommandAccess")
 	}
@@ -201,7 +205,7 @@ func RequestDirectCommandAccessParseWithBuffer(ctx context.Context, readBuffer u
 	}
 
 	// Manual Field (calData)
-	_calData, _calDataErr := ReadCALData(readBuffer)
+	_calData, _calDataErr := ReadCALData(ctx, readBuffer)
 	if _calDataErr != nil {
 		return nil, errors.Wrap(_calDataErr, "Error parsing 'calData' field of RequestDirectCommandAccess")
 	}
@@ -225,7 +229,7 @@ func RequestDirectCommandAccessParseWithBuffer(ctx context.Context, readBuffer u
 		_val, _err := AlphaParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'alpha' field of RequestDirectCommandAccess")
@@ -264,6 +268,8 @@ func (m *_RequestDirectCommandAccess) Serialize() ([]byte, error) {
 func (m *_RequestDirectCommandAccess) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("RequestDirectCommandAccess"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for RequestDirectCommandAccess")
@@ -276,11 +282,13 @@ func (m *_RequestDirectCommandAccess) SerializeWithWriteBuffer(ctx context.Conte
 		}
 
 		// Manual Field (calData)
-		_calDataErr := WriteCALData(writeBuffer, m.GetCalData())
+		_calDataErr := WriteCALData(ctx, writeBuffer, m.GetCalData())
 		if _calDataErr != nil {
 			return errors.Wrap(_calDataErr, "Error serializing 'calData' field")
 		}
 		// Virtual field
+		calDataDecoded := m.GetCalDataDecoded()
+		_ = calDataDecoded
 		if _calDataDecodedErr := writeBuffer.WriteVirtual(ctx, "calDataDecoded", m.GetCalDataDecoded()); _calDataDecodedErr != nil {
 			return errors.Wrap(_calDataDecodedErr, "Error serializing 'calDataDecoded' field")
 		}

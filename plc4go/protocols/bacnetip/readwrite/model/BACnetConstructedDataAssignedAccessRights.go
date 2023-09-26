@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataAssignedAccessRights is the corresponding interface of BACnetConstructedDataAssignedAccessRights
 type BACnetConstructedDataAssignedAccessRights interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataAssignedAccessRights(numberOfDataElements BACnetApp
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataAssignedAccessRights(structType interface{}) BACnetConstructedDataAssignedAccessRights {
+func CastBACnetConstructedDataAssignedAccessRights(structType any) BACnetConstructedDataAssignedAccessRights {
 	if casted, ok := structType.(BACnetConstructedDataAssignedAccessRights); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataAssignedAccessRights) GetLengthInBytes(ctx contex
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataAssignedAccessRightsParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataAssignedAccessRights, error) {
-	return BACnetConstructedDataAssignedAccessRightsParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataAssignedAccessRightsParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataAssignedAccessRights, error) {
+	return BACnetConstructedDataAssignedAccessRightsParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataAssignedAccessRightsParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataAssignedAccessRights, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataAssignedAccessRights"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataAssignedAccessRights")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataAssignedAccessRightsParseWithBuffer(ctx context.Contex
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataAssignedAccessRights")
@@ -216,7 +220,7 @@ func BACnetConstructedDataAssignedAccessRightsParseWithBuffer(ctx context.Contex
 	// Terminated array
 	var assignedAccessRights []BACnetAssignedAccessRights
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetAssignedAccessRightsParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'assignedAccessRights' field of BACnetConstructedDataAssignedAccessRights")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataAssignedAccessRights) Serialize() ([]byte, error)
 func (m *_BACnetConstructedDataAssignedAccessRights) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataAssignedAccessRights"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataAssignedAccessRights")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataAssignedAccessRights) SerializeWithWriteBuffer(ct
 		}
 		for _curItem, _element := range m.GetAssignedAccessRights() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetAssignedAccessRights()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetAssignedAccessRights()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

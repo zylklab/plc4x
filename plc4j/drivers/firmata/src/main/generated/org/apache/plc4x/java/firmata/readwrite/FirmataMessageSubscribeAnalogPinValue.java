@@ -65,7 +65,6 @@ public class FirmataMessageSubscribeAnalogPinValue extends FirmataMessage implem
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("FirmataMessageSubscribeAnalogPinValue");
 
     // Simple Field (pin)
@@ -78,8 +77,8 @@ public class FirmataMessageSubscribeAnalogPinValue extends FirmataMessage implem
     // Reserved Field (reserved)
     writeReservedField(
         "reserved",
-        (short) 0x00,
-        writeUnsignedShort(writeBuffer, 7),
+        (byte) 0x00,
+        writeUnsignedByte(writeBuffer, 7),
         WithOption.WithByteOrder(ByteOrder.BIG_ENDIAN));
 
     // Simple Field (enable)
@@ -119,19 +118,17 @@ public class FirmataMessageSubscribeAnalogPinValue extends FirmataMessage implem
       ReadBuffer readBuffer, Boolean response) throws ParseException {
     readBuffer.pullContext("FirmataMessageSubscribeAnalogPinValue");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     byte pin =
         readSimpleField(
             "pin", readUnsignedByte(readBuffer, 4), WithOption.WithByteOrder(ByteOrder.BIG_ENDIAN));
 
-    Short reservedField0 =
+    Byte reservedField0 =
         readReservedField(
             "reserved",
-            readUnsignedShort(readBuffer, 7),
-            (short) 0x00,
+            readUnsignedByte(readBuffer, 7),
+            (byte) 0x00,
             WithOption.WithByteOrder(ByteOrder.BIG_ENDIAN));
 
     boolean enable =

@@ -24,11 +24,16 @@ import (
 
 	"github.com/apache/plc4x/plc4go/pkg/api"
 	"github.com/apache/plc4x/plc4go/pkg/api/drivers"
-	"github.com/apache/plc4x/plc4go/pkg/api/model"
+	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
 )
 
 func main() {
 	driverManager := plc4go.NewPlcDriverManager()
+	defer func() {
+		if err := driverManager.Close(); err != nil {
+			panic(err)
+		}
+	}()
 	drivers.RegisterModbusTcpDriver(driverManager)
 
 	// Get a connection to a remote PLC
@@ -65,7 +70,7 @@ func main() {
 	}
 
 	// Do something with the response
-	if rrr.GetResponse().GetResponseCode("tag") != model.PlcResponseCode_OK {
+	if rrr.GetResponse().GetResponseCode("tag") != apiModel.PlcResponseCode_OK {
 		fmt.Printf("error an non-ok return code: %s", rrr.GetResponse().GetResponseCode("tag").GetName())
 		return
 	}

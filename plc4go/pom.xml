@@ -17,7 +17,8 @@
   specific language governing permissions and limitations
   under the License.
   -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
 
@@ -35,10 +36,29 @@
 
   <properties>
     <!-- Tell Sonar where to find the sources -->
-    <sonar.sources>examples,internal,pkg,tools</sonar.sources>
+    <sonar.sources>.</sonar.sources>
+    <sonar.inclusions>**</sonar.inclusions>
+    <sonar.exclusions>protocols/**/*</sonar.exclusions>
+
+    <sonar.tests>.</sonar.tests>
+    <sonar.test.inclusions>**/*_test.go</sonar.test.inclusions>
+    <sonar.coverage.exclusions>**/*_test.go,spi/testutils/*,**/*_plc4xgen.go,examples/**/*,tests/**/*,tools/**/*
+    </sonar.coverage.exclusions>
+
+    <sonar.go.exclusions>**/vendor/**,**/*_mock.go,**/mock_*.go</sonar.go.exclusions>
+    <!-- TODO: add json output to sonar.go.tests.reportPaths=${project.basedir}/target/go-test-report.out-->
+    <sonar.go.coverage.reportPaths>${project.basedir}/target/coverage.out</sonar.go.coverage.reportPaths>
+
     <maven.install.skip>true</maven.install.skip>
     <!-- The deploy-goal of the go plugin uses go install to install the result, unfortunately disabling the deploy, disables the go install. -->
     <!--maven.deploy.skip>true</maven.deploy.skip-->
+
+    <go.cover.flag>-coverprofile=target/coverage.out</go.cover.flag>
+
+    <go.stringer.version>v0.11.1</go.stringer.version>
+    <go.junit-report.version>v2.0.1</go.junit-report.version>
+    <go.gotestsum.version>v1.10.1</go.gotestsum.version>
+    <go.mockery.version>v2.32.4</go.mockery.version>
   </properties>
 
   <build>
@@ -142,6 +162,15 @@
                 </artifactItem>
                 <artifactItem>
                   <groupId>org.apache.plc4x</groupId>
+                  <artifactId>plc4x-protocols-opcua</artifactId>
+                  <classifier>tests</classifier>
+                  <type>test-jar</type>
+                  <outputDirectory>${project.basedir}/assets/testing</outputDirectory>
+                  <includes>**/*.xml</includes>
+                  <excludes>META-INF/**,org/**</excludes>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.apache.plc4x</groupId>
                   <artifactId>plc4x-protocols-s7</artifactId>
                   <classifier>tests</classifier>
                   <type>test-jar</type>
@@ -184,7 +213,7 @@
               <outputDir>${project.basedir}/protocols</outputDir>
             </configuration>
           </execution>
-           <execution>
+          <execution>
             <id>generate-driver-ads</id>
             <phase>generate-sources</phase>
             <goals>
@@ -302,6 +331,19 @@
             </configuration>
           </execution>
           <execution>
+            <id>generate-driver-opcua</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate-driver</goal>
+            </goals>
+            <configuration>
+              <protocolName>opcua</protocolName>
+              <languageName>go</languageName>
+              <outputFlavor>read-write</outputFlavor>
+              <outputDir>${project.basedir}/protocols</outputDir>
+            </configuration>
+          </execution>
+          <execution>
             <id>generate-driver-s7</id>
             <phase>generate-sources</phase>
             <goals>
@@ -345,31 +387,20 @@
             </goals>
             <configuration>
               <packages>
-                <package>golang.org/x/tools/cmd/stringer@latest</package>
+                <package>golang.org/x/tools/cmd/stringer@${go.stringer.version}</package>
               </packages>
             </configuration>
           </execution>
           <execution>
-            <id>get-licenser</id>
+            <id>get-go-junit-report</id>
             <phase>initialize</phase>
             <goals>
               <goal>install</goal>
             </goals>
             <configuration>
               <packages>
-                <package>github.com/elastic/go-licenser@latest</package>
-              </packages>
-            </configuration>
-          </execution>
-          <execution>
-            <id>get-goxunit</id>
-            <phase>initialize</phase>
-            <goals>
-              <goal>install</goal>
-            </goals>
-            <configuration>
-              <packages>
-                <package>github.com/tebeka/go2xunit@latest</package>
+                <!-- use fork till https://github.com/jstemmer/go-junit-report/pull/162 is merged-->
+                <package>github.com/sruehl/go-junit-report/v2@${go.junit-report.version}</package>
               </packages>
             </configuration>
           </execution>
@@ -381,7 +412,19 @@
             </goals>
             <configuration>
               <packages>
-                <package>gotest.tools/gotestsum@latest</package>
+                <package>gotest.tools/gotestsum@${go.gotestsum.version}</package>
+              </packages>
+            </configuration>
+          </execution>
+          <execution>
+            <id>get-mockery</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>install</goal>
+            </goals>
+            <configuration>
+              <packages>
+                <package>github.com/vektra/mockery/v2@${go.mockery.version}</package>
               </packages>
             </configuration>
           </execution>
@@ -401,77 +444,18 @@
             </configuration>
           </execution>
 
-          <!-- Add the apache license header to stuff generated by the stringer -->
-          <!--
-            NOTE: Don't try merging the following 4 executions ...
-                  It doesn't work by merging the "packages" sections
-            TODO: The licenser adds a version of the Apache Header with http url
-          -->
+          <!-- Generate mocks-->
           <execution>
-            <id>add-license-modbus</id>
+            <id>generate-mocks</id>
             <phase>process-sources</phase>
             <goals>
               <goal>custom</goal>
             </goals>
             <configuration>
-              <exec>go-licenser</exec>
-              <customCommand>-licensor</customCommand>
-              <buildFlags>
-                <flag>Apache Software Foundation (ASF)</flag>
-              </buildFlags>
+              <exec>mockery</exec>
+              <customCommand>--all</customCommand>
               <packages>
-                <package>internal/modbus/tagtype_string.go</package>
-              </packages>
-            </configuration>
-          </execution>
-          <execution>
-            <id>add-license-cbus</id>
-            <phase>process-sources</phase>
-            <goals>
-              <goal>custom</goal>
-            </goals>
-            <configuration>
-              <exec>go-licenser</exec>
-              <customCommand>-licensor</customCommand>
-              <buildFlags>
-                <flag>Apache Software Foundation (ASF)</flag>
-              </buildFlags>
-              <packages>
-                <package>internal/cbus/tagtype_string.go</package>
-              </packages>
-            </configuration>
-          </execution>
-          <execution>
-            <id>add-license-s7</id>
-            <phase>process-sources</phase>
-            <goals>
-              <goal>custom</goal>
-            </goals>
-            <configuration>
-              <exec>go-licenser</exec>
-              <customCommand>-licensor</customCommand>
-              <buildFlags>
-                <flag>Apache Software Foundation (ASF)</flag>
-              </buildFlags>
-              <packages>
-                <package>internal/s7/tagtype_string.go</package>
-              </packages>
-            </configuration>
-          </execution>
-          <execution>
-            <id>add-license-spi-testutils</id>
-            <phase>process-sources</phase>
-            <goals>
-              <goal>custom</goal>
-            </goals>
-            <configuration>
-              <exec>go-licenser</exec>
-              <customCommand>-licensor</customCommand>
-              <buildFlags>
-                <flag>Apache Software Foundation (ASF)</flag>
-              </buildFlags>
-              <packages>
-                <package>spi/testutils/steptype_string.go</package>
+                <package>--with-expecter</package>
               </packages>
             </configuration>
           </execution>
@@ -525,6 +509,9 @@
             <configuration>
               <buildFlags>
                 <flag>-v</flag>
+                <!-- TODO: race detection temporary disabled till root cause for the issue is found https://github.com/golang/go/issues/40343 -->
+                <!--flag>-race</flag-->
+                <flag>${go.cover.flag}</flag>
               </buildFlags>
               <outLogFile>test-out-verbose.log</outLogFile>
               <ignoreErrorExitCode>true</ignoreErrorExitCode>
@@ -553,27 +540,29 @@
             </configuration>
           </execution>
 
-          <!-- Convert generated test report into xunit format and save as file -->
+          <!-- Convert generated test report into go-junit-report format and save as file -->
           <execution>
-            <id>makeXUnitReport</id>
+            <id>makeJUnitReport</id>
             <phase>test</phase>
             <goals>
               <goal>custom</goal>
             </goals>
             <configuration>
               <skip>${skipTests}</skip>
-              <exec>go2xunit</exec>
-              <customCommand>-fail</customCommand>
+              <exec>go-junit-report</exec>
+              <customCommand>-set-exit-code</customCommand>
               <buildFlags>
-                <flag>-input</flag>
+                <flag>-in</flag>
                 <flag>${project.build.directory}${file.separator}reports${file.separator}test-out-verbose.log</flag>
-                <flag>-output</flag>
+                <flag>-out</flag>
               </buildFlags>
               <echo>
-                <info>XUnit report saved as ${xunit.report}</info>
+                <info>JUnit report saved as
+                  target${file.separator}surefire-reports${file.separator}go-junit-report.xml
+                </info>
               </echo>
               <packages>
-                <package>target${file.separator}surefire-reports${file.separator}xuint.xml</package>
+                <package>target${file.separator}surefire-reports${file.separator}go-junit-report.xml</package>
               </packages>
             </configuration>
           </execution>
@@ -592,6 +581,7 @@
           </packages>
           <sources>${project.basedir}</sources>
           <verbose>true</verbose>
+          <goVersion>1.20.7</goVersion>
         </configuration>
       </plugin>
 
@@ -611,7 +601,7 @@
             </goals>
             <configuration>
               <target>
-                <mkdir dir="target${file.separator}surefire-reports" />
+                <mkdir dir="target${file.separator}surefire-reports"/>
               </target>
             </configuration>
           </execution>
@@ -704,6 +694,13 @@
     </dependency>
     <dependency>
       <groupId>org.apache.plc4x</groupId>
+      <artifactId>plc4x-protocols-opcua</artifactId>
+      <version>0.11.0-SNAPSHOT</version>
+      <!-- Scope is 'provided' as this way it's not shipped with the driver -->
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.plc4x</groupId>
       <artifactId>plc4x-protocols-s7</artifactId>
       <version>0.11.0-SNAPSHOT</version>
       <!-- Scope is 'provided' as this way it's not shipped with the driver -->
@@ -717,5 +714,23 @@
       <scope>provided</scope>
     </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>os-windows</id>
+      <activation>
+        <os>
+          <family>windows</family>
+        </os>
+      </activation>
+      <properties>
+        <!--
+        Coverage doesn't work in windows because of a long path issue in cover.exe
+        Tracked upstream issue: https://github.com/golang/go/issues/60785
+        -->
+        <go.cover.flag>-v</go.cover.flag>
+      </properties>
+    </profile>
+  </profiles>
 
 </project>

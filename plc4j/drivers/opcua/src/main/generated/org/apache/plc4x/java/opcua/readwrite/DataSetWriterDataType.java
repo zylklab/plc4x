@@ -123,14 +123,13 @@ public class DataSetWriterDataType extends ExtensionObjectDefinition implements 
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("DataSetWriterDataType");
 
     // Simple Field (name)
     writeSimpleField("name", name, new DataWriterComplexDefault<>(writeBuffer));
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 7));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 7));
 
     // Simple Field (enabled)
     writeSimpleField("enabled", enabled, writeBoolean(writeBuffer));
@@ -231,8 +230,6 @@ public class DataSetWriterDataType extends ExtensionObjectDefinition implements 
       ReadBuffer readBuffer, String identifier) throws ParseException {
     readBuffer.pullContext("DataSetWriterDataType");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     PascalString name =
@@ -240,8 +237,8 @@ public class DataSetWriterDataType extends ExtensionObjectDefinition implements 
             "name",
             new DataReaderComplexDefault<>(() -> PascalString.staticParse(readBuffer), readBuffer));
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 7), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 7), (byte) 0x00);
 
     boolean enabled = readSimpleField("enabled", readBoolean(readBuffer));
 

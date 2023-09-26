@@ -31,6 +31,7 @@ on:
       - code-generation/**
       - protocols/**
       - plc4j**
+      - pom.xml
   workflow_dispatch:
     inputs:
       forceUpdates:
@@ -57,7 +58,7 @@ jobs:
         run: brew install libpcap
 
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -76,7 +77,7 @@ jobs:
 
       - name: Set Platform options
         id: platform_opts
-        uses: actions/github-script@v6.4.0
+        uses: actions/github-script@v6.4.1
         env:
           OS: ${{ matrix.os }}
         with:
@@ -94,7 +95,7 @@ jobs:
 
       - name: Calculate platform suffix
         id: platform_suffix
-        uses: actions/github-script@v6.4.0
+        uses: actions/github-script@v6.4.1
         env:
           OS: ${{ matrix.os }}
         with:
@@ -108,7 +109,7 @@ jobs:
 
       - name: Set extra options
         id: extra_options
-        uses: actions/github-script@v6.4.0
+        uses: actions/github-script@v6.4.1
         env:
           FORCE_UPDATE: ${{ github.event.inputs.forceUpdates }}
         with:
@@ -130,9 +131,27 @@ jobs:
         run: |
           ./mvnw${{ steps.platform_suffix.outputs.platform_suffix }} ${{ steps.extra_options.outputs.extra_options }} -B -P'enable-all-checks' ${{ steps.platform_opts.outputs.platform_opts }} install
 
+      - name: Upload Test Report (first failure)
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: "java-test-report-first-failure-${{ matrix.os }}-java-${{ matrix.java }}"
+          path: |
+            **/surefire-reports/TEST-*.xml
+            **/failsafe-reports/TEST-*.xml
+
       - name: Run mvnv without BacNet regression tests
         if: ${{ failure() }}
         run: ./mvnw${{ steps.platform_suffix.outputs.platform_suffix }} ${{ steps.extra_options.outputs.extra_options }} -B -P'skip-bacnet-regression-test' ${{ steps.platform_opts.outputs.platform_opts }} install
+
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v3
+        if: success() || failure()
+        with:
+          name: "java-test-report-${{ matrix.os }}-java-${{ matrix.java }}"
+          path: |
+            **/surefire-reports/TEST-*.xml
+            **/failsafe-reports/TEST-*.xml
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2

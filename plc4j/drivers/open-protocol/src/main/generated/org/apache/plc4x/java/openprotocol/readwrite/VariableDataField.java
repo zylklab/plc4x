@@ -24,7 +24,6 @@ import static org.apache.plc4x.java.spi.codegen.io.DataReaderFactory.*;
 import static org.apache.plc4x.java.spi.codegen.io.DataWriterFactory.*;
 import static org.apache.plc4x.java.spi.generation.StaticHelper.*;
 
-import java.math.BigInteger;
 import java.time.*;
 import java.util.*;
 import org.apache.plc4x.java.api.exceptions.*;
@@ -39,14 +38,14 @@ import org.apache.plc4x.java.spi.generation.*;
 public class VariableDataField implements Message {
 
   // Properties.
-  protected final BigInteger parameterId;
+  protected final long parameterId;
   protected final int dataType;
-  protected final long unit;
-  protected final long stepNumber;
+  protected final int unit;
+  protected final int stepNumber;
   protected final byte[] dataValue;
 
   public VariableDataField(
-      BigInteger parameterId, int dataType, long unit, long stepNumber, byte[] dataValue) {
+      long parameterId, int dataType, int unit, int stepNumber, byte[] dataValue) {
     super();
     this.parameterId = parameterId;
     this.dataType = dataType;
@@ -55,7 +54,7 @@ public class VariableDataField implements Message {
     this.dataValue = dataValue;
   }
 
-  public BigInteger getParameterId() {
+  public long getParameterId() {
     return parameterId;
   }
 
@@ -63,11 +62,11 @@ public class VariableDataField implements Message {
     return dataType;
   }
 
-  public long getUnit() {
+  public int getUnit() {
     return unit;
   }
 
-  public long getStepNumber() {
+  public int getStepNumber() {
     return stepNumber;
   }
 
@@ -78,21 +77,20 @@ public class VariableDataField implements Message {
   public void serialize(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("VariableDataField");
 
     // Simple Field (parameterId)
     writeSimpleField(
         "parameterId",
         parameterId,
-        writeUnsignedBigInteger(writeBuffer, 40),
+        writeUnsignedLong(writeBuffer, 40),
         WithOption.WithEncoding("ASCII"));
 
     // Implicit Field (length) (Used for parsing, but its value is not stored as it's implicitly
     // given by the objects content)
-    long length = (long) (COUNT(getDataValue()));
+    int length = (int) (COUNT(getDataValue()));
     writeImplicitField(
-        "length", length, writeUnsignedLong(writeBuffer, 24), WithOption.WithEncoding("ASCII"));
+        "length", length, writeUnsignedInt(writeBuffer, 24), WithOption.WithEncoding("ASCII"));
 
     // Simple Field (dataType)
     writeSimpleField(
@@ -100,13 +98,13 @@ public class VariableDataField implements Message {
 
     // Simple Field (unit)
     writeSimpleField(
-        "unit", unit, writeUnsignedLong(writeBuffer, 24), WithOption.WithEncoding("ASCII"));
+        "unit", unit, writeUnsignedInt(writeBuffer, 24), WithOption.WithEncoding("ASCII"));
 
     // Simple Field (stepNumber)
     writeSimpleField(
         "stepNumber",
         stepNumber,
-        writeUnsignedLong(writeBuffer, 24),
+        writeUnsignedInt(writeBuffer, 24),
         WithOption.WithEncoding("ASCII"));
 
     // Array Field (dataValue)
@@ -159,30 +157,26 @@ public class VariableDataField implements Message {
   public static VariableDataField staticParse(ReadBuffer readBuffer) throws ParseException {
     readBuffer.pullContext("VariableDataField");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
-    BigInteger parameterId =
+    long parameterId =
         readSimpleField(
-            "parameterId",
-            readUnsignedBigInteger(readBuffer, 40),
-            WithOption.WithEncoding("ASCII"));
+            "parameterId", readUnsignedLong(readBuffer, 40), WithOption.WithEncoding("ASCII"));
 
-    long length =
+    int length =
         readImplicitField(
-            "length", readUnsignedLong(readBuffer, 24), WithOption.WithEncoding("ASCII"));
+            "length", readUnsignedInt(readBuffer, 24), WithOption.WithEncoding("ASCII"));
 
     int dataType =
         readSimpleField(
             "dataType", readUnsignedInt(readBuffer, 16), WithOption.WithEncoding("ASCII"));
 
-    long unit =
-        readSimpleField("unit", readUnsignedLong(readBuffer, 24), WithOption.WithEncoding("ASCII"));
+    int unit =
+        readSimpleField("unit", readUnsignedInt(readBuffer, 24), WithOption.WithEncoding("ASCII"));
 
-    long stepNumber =
+    int stepNumber =
         readSimpleField(
-            "stepNumber", readUnsignedLong(readBuffer, 24), WithOption.WithEncoding("ASCII"));
+            "stepNumber", readUnsignedInt(readBuffer, 24), WithOption.WithEncoding("ASCII"));
 
     byte[] dataValue =
         readBuffer.readByteArray(

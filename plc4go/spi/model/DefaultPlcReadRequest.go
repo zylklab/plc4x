@@ -21,52 +21,55 @@ package model
 
 import (
 	"context"
+	"runtime/debug"
 	"time"
 
-	"github.com/apache/plc4x/plc4go/pkg/api/model"
+	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
 	"github.com/apache/plc4x/plc4go/spi"
 	"github.com/apache/plc4x/plc4go/spi/interceptors"
 	"github.com/pkg/errors"
 )
 
+var _ apiModel.PlcReadRequestBuilder = &DefaultPlcReadRequestBuilder{}
+
 //go:generate go run ../../tools/plc4xgenerator/gen.go -type=DefaultPlcReadRequestBuilder
 type DefaultPlcReadRequestBuilder struct {
-	reader                 spi.PlcReader
-	tagHandler             spi.PlcTagHandler
+	reader                 spi.PlcReader     `ignore:"true"`
+	tagHandler             spi.PlcTagHandler `ignore:"true"`
 	tagNames               []string
 	tagAddresses           map[string]string
-	tags                   map[string]model.PlcTag
-	readRequestInterceptor interceptors.ReadRequestInterceptor
+	tags                   map[string]apiModel.PlcTag
+	readRequestInterceptor interceptors.ReadRequestInterceptor `ignore:"true"`
 }
 
-func NewDefaultPlcReadRequestBuilder(tagHandler spi.PlcTagHandler, reader spi.PlcReader) *DefaultPlcReadRequestBuilder {
+func NewDefaultPlcReadRequestBuilder(tagHandler spi.PlcTagHandler, reader spi.PlcReader) apiModel.PlcReadRequestBuilder {
 	return NewDefaultPlcReadRequestBuilderWithInterceptor(tagHandler, reader, nil)
 }
 
-func NewDefaultPlcReadRequestBuilderWithInterceptor(tagHandler spi.PlcTagHandler, reader spi.PlcReader, readRequestInterceptor interceptors.ReadRequestInterceptor) *DefaultPlcReadRequestBuilder {
+func NewDefaultPlcReadRequestBuilderWithInterceptor(tagHandler spi.PlcTagHandler, reader spi.PlcReader, readRequestInterceptor interceptors.ReadRequestInterceptor) apiModel.PlcReadRequestBuilder {
 	return &DefaultPlcReadRequestBuilder{
 		reader:                 reader,
 		tagHandler:             tagHandler,
 		tagNames:               make([]string, 0),
 		tagAddresses:           map[string]string{},
-		tags:                   map[string]model.PlcTag{},
+		tags:                   map[string]apiModel.PlcTag{},
 		readRequestInterceptor: readRequestInterceptor,
 	}
 }
 
-func (d *DefaultPlcReadRequestBuilder) AddTagAddress(name string, query string) model.PlcReadRequestBuilder {
+func (d *DefaultPlcReadRequestBuilder) AddTagAddress(name string, query string) apiModel.PlcReadRequestBuilder {
 	d.tagNames = append(d.tagNames, name)
 	d.tagAddresses[name] = query
 	return d
 }
 
-func (d *DefaultPlcReadRequestBuilder) AddTag(name string, tag model.PlcTag) model.PlcReadRequestBuilder {
+func (d *DefaultPlcReadRequestBuilder) AddTag(name string, tag apiModel.PlcTag) apiModel.PlcReadRequestBuilder {
 	d.tagNames = append(d.tagNames, name)
 	d.tags[name] = tag
 	return d
 }
 
-func (d *DefaultPlcReadRequestBuilder) Build() (model.PlcReadRequest, error) {
+func (d *DefaultPlcReadRequestBuilder) Build() (apiModel.PlcReadRequest, error) {
 	for _, name := range d.tagNames {
 		if tagAddress, ok := d.tagAddresses[name]; ok {
 			tag, err := d.tagHandler.ParseTag(tagAddress)
@@ -82,14 +85,21 @@ func (d *DefaultPlcReadRequestBuilder) Build() (model.PlcReadRequest, error) {
 	return NewDefaultPlcReadRequest(d.tags, d.tagNames, d.reader, d.readRequestInterceptor), nil
 }
 
+var _ apiModel.PlcReadRequest = &DefaultPlcReadRequest{}
+
 //go:generate go run ../../tools/plc4xgenerator/gen.go -type=DefaultPlcReadRequest
 type DefaultPlcReadRequest struct {
-	DefaultPlcTagRequest
-	reader                 spi.PlcReader
-	readRequestInterceptor interceptors.ReadRequestInterceptor
+	*DefaultPlcTagRequest
+	reader                 spi.PlcReader                       `ignore:"true"`
+	readRequestInterceptor interceptors.ReadRequestInterceptor `ignore:"true"`
 }
 
-func NewDefaultPlcReadRequest(tags map[string]model.PlcTag, tagNames []string, reader spi.PlcReader, readRequestInterceptor interceptors.ReadRequestInterceptor) model.PlcReadRequest {
+func NewDefaultPlcReadRequest(
+	tags map[string]apiModel.PlcTag,
+	tagNames []string,
+	reader spi.PlcReader,
+	readRequestInterceptor interceptors.ReadRequestInterceptor,
+) apiModel.PlcReadRequest {
 	return &DefaultPlcReadRequest{
 		DefaultPlcTagRequest:   NewDefaultPlcTagRequest(tags, tagNames),
 		reader:                 reader,
@@ -104,41 +114,50 @@ func (d *DefaultPlcReadRequest) GetReader() spi.PlcReader {
 func (d *DefaultPlcReadRequest) GetReadRequestInterceptor() interceptors.ReadRequestInterceptor {
 	return d.readRequestInterceptor
 }
-func (d *DefaultPlcReadRequest) Execute() <-chan model.PlcReadRequestResult {
+func (d *DefaultPlcReadRequest) Execute() <-chan apiModel.PlcReadRequestResult {
 	return d.ExecuteWithContext(context.TODO())
 }
 
-func (d *DefaultPlcReadRequest) ExecuteWithContext(ctx context.Context) <-chan model.PlcReadRequestResult {
-	// Shortcut, if no interceptor is defined
-	if d.readRequestInterceptor == nil {
-		return d.reader.Read(ctx, d)
+func (d *DefaultPlcReadRequest) ExecuteWithContext(ctx context.Context) <-chan apiModel.PlcReadRequestResult {
+	if d.readRequestInterceptor != nil {
+		return d.ExecuteWithContextAndInterceptor(ctx)
 	}
 
+	return d.reader.Read(ctx, d)
+}
+
+func (d *DefaultPlcReadRequest) ExecuteWithContextAndInterceptor(ctx context.Context) <-chan apiModel.PlcReadRequestResult {
 	// Split the requests up into multiple ones.
 	readRequests := d.readRequestInterceptor.InterceptReadRequest(ctx, d)
+
 	// Shortcut for single-request-requests
 	if len(readRequests) == 1 {
 		return d.reader.Read(ctx, readRequests[0])
 	}
 	// Create a sub-result-channel slice
-	var subResultChannels []<-chan model.PlcReadRequestResult
+	var subResultChannels []<-chan apiModel.PlcReadRequestResult
 
 	// Iterate over all requests and add the result-channels to the list
 	for _, subRequest := range readRequests {
 		subResultChannels = append(subResultChannels, d.reader.Read(ctx, subRequest))
 		// TODO: Replace this with a real queueing of requests. Later on we need throttling. At the moment this avoids race condition as the read above writes to fast on the line which is a problem for the test
-		time.Sleep(time.Millisecond * 4)
+		time.Sleep(4 * time.Millisecond)
 	}
 
 	// Create a new result-channel, which completes as soon as all sub-result-channels have returned
-	resultChannel := make(chan model.PlcReadRequestResult)
+	resultChannel := make(chan apiModel.PlcReadRequestResult, 1)
 	go func() {
-		var subResults []model.PlcReadRequestResult
+		defer func() {
+			if err := recover(); err != nil {
+				resultChannel <- NewDefaultPlcReadRequestResult(d, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
+			}
+		}()
+		var subResults []apiModel.PlcReadRequestResult
 		// Iterate over all sub-results
 		for _, subResultChannel := range subResultChannels {
 			select {
 			case <-ctx.Done():
-				resultChannel <- &DefaultPlcReadRequestResult{Request: d, Err: ctx.Err()}
+				resultChannel <- NewDefaultPlcReadRequestResult(d, nil, ctx.Err())
 				return
 			case subResult := <-subResultChannel:
 				subResults = append(subResults, subResult)
@@ -149,6 +168,5 @@ func (d *DefaultPlcReadRequest) ExecuteWithContext(ctx context.Context) <-chan m
 		// Return the final result
 		resultChannel <- result
 	}()
-
 	return resultChannel
 }

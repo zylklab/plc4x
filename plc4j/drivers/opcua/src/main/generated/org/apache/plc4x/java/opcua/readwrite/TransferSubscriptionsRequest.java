@@ -81,7 +81,6 @@ public class TransferSubscriptionsRequest extends ExtensionObjectDefinition impl
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("TransferSubscriptionsRequest");
 
     // Simple Field (requestHeader)
@@ -95,7 +94,7 @@ public class TransferSubscriptionsRequest extends ExtensionObjectDefinition impl
         "subscriptionIds", subscriptionIds, writeUnsignedLong(writeBuffer, 32));
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 7));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 7));
 
     // Simple Field (sendInitialValues)
     writeSimpleField("sendInitialValues", sendInitialValues, writeBoolean(writeBuffer));
@@ -138,8 +137,6 @@ public class TransferSubscriptionsRequest extends ExtensionObjectDefinition impl
       ReadBuffer readBuffer, String identifier) throws ParseException {
     readBuffer.pullContext("TransferSubscriptionsRequest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     ExtensionObjectDefinition requestHeader =
@@ -155,8 +152,8 @@ public class TransferSubscriptionsRequest extends ExtensionObjectDefinition impl
         readCountArrayField(
             "subscriptionIds", readUnsignedLong(readBuffer, 32), noOfSubscriptionIds);
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 7), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 7), (byte) 0x00);
 
     boolean sendInitialValues = readSimpleField("sendInitialValues", readBoolean(readBuffer));
 

@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataControlGroups is the corresponding interface of BACnetConstructedDataControlGroups
 type BACnetConstructedDataControlGroups interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataControlGroups(numberOfDataElements BACnetApplicatio
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataControlGroups(structType interface{}) BACnetConstructedDataControlGroups {
+func CastBACnetConstructedDataControlGroups(structType any) BACnetConstructedDataControlGroups {
 	if casted, ok := structType.(BACnetConstructedDataControlGroups); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataControlGroups) GetLengthInBytes(ctx context.Conte
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataControlGroupsParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataControlGroups, error) {
-	return BACnetConstructedDataControlGroupsParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataControlGroupsParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataControlGroups, error) {
+	return BACnetConstructedDataControlGroupsParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataControlGroupsParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataControlGroups, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataControlGroups"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataControlGroups")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataControlGroupsParseWithBuffer(ctx context.Context, read
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataControlGroups")
@@ -216,7 +220,7 @@ func BACnetConstructedDataControlGroupsParseWithBuffer(ctx context.Context, read
 	// Terminated array
 	var controlGroups []BACnetApplicationTagUnsignedInteger
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'controlGroups' field of BACnetConstructedDataControlGroups")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataControlGroups) Serialize() ([]byte, error) {
 func (m *_BACnetConstructedDataControlGroups) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataControlGroups"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataControlGroups")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataControlGroups) SerializeWithWriteBuffer(ctx conte
 		}
 		for _curItem, _element := range m.GetControlGroups() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetControlGroups()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetControlGroups()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

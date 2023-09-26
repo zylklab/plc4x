@@ -29,16 +29,16 @@ import (
 	"time"
 
 	"github.com/apache/plc4x/plc4go/pkg/api"
-	"github.com/apache/plc4x/plc4go/pkg/api/model"
-	"github.com/apache/plc4x/plc4go/spi/values"
-	"github.com/rs/zerolog/log"
+	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
+	spiValues "github.com/apache/plc4x/plc4go/spi/values"
+
 	"github.com/stretchr/testify/assert"
 )
 
 type ManualTestCase struct {
 	Address           string
-	ExpectedReadValue interface{}
-	WriteValue        interface{}
+	ExpectedReadValue any
+	WriteValue        any
 	UnwrappedValue    bool
 }
 
@@ -49,7 +49,7 @@ type ManualTestSuite struct {
 	t                *testing.T
 }
 
-func NewManualTestSuite(connectionString string, driverManager plc4go.PlcDriverManager, t *testing.T) *ManualTestSuite {
+func NewManualTestSuite(t *testing.T, connectionString string, driverManager plc4go.PlcDriverManager) *ManualTestSuite {
 	return &ManualTestSuite{
 		ConnectionString: connectionString,
 		DriverManager:    driverManager,
@@ -57,7 +57,7 @@ func NewManualTestSuite(connectionString string, driverManager plc4go.PlcDriverM
 	}
 }
 
-func (m *ManualTestSuite) AddTestCase(address string, expectedReadValue interface{}, testCaseOptions ...WithTestCaseOption) {
+func (m *ManualTestSuite) AddTestCase(address string, expectedReadValue any, testCaseOptions ...WithTestCaseOption) {
 	testCase := ManualTestCase{Address: address, ExpectedReadValue: expectedReadValue, UnwrappedValue: true}
 	for _, testCaseOption := range testCaseOptions {
 		testCaseOption(testCase)
@@ -92,7 +92,7 @@ func (m *ManualTestSuite) Run() plc4go.PlcConnection {
 	m.t.Cleanup(func() {
 		connection.Close()
 	})
-	log.Info().Msg("Reading all types in separate requests")
+	m.t.Log("Reading all types in separate requests")
 	// Run all entries separately:
 	for _, testCase := range m.TestCases {
 		tagName := testCase.Address
@@ -112,14 +112,14 @@ func (m *ManualTestSuite) runSingleTest(t *testing.T, connection plc4go.PlcConne
 	readRequestBuilder.AddTagAddress(tagName, testCase.Address)
 	readRequest, err := readRequestBuilder.Build()
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
+		return
 	}
 
 	// Execute the read request
 	readResponseResult := <-readRequest.Execute()
 	if readResponseResult.GetErr() != nil {
-		t.Errorf("Error getting response %v", readResponseResult.GetErr())
-		t.FailNow()
+		t.Fatalf("Error getting response %v", readResponseResult.GetErr())
 		return
 	}
 	readResponse := readResponseResult.GetResponse()
@@ -127,7 +127,7 @@ func (m *ManualTestSuite) runSingleTest(t *testing.T, connection plc4go.PlcConne
 	// Check the result
 	assert.Equalf(t, 1, len(readResponse.GetTagNames()), "response should have a tag for %s", tagName)
 	assert.Equalf(t, tagName, readResponse.GetTagNames()[0], "first tag should be equal to %s", tagName)
-	assert.Equalf(t, model.PlcResponseCode_OK, readResponse.GetResponseCode(tagName), "response code should be ok for %s", tagName)
+	assert.Equalf(t, apiModel.PlcResponseCode_OK, readResponse.GetResponseCode(tagName), "response code should be ok for %s", tagName)
 	assert.NotNil(t, readResponse.GetValue(tagName), tagName)
 	expectation := reflect.ValueOf(testCase.ExpectedReadValue)
 	if readResponse.GetValue(tagName).IsList() && (expectation.Kind() == reflect.Slice || expectation.Kind() == reflect.Array) {
@@ -137,9 +137,9 @@ func (m *ManualTestSuite) runSingleTest(t *testing.T, connection plc4go.PlcConne
 			actual = plcList[j]
 			if testCase.UnwrappedValue {
 				switch actualCasted := actual.(type) {
-				case values.PlcBOOL:
+				case spiValues.PlcBOOL:
 					actual = actualCasted.GetBool()
-				case values.PlcWORD:
+				case spiValues.PlcWORD:
 					actual = actualCasted.GetInt8()
 				default:
 					t.Fatalf("%T not yet mapped", actualCasted)
@@ -155,9 +155,9 @@ func (m *ManualTestSuite) runSingleTest(t *testing.T, connection plc4go.PlcConne
 func (m *ManualTestSuite) runBurstTest(t *testing.T, connection plc4go.PlcConnection) {
 	// Read all items in one big request.
 	// Shuffle the list of test cases and run the test 10 times.
-	log.Info().Msg("Reading all items together in random order")
+	t.Log("Reading all items together in random order")
 	for i := 0; i < 100; i++ {
-		log.Info().Msgf(" - run number %d of %d", i, 100)
+		t.Logf(" - run number %d of %d", i, 100)
 		shuffledTestcases := append(make([]ManualTestCase, 0), m.TestCases...)
 		rand.Seed(time.Now().UnixNano())
 		rand.Shuffle(len(shuffledTestcases), func(i, j int) {
@@ -169,7 +169,7 @@ func (m *ManualTestSuite) runBurstTest(t *testing.T, connection plc4go.PlcConnec
 			sb.WriteString(testCase.Address)
 			sb.WriteString(", ")
 		}
-		log.Info().Msgf("       using order: %s", sb.String())
+		t.Logf("       using order: %s", sb.String())
 
 		builder := connection.ReadRequestBuilder()
 		for _, testCase := range shuffledTestcases {
@@ -194,7 +194,7 @@ func (m *ManualTestSuite) runBurstTest(t *testing.T, connection plc4go.PlcConnec
 		assert.Equal(t, len(shuffledTestcases), len(readResponse.GetTagNames()))
 		for _, testCase := range shuffledTestcases {
 			tagName := testCase.Address
-			assert.Equalf(t, model.PlcResponseCode_OK, readResponse.GetResponseCode(tagName), "response code should be ok for %s", tagName)
+			assert.Equalf(t, apiModel.PlcResponseCode_OK, readResponse.GetResponseCode(tagName), "response code should be ok for %s", tagName)
 			assert.NotNil(t, readResponse.GetValue(tagName))
 			expectation := reflect.ValueOf(testCase.ExpectedReadValue)
 			if readResponse.GetValue(tagName).IsList() && (expectation.Kind() == reflect.Slice || expectation.Kind() == reflect.Array) {
@@ -204,9 +204,9 @@ func (m *ManualTestSuite) runBurstTest(t *testing.T, connection plc4go.PlcConnec
 					actual = plcList[j]
 					if testCase.UnwrappedValue {
 						switch actualCasted := actual.(type) {
-						case values.PlcBOOL:
+						case spiValues.PlcBOOL:
 							actual = actualCasted.GetBool()
-						case values.PlcWORD:
+						case spiValues.PlcWORD:
 							actual = actualCasted.GetInt8()
 						default:
 							t.Fatalf("%T not yet mapped", actualCasted)

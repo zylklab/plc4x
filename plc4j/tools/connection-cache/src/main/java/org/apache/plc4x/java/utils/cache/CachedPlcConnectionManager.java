@@ -58,6 +58,25 @@ public class CachedPlcConnectionManager implements PlcConnectionManager {
         this.connectionContainers = new HashMap<>();
     }
 
+    /**
+     * @return set of connection-urls the CachedPlcConnectionManager is currently managing.
+     */
+    public Set<String> getCachedConnections() {
+        synchronized (connectionContainers) {
+            return connectionContainers.keySet();
+        }
+    }
+
+    /**
+     * Removes a given connection from the cache (Should only be used in order to remove somehow broken connections).
+     * @param url url of the connection that should be removed.
+     */
+    public void removeCachedConnection(String url) {
+        synchronized (connectionContainers) {
+            connectionContainers.remove(url);
+        }
+    }
+
     public PlcConnection getConnection(String url) throws PlcConnectionException {
         ConnectionContainer connectionContainer;
         synchronized (connectionContainers) {
@@ -65,11 +84,8 @@ public class CachedPlcConnectionManager implements PlcConnectionManager {
             if (connectionContainers.get(url) == null) {
                 LOG.debug("Creating new connection");
 
-                // Establish the real connection to the plc
-                PlcConnection connection = connectionManager.getConnection(url);
-
                 // Crate a connection container to manage handling this connection
-                connectionContainer = new ConnectionContainer(connection, maxLeaseTime);
+                connectionContainer = new ConnectionContainer(connectionManager, url, maxLeaseTime);
                 connectionContainers.put(url, connectionContainer);
             } else {
                 LOG.debug("Reusing exising connection");

@@ -43,18 +43,18 @@ public class KnxGroupAddress3Level extends KnxGroupAddress implements Message {
   }
 
   // Properties.
-  protected final short mainGroup;
+  protected final byte mainGroup;
   protected final byte middleGroup;
   protected final short subGroup;
 
-  public KnxGroupAddress3Level(short mainGroup, byte middleGroup, short subGroup) {
+  public KnxGroupAddress3Level(byte mainGroup, byte middleGroup, short subGroup) {
     super();
     this.mainGroup = mainGroup;
     this.middleGroup = middleGroup;
     this.subGroup = subGroup;
   }
 
-  public short getMainGroup() {
+  public byte getMainGroup() {
     return mainGroup;
   }
 
@@ -71,11 +71,10 @@ public class KnxGroupAddress3Level extends KnxGroupAddress implements Message {
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("KnxGroupAddress3Level");
 
     // Simple Field (mainGroup)
-    writeSimpleField("mainGroup", mainGroup, writeUnsignedShort(writeBuffer, 5));
+    writeSimpleField("mainGroup", mainGroup, writeUnsignedByte(writeBuffer, 5));
 
     // Simple Field (middleGroup)
     writeSimpleField("middleGroup", middleGroup, writeUnsignedByte(writeBuffer, 3));
@@ -113,11 +112,9 @@ public class KnxGroupAddress3Level extends KnxGroupAddress implements Message {
       ReadBuffer readBuffer, Byte numLevels) throws ParseException {
     readBuffer.pullContext("KnxGroupAddress3Level");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
-    short mainGroup = readSimpleField("mainGroup", readUnsignedShort(readBuffer, 5));
+    byte mainGroup = readSimpleField("mainGroup", readUnsignedByte(readBuffer, 5));
 
     byte middleGroup = readSimpleField("middleGroup", readUnsignedByte(readBuffer, 3));
 
@@ -130,11 +127,11 @@ public class KnxGroupAddress3Level extends KnxGroupAddress implements Message {
 
   public static class KnxGroupAddress3LevelBuilderImpl
       implements KnxGroupAddress.KnxGroupAddressBuilder {
-    private final short mainGroup;
+    private final byte mainGroup;
     private final byte middleGroup;
     private final short subGroup;
 
-    public KnxGroupAddress3LevelBuilderImpl(short mainGroup, byte middleGroup, short subGroup) {
+    public KnxGroupAddress3LevelBuilderImpl(byte mainGroup, byte middleGroup, short subGroup) {
       this.mainGroup = mainGroup;
       this.middleGroup = middleGroup;
       this.subGroup = subGroup;

@@ -38,8 +38,8 @@ import org.apache.plc4x.java.spi.generation.*;
 public class ApduDataExtWriteRouterMemoryRequest extends ApduDataExt implements Message {
 
   // Accessors for discriminator values.
-  public Short getExtApciType() {
-    return (short) 0x0A;
+  public Byte getExtApciType() {
+    return (byte) 0x0A;
   }
 
   public ApduDataExtWriteRouterMemoryRequest() {
@@ -50,7 +50,6 @@ public class ApduDataExtWriteRouterMemoryRequest extends ApduDataExt implements 
   protected void serializeApduDataExtChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ApduDataExtWriteRouterMemoryRequest");
 
     writeBuffer.popContext("ApduDataExtWriteRouterMemoryRequest");
@@ -74,8 +73,6 @@ public class ApduDataExtWriteRouterMemoryRequest extends ApduDataExt implements 
       ReadBuffer readBuffer, Short length) throws ParseException {
     readBuffer.pullContext("ApduDataExtWriteRouterMemoryRequest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     readBuffer.closeContext("ApduDataExtWriteRouterMemoryRequest");

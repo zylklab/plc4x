@@ -42,8 +42,8 @@ public class ModbusPDUGetComEventLogRequest extends ModbusPDU implements Message
     return (boolean) false;
   }
 
-  public Short getFunctionFlag() {
-    return (short) 0x0C;
+  public Byte getFunctionFlag() {
+    return (byte) 0x0C;
   }
 
   public Boolean getResponse() {
@@ -58,7 +58,6 @@ public class ModbusPDUGetComEventLogRequest extends ModbusPDU implements Message
   protected void serializeModbusPDUChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ModbusPDUGetComEventLogRequest");
 
     writeBuffer.popContext("ModbusPDUGetComEventLogRequest");
@@ -82,8 +81,6 @@ public class ModbusPDUGetComEventLogRequest extends ModbusPDU implements Message
       ReadBuffer readBuffer, Boolean response) throws ParseException {
     readBuffer.pullContext("ModbusPDUGetComEventLogRequest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     readBuffer.closeContext("ModbusPDUGetComEventLogRequest");

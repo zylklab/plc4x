@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataSupportedFormats is the corresponding interface of BACnetConstructedDataSupportedFormats
 type BACnetConstructedDataSupportedFormats interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataSupportedFormats(numberOfDataElements BACnetApplica
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataSupportedFormats(structType interface{}) BACnetConstructedDataSupportedFormats {
+func CastBACnetConstructedDataSupportedFormats(structType any) BACnetConstructedDataSupportedFormats {
 	if casted, ok := structType.(BACnetConstructedDataSupportedFormats); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataSupportedFormats) GetLengthInBytes(ctx context.Co
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataSupportedFormatsParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataSupportedFormats, error) {
-	return BACnetConstructedDataSupportedFormatsParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataSupportedFormatsParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataSupportedFormats, error) {
+	return BACnetConstructedDataSupportedFormatsParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataSupportedFormatsParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataSupportedFormats, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataSupportedFormats"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataSupportedFormats")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataSupportedFormatsParseWithBuffer(ctx context.Context, r
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataSupportedFormats")
@@ -216,7 +220,7 @@ func BACnetConstructedDataSupportedFormatsParseWithBuffer(ctx context.Context, r
 	// Terminated array
 	var supportedFormats []BACnetAuthenticationFactorFormat
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetAuthenticationFactorFormatParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'supportedFormats' field of BACnetConstructedDataSupportedFormats")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataSupportedFormats) Serialize() ([]byte, error) {
 func (m *_BACnetConstructedDataSupportedFormats) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataSupportedFormats"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataSupportedFormats")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataSupportedFormats) SerializeWithWriteBuffer(ctx co
 		}
 		for _curItem, _element := range m.GetSupportedFormats() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetSupportedFormats()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetSupportedFormats()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

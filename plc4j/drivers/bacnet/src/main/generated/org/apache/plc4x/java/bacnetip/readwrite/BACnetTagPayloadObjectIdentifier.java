@@ -39,11 +39,11 @@ public class BACnetTagPayloadObjectIdentifier implements Message {
 
   // Properties.
   protected final BACnetObjectType objectType;
-  protected final int proprietaryValue;
-  protected final long instanceNumber;
+  protected final short proprietaryValue;
+  protected final int instanceNumber;
 
   public BACnetTagPayloadObjectIdentifier(
-      BACnetObjectType objectType, int proprietaryValue, long instanceNumber) {
+      BACnetObjectType objectType, short proprietaryValue, int instanceNumber) {
     super();
     this.objectType = objectType;
     this.proprietaryValue = proprietaryValue;
@@ -54,11 +54,11 @@ public class BACnetTagPayloadObjectIdentifier implements Message {
     return objectType;
   }
 
-  public int getProprietaryValue() {
+  public short getProprietaryValue() {
     return proprietaryValue;
   }
 
-  public long getInstanceNumber() {
+  public int getInstanceNumber() {
     return instanceNumber;
   }
 
@@ -69,7 +69,6 @@ public class BACnetTagPayloadObjectIdentifier implements Message {
   public void serialize(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("BACnetTagPayloadObjectIdentifier");
 
     // Manual Field (objectType)
@@ -93,7 +92,7 @@ public class BACnetTagPayloadObjectIdentifier implements Message {
     writeBuffer.writeVirtual("isProprietary", isProprietary);
 
     // Simple Field (instanceNumber)
-    writeSimpleField("instanceNumber", instanceNumber, writeUnsignedLong(writeBuffer, 22));
+    writeSimpleField("instanceNumber", instanceNumber, writeUnsignedInt(writeBuffer, 22));
 
     writeBuffer.popContext("BACnetTagPayloadObjectIdentifier");
   }
@@ -133,8 +132,6 @@ public class BACnetTagPayloadObjectIdentifier implements Message {
       throws ParseException {
     readBuffer.pullContext("BACnetTagPayloadObjectIdentifier");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     BACnetObjectType objectType =
@@ -146,12 +143,12 @@ public class BACnetTagPayloadObjectIdentifier implements Message {
                     (org.apache.plc4x.java.bacnetip.readwrite.utils.StaticHelper.readObjectType(
                         readBuffer)));
 
-    int proprietaryValue =
+    short proprietaryValue =
         readManualField(
             "proprietaryValue",
             readBuffer,
             () ->
-                (int)
+                (short)
                     (org.apache.plc4x.java.bacnetip.readwrite.utils.StaticHelper
                         .readProprietaryObjectType(readBuffer, objectType)));
     boolean isProprietary =
@@ -160,7 +157,7 @@ public class BACnetTagPayloadObjectIdentifier implements Message {
             boolean.class,
             (objectType) == (BACnetObjectType.VENDOR_PROPRIETARY_VALUE));
 
-    long instanceNumber = readSimpleField("instanceNumber", readUnsignedLong(readBuffer, 22));
+    int instanceNumber = readSimpleField("instanceNumber", readUnsignedInt(readBuffer, 22));
 
     readBuffer.closeContext("BACnetTagPayloadObjectIdentifier");
     // Create the instance

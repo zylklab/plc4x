@@ -20,21 +20,26 @@
 package s7
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/rs/zerolog"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/apache/plc4x/plc4go/pkg/api/model"
+	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
 	readWriteModel "github.com/apache/plc4x/plc4go/protocols/s7/readwrite/model"
 	"github.com/apache/plc4x/plc4go/spi/utils"
+
 	"github.com/pkg/errors"
 )
 
 type TagType uint8
 
 //go:generate stringer -type TagType
+//go:generate go run ../../tools/plc4xlicenser/gen.go -type=TagType
 const (
 	S7Tag       TagType = 0x00
 	S7StringTag TagType = 0x01
@@ -51,9 +56,14 @@ type TagHandler struct {
 	dataBlockStringAddressPattern *regexp.Regexp
 	dataBlockStringShortPattern   *regexp.Regexp
 	plcProxyAddressPattern        *regexp.Regexp
+
+	passLogToModel bool
+	log            zerolog.Logger
 }
 
-func NewTagHandler() TagHandler {
+func NewTagHandler(_options ...options.WithOption) TagHandler {
+	passLoggerToModel, _ := options.ExtractPassLoggerToModel(_options...)
+	customLogger := options.ExtractCustomLoggerOrDefaultToGlobal(_options...)
 	return TagHandler{
 		addressPattern: regexp.MustCompile(`^%(?P<memoryArea>.)(?P<transferSizeCode>[XBWD]?)(?P<byteOffset>\d{1,7})(.(?P<bitOffset>[0-7]))?:(?P<dataType>[a-zA-Z_]+)(\[(?P<numElements>\d+)])?`),
 		//blockNumber usually has its max hat around 64000 --> 5digits
@@ -62,6 +72,9 @@ func NewTagHandler() TagHandler {
 		dataBlockStringAddressPattern: regexp.MustCompile(`^%DB(?P<blockNumber>\d{1,5}).DB(?P<transferSizeCode>[XBWD]?)(?P<byteOffset>\d{1,7})(.(?P<bitOffset>[0-7]))?:(?P<dataType>STRING|WSTRING)\((?P<stringLength>\d{1,3})\)(\[(?P<numElements>\d+)])?`),
 		dataBlockStringShortPattern:   regexp.MustCompile(`^%DB(?P<blockNumber>\d{1,5}):(?P<byteOffset>\d{1,7})(.(?P<bitOffset>[0-7]))?:(?P<dataType>STRING|WSTRING)\((?P<stringLength>\d{1,3})\)(\[(?P<numElements>\d+)])?`),
 		plcProxyAddressPattern:        regexp.MustCompile(`[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}`),
+
+		passLogToModel: passLoggerToModel,
+		log:            customLogger,
 	}
 }
 
@@ -76,7 +89,7 @@ const (
 	MEMORY_AREA        = "memoryArea"
 )
 
-func (m TagHandler) ParseTag(tagAddress string) (model.PlcTag, error) {
+func (m TagHandler) ParseTag(tagAddress string) (apiModel.PlcTag, error) {
 	if match := utils.GetSubgroupMatches(m.dataBlockStringAddressPattern, tagAddress); match != nil {
 		dataType, ok := readWriteModel.TransportSizeByName(match[DATA_TYPE])
 		if !ok {
@@ -253,7 +266,8 @@ func (m TagHandler) ParseTag(tagAddress string) (model.PlcTag, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "Unable to parse address: %s", tagAddress)
 		}
-		s7Address, err := readWriteModel.S7AddressAnyParse(addressData)
+		ctxForModel := options.GetLoggerContextForModel(context.TODO(), m.log, options.WithPassLoggerToModel(m.passLogToModel))
+		s7Address, err := readWriteModel.S7AddressAnyParse(ctxForModel, addressData)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Unable to parse address: %s", tagAddress)
 		}
@@ -319,7 +333,7 @@ func (m TagHandler) ParseTag(tagAddress string) (model.PlcTag, error) {
 	return nil, errors.Errorf("Unable to parse %s", tagAddress)
 }
 
-func (m TagHandler) ParseQuery(query string) (model.PlcQuery, error) {
+func (m TagHandler) ParseQuery(query string) (apiModel.PlcQuery, error) {
 	return nil, fmt.Errorf("queries not supported")
 }
 

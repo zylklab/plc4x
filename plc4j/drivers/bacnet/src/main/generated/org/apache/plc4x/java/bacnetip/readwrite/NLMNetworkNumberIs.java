@@ -49,7 +49,7 @@ public class NLMNetworkNumberIs extends NLM implements Message {
   // Arguments.
   protected final Integer apduLength;
   // Reserved Fields
-  private Short reservedField0;
+  private Byte reservedField0;
 
   public NLMNetworkNumberIs(
       int networkNumber, boolean networkNumberConfigured, Integer apduLength) {
@@ -71,7 +71,6 @@ public class NLMNetworkNumberIs extends NLM implements Message {
   protected void serializeNLMChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("NLMNetworkNumberIs");
 
     // Simple Field (networkNumber)
@@ -80,8 +79,8 @@ public class NLMNetworkNumberIs extends NLM implements Message {
     // Reserved Field (reserved)
     writeReservedField(
         "reserved",
-        reservedField0 != null ? reservedField0 : (short) 0,
-        writeUnsignedShort(writeBuffer, 7));
+        reservedField0 != null ? reservedField0 : (byte) 0,
+        writeUnsignedByte(writeBuffer, 7));
 
     // Simple Field (networkNumberConfigured)
     writeSimpleField("networkNumberConfigured", networkNumberConfigured, writeBoolean(writeBuffer));
@@ -116,14 +115,11 @@ public class NLMNetworkNumberIs extends NLM implements Message {
       throws ParseException {
     readBuffer.pullContext("NLMNetworkNumberIs");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     int networkNumber = readSimpleField("networkNumber", readUnsignedInt(readBuffer, 16));
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 7), (short) 0);
+    Byte reservedField0 = readReservedField("reserved", readUnsignedByte(readBuffer, 7), (byte) 0);
 
     boolean networkNumberConfigured =
         readSimpleField("networkNumberConfigured", readBoolean(readBuffer));
@@ -138,13 +134,13 @@ public class NLMNetworkNumberIs extends NLM implements Message {
     private final int networkNumber;
     private final boolean networkNumberConfigured;
     private final Integer apduLength;
-    private final Short reservedField0;
+    private final Byte reservedField0;
 
     public NLMNetworkNumberIsBuilderImpl(
         int networkNumber,
         boolean networkNumberConfigured,
         Integer apduLength,
-        Short reservedField0) {
+        Byte reservedField0) {
       this.networkNumber = networkNumber;
       this.networkNumberConfigured = networkNumberConfigured;
       this.apduLength = apduLength;

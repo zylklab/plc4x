@@ -39,6 +39,10 @@ func NewPlcBOOL(value bool) PlcBOOL {
 	}
 }
 
+func (m PlcBOOL) IsRaw() bool {
+	return true
+}
+
 func (m PlcBOOL) GetRaw() []byte {
 	if m.value {
 		return []byte{0x01}
@@ -93,7 +97,7 @@ func (m PlcBOOL) Serialize() ([]byte, error) {
 	return wb.GetBytes(), nil
 }
 
-func (m PlcBOOL) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
+func (m PlcBOOL) SerializeWithWriteBuffer(_ context.Context, writeBuffer utils.WriteBuffer) error {
 	return writeBuffer.WriteBit("PlcBOOL", m.value)
 }
 

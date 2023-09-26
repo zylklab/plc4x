@@ -39,9 +39,9 @@ public class ChannelInformation implements Message {
 
   // Properties.
   protected final byte numChannels;
-  protected final int channelCode;
+  protected final short channelCode;
 
-  public ChannelInformation(byte numChannels, int channelCode) {
+  public ChannelInformation(byte numChannels, short channelCode) {
     super();
     this.numChannels = numChannels;
     this.channelCode = channelCode;
@@ -51,21 +51,20 @@ public class ChannelInformation implements Message {
     return numChannels;
   }
 
-  public int getChannelCode() {
+  public short getChannelCode() {
     return channelCode;
   }
 
   public void serialize(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ChannelInformation");
 
     // Simple Field (numChannels)
     writeSimpleField("numChannels", numChannels, writeUnsignedByte(writeBuffer, 3));
 
     // Simple Field (channelCode)
-    writeSimpleField("channelCode", channelCode, writeUnsignedInt(writeBuffer, 13));
+    writeSimpleField("channelCode", channelCode, writeUnsignedShort(writeBuffer, 13));
 
     writeBuffer.popContext("ChannelInformation");
   }
@@ -99,13 +98,11 @@ public class ChannelInformation implements Message {
   public static ChannelInformation staticParse(ReadBuffer readBuffer) throws ParseException {
     readBuffer.pullContext("ChannelInformation");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     byte numChannels = readSimpleField("numChannels", readUnsignedByte(readBuffer, 3));
 
-    int channelCode = readSimpleField("channelCode", readUnsignedInt(readBuffer, 13));
+    short channelCode = readSimpleField("channelCode", readUnsignedShort(readBuffer, 13));
 
     readBuffer.closeContext("ChannelInformation");
     // Create the instance

@@ -50,7 +50,6 @@ public abstract class ExtensionObjectDefinition implements Message {
   public void serialize(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ExtensionObjectDefinition");
 
     // Switch field (Serialize the sub-type)
@@ -99,8 +98,6 @@ public abstract class ExtensionObjectDefinition implements Message {
       throws ParseException {
     readBuffer.pullContext("ExtensionObjectDefinition");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     // Switch Field (Depending on the discriminator values, passes the instantiation to a sub-type)
@@ -141,14 +138,22 @@ public abstract class ExtensionObjectDefinition implements Message {
     } else if (EvaluationHelper.equals(identifier, (String) "12556")) {
       builder =
           TrustListDataType.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
-    } else if (EvaluationHelper.equals(identifier, (String) "17863")) {
-      builder = DecimalDataType.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
+    } else if (EvaluationHelper.equals(identifier, (String) "32287")) {
+      builder =
+          TransactionErrorType.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
     } else if (EvaluationHelper.equals(identifier, (String) "15536")) {
       builder =
           DataTypeSchemaHeader.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
     } else if (EvaluationHelper.equals(identifier, (String) "14527")) {
       builder =
           DataTypeDescription.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
+    } else if (EvaluationHelper.equals(identifier, (String) "24107")) {
+      builder =
+          PortableQualifiedName.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
+    } else if (EvaluationHelper.equals(identifier, (String) "24109")) {
+      builder =
+          UnsignedRationalNumber.staticParseExtensionObjectDefinitionBuilder(
+              readBuffer, identifier);
     } else if (EvaluationHelper.equals(identifier, (String) "14526")) {
       builder = FieldMetaData.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
     } else if (EvaluationHelper.equals(identifier, (String) "14595")) {
@@ -224,12 +229,37 @@ public abstract class ExtensionObjectDefinition implements Message {
       builder =
           PubSubConfigurationDataType.staticParseExtensionObjectDefinitionBuilder(
               readBuffer, identifier);
+    } else if (EvaluationHelper.equals(identifier, (String) "23603")) {
+      builder =
+          SecurityGroupDataType.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
+    } else if (EvaluationHelper.equals(identifier, (String) "25272")) {
+      builder =
+          PubSubKeyPushTargetDataType.staticParseExtensionObjectDefinitionBuilder(
+              readBuffer, identifier);
+    } else if (EvaluationHelper.equals(identifier, (String) "23605")) {
+      builder = QosDataType.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
+    } else if (EvaluationHelper.equals(identifier, (String) "25521")) {
+      builder =
+          PubSubConfigurationRefDataType.staticParseExtensionObjectDefinitionBuilder(
+              readBuffer, identifier);
     } else if (EvaluationHelper.equals(identifier, (String) "23470")) {
       builder =
           AliasNameDataType.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
-    } else if (EvaluationHelper.equals(identifier, (String) "24109")) {
+    } else if (EvaluationHelper.equals(identifier, (String) "24283")) {
       builder =
-          UnsignedRationalNumber.staticParseExtensionObjectDefinitionBuilder(
+          UserManagementDataType.staticParseExtensionObjectDefinitionBuilder(
+              readBuffer, identifier);
+    } else if (EvaluationHelper.equals(identifier, (String) "25222")) {
+      builder =
+          PriorityMappingEntryType.staticParseExtensionObjectDefinitionBuilder(
+              readBuffer, identifier);
+    } else if (EvaluationHelper.equals(identifier, (String) "32661")) {
+      builder =
+          ReferenceDescriptionDataType.staticParseExtensionObjectDefinitionBuilder(
+              readBuffer, identifier);
+    } else if (EvaluationHelper.equals(identifier, (String) "32662")) {
+      builder =
+          ReferenceListEntryDataType.staticParseExtensionObjectDefinitionBuilder(
               readBuffer, identifier);
     } else if (EvaluationHelper.equals(identifier, (String) "98")) {
       builder =
@@ -239,10 +269,6 @@ public abstract class ExtensionObjectDefinition implements Message {
           DataTypeDefinition.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
     } else if (EvaluationHelper.equals(identifier, (String) "103")) {
       builder = StructureField.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
-    } else if (EvaluationHelper.equals(identifier, (String) "260")) {
-      builder = Node.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
-    } else if (EvaluationHelper.equals(identifier, (String) "287")) {
-      builder = ReferenceNode.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
     } else if (EvaluationHelper.equals(identifier, (String) "298")) {
       builder = Argument.staticParseExtensionObjectDefinitionBuilder(readBuffer, identifier);
     } else if (EvaluationHelper.equals(identifier, (String) "7596")) {

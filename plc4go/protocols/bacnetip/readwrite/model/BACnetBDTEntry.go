@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetBDTEntry is the corresponding interface of BACnetBDTEntry
 type BACnetBDTEntry interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetBbmdAddress returns BbmdAddress (property field)
@@ -75,7 +78,7 @@ func NewBACnetBDTEntry(bbmdAddress BACnetHostNPortEnclosed, broadcastMask BACnet
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetBDTEntry(structType interface{}) BACnetBDTEntry {
+func CastBACnetBDTEntry(structType any) BACnetBDTEntry {
 	if casted, ok := structType.(BACnetBDTEntry); ok {
 		return casted
 	}
@@ -107,13 +110,15 @@ func (m *_BACnetBDTEntry) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetBDTEntryParse(theBytes []byte) (BACnetBDTEntry, error) {
-	return BACnetBDTEntryParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func BACnetBDTEntryParse(ctx context.Context, theBytes []byte) (BACnetBDTEntry, error) {
+	return BACnetBDTEntryParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func BACnetBDTEntryParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (BACnetBDTEntry, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetBDTEntry"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetBDTEntry")
 	}
@@ -143,7 +148,7 @@ func BACnetBDTEntryParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuf
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(1), BACnetDataType_OCTET_STRING)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'broadcastMask' field of BACnetBDTEntry")
@@ -177,6 +182,8 @@ func (m *_BACnetBDTEntry) Serialize() ([]byte, error) {
 func (m *_BACnetBDTEntry) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetBDTEntry"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetBDTEntry")
 	}

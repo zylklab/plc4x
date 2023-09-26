@@ -20,13 +20,12 @@
 package spi
 
 import (
-	"context"
-
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 )
 
 type Message interface {
+	fmt.Stringer
 	utils.Serializable
-	GetLengthInBytes(ctx context.Context) uint16
-	GetLengthInBits(ctx context.Context) uint16
+	utils.LengthAware
 }

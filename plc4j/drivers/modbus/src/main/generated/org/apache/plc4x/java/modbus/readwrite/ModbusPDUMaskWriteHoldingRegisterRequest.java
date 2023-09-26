@@ -42,8 +42,8 @@ public class ModbusPDUMaskWriteHoldingRegisterRequest extends ModbusPDU implemen
     return (boolean) false;
   }
 
-  public Short getFunctionFlag() {
-    return (short) 0x16;
+  public Byte getFunctionFlag() {
+    return (byte) 0x16;
   }
 
   public Boolean getResponse() {
@@ -78,7 +78,6 @@ public class ModbusPDUMaskWriteHoldingRegisterRequest extends ModbusPDU implemen
   protected void serializeModbusPDUChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ModbusPDUMaskWriteHoldingRegisterRequest");
 
     // Simple Field (referenceAddress)
@@ -120,8 +119,6 @@ public class ModbusPDUMaskWriteHoldingRegisterRequest extends ModbusPDU implemen
       ReadBuffer readBuffer, Boolean response) throws ParseException {
     readBuffer.pullContext("ModbusPDUMaskWriteHoldingRegisterRequest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     int referenceAddress = readSimpleField("referenceAddress", readUnsignedInt(readBuffer, 16));

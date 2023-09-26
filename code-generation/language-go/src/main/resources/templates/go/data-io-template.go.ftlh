@@ -56,6 +56,7 @@ import (
 	${import}
 		</#list>
 	</#if>
+	"github.com/rs/zerolog"
 )
 
 	${sectionContent}
@@ -70,10 +71,12 @@ import (
 <#-- TODO: the code below implies that parserArguments will be null if not present... not pretty  -->
 <#if type.parserArguments.isPresent()><#assign parserArguments=type.parserArguments.orElseThrow()></#if>
 func ${type.name}Parse(ctx context.Context, theBytes []byte<#if parserArguments?has_content>, <#list parserArguments as parserArgument>${parserArgument.name} <#if parserArgument.type.isNonSimpleTypeReference() && !parserArgument.type.isEnumTypeReference()>I</#if>${helper.getLanguageTypeNameForTypeReference(parserArgument.type)}<#sep>, </#sep></#list></#if>) (api.PlcValue, error) {
-	return ${type.name}ParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes${helper.getEndiannessOptions(true, true)})<#if parserArguments?has_content>, <#list parserArguments as parserArgument>${parserArgument.name}<#sep>, </#sep></#list></#if>)
+	return ${type.name}ParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes${helper.getEndiannessOptions(true, true, parserArguments)})<#if parserArguments?has_content>, <#list parserArguments as parserArgument>${parserArgument.name}<#sep>, </#sep></#list></#if>)
 }
 
 func ${type.name}ParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer<#if parserArguments?has_content>, <#list parserArguments as parserArgument>${parserArgument.name} <#if parserArgument.type.isNonSimpleTypeReference() && !parserArgument.type.isEnumTypeReference()>I</#if>${helper.getLanguageTypeNameForTypeReference(parserArgument.type)}<#sep>, </#sep></#list></#if>) (api.PlcValue, error) {
+	log := zerolog.Ctx(ctx)
+	_ = log
 	readBuffer.PullContext("${type.name}")
 	switch {
 	<#list type.switchField.orElseThrow().cases as case>
@@ -238,7 +241,7 @@ func ${type.name}ParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffe
 }
 
 func ${type.name}Serialize(value api.PlcValue<#if parserArguments?has_content>, <#list parserArguments as parserArgument>${parserArgument.name} <#if parserArgument.type.isNonSimpleTypeReference() && !parserArgument.type.isEnumTypeReference()>I</#if>${helper.getLanguageTypeNameForTypeReference(parserArgument.type)}<#sep>, </#sep></#list></#if>) ([]byte, error) {
-	wb := utils.NewWriteBufferByteBased(${helper.getEndiannessOptions(false, false)})
+	wb := utils.NewWriteBufferByteBased(${helper.getEndiannessOptions(false, false, parserArguments)})
 	if err := ${type.name}SerializeWithWriteBuffer(context.Background(), wb, value<#if parserArguments?has_content>, <#list parserArguments as parserArgument>${parserArgument.name}<#sep>, </#sep></#list></#if>); err != nil {
 		return nil, err
 	}
@@ -246,6 +249,8 @@ func ${type.name}Serialize(value api.PlcValue<#if parserArguments?has_content>, 
 }
 
 func ${type.name}SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer, value api.PlcValue<#if parserArguments?has_content>, <#list parserArguments as parserArgument>${parserArgument.name} <#if parserArgument.type.isNonSimpleTypeReference() && !parserArgument.type.isEnumTypeReference()>I</#if>${helper.getLanguageTypeNameForTypeReference(parserArgument.type)}<#sep>, </#sep></#list></#if>) error {
+	log := zerolog.Ctx(ctx)
+	_ = log
 	<#if parserArguments?has_content>
 	m := struct {
     	<#list parserArguments as parserArgument>

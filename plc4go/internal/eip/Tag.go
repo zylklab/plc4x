@@ -20,45 +20,31 @@
 package eip
 
 import (
+	"context"
 	"encoding/binary"
 
-	"github.com/apache/plc4x/plc4go/pkg/api/model"
-	"github.com/apache/plc4x/plc4go/pkg/api/values"
-	readWrite "github.com/apache/plc4x/plc4go/protocols/eip/readwrite/model"
+	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
+	apiValues "github.com/apache/plc4x/plc4go/pkg/api/values"
+	readWriteModel "github.com/apache/plc4x/plc4go/protocols/eip/readwrite/model"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 )
 
-type EIPPlcTag interface {
-	model.PlcTag
+type PlcTag interface {
+	apiModel.PlcTag
+	utils.Serializable
 
 	GetTag() string
-	GetType() readWrite.CIPDataTypeCode
+	GetType() readWriteModel.CIPDataTypeCode
 	GetElementNb() uint16
 }
 
 type plcTag struct {
 	Tag       string
-	Type      readWrite.CIPDataTypeCode
+	Type      readWriteModel.CIPDataTypeCode
 	ElementNb uint16
 }
 
-func (m plcTag) GetAddressString() string {
-	return m.GetTag()
-}
-
-func (m plcTag) GetValueType() values.PlcValueType {
-	if plcValueType, ok := values.PlcValueByName(m.GetType().String()); !ok {
-		return values.NULL
-	} else {
-		return plcValueType
-	}
-}
-
-func (m plcTag) GetArrayInfo() []model.ArrayInfo {
-	return []model.ArrayInfo{}
-}
-
-func NewTag(tag string, _type readWrite.CIPDataTypeCode, elementNb uint16) plcTag {
+func NewTag(tag string, _type readWriteModel.CIPDataTypeCode, elementNb uint16) PlcTag {
 	return plcTag{
 		Tag:       tag,
 		Type:      _type,
@@ -66,11 +52,27 @@ func NewTag(tag string, _type readWrite.CIPDataTypeCode, elementNb uint16) plcTa
 	}
 }
 
+func (m plcTag) GetAddressString() string {
+	return m.GetTag()
+}
+
+func (m plcTag) GetValueType() apiValues.PlcValueType {
+	if plcValueType, ok := apiValues.PlcValueByName(m.GetType().String()); !ok {
+		return apiValues.NULL
+	} else {
+		return plcValueType
+	}
+}
+
+func (m plcTag) GetArrayInfo() []apiModel.ArrayInfo {
+	return []apiModel.ArrayInfo{}
+}
+
 func (m plcTag) GetTag() string {
 	return m.Tag
 }
 
-func (m plcTag) GetType() readWrite.CIPDataTypeCode {
+func (m plcTag) GetType() readWriteModel.CIPDataTypeCode {
 	return m.Type
 }
 
@@ -79,14 +81,14 @@ func (m plcTag) GetElementNb() uint16 {
 }
 
 func (m plcTag) Serialize() ([]byte, error) {
-	wb := utils.NewWriteBufferByteBased(utils.WithByteOrderForByteBasedBuffer(binary.BigEndian))
-	if err := m.SerializeWithWriteBuffer(wb); err != nil {
+	wb := utils.NewWriteBufferByteBased(utils.WithByteOrderForByteBasedBuffer(binary.LittleEndian))
+	if err := m.SerializeWithWriteBuffer(context.Background(), wb); err != nil {
 		return nil, err
 	}
 	return wb.GetBytes(), nil
 }
 
-func (m plcTag) SerializeWithWriteBuffer(writeBuffer utils.WriteBuffer) error {
+func (m plcTag) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	if err := writeBuffer.PushContext("EipTag"); err != nil {
 		return err
 	}
@@ -105,13 +107,16 @@ func (m plcTag) SerializeWithWriteBuffer(writeBuffer utils.WriteBuffer) error {
 		return err
 	}
 
-	// TODO: remove this from the spec
-	if err := writeBuffer.WriteString("defaultJavaType", uint32(len([]rune("java.lang.Object"))*8), "UTF-8", "java.lang.Object"); err != nil {
-		return err
-	}
-
 	if err := writeBuffer.PopContext("EipTag"); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (m plcTag) String() string {
+	writeBuffer := utils.NewWriteBufferBoxBasedWithOptions(true, true)
+	if err := writeBuffer.WriteSerializable(context.Background(), m); err != nil {
+		return err.Error()
+	}
+	return writeBuffer.GetBox().String()
 }

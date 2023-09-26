@@ -50,11 +50,10 @@ public class ApduDataGroupValueRead extends ApduData implements Message {
   protected void serializeApduDataChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ApduDataGroupValueRead");
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 6));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 6));
 
     writeBuffer.popContext("ApduDataGroupValueRead");
   }
@@ -80,12 +79,10 @@ public class ApduDataGroupValueRead extends ApduData implements Message {
       throws ParseException {
     readBuffer.pullContext("ApduDataGroupValueRead");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 6), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 6), (byte) 0x00);
 
     readBuffer.closeContext("ApduDataGroupValueRead");
     // Create the instance

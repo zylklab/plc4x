@@ -84,9 +84,10 @@ func (d *DefaultPlcBrowseItem) SerializeWithWriteBuffer(ctx context.Context, wri
 	if err := writeBuffer.PushContext("children", utils.WithRenderAsList(true)); err != nil {
 		return err
 	}
-	for name, elem := range d.Children {
+	for _name, elem := range d.Children {
+		name := _name
 
-		var elem interface{} = elem
+		var elem any = elem
 		if serializable, ok := elem.(utils.Serializable); ok {
 			if err := writeBuffer.PushContext(name); err != nil {
 				return err
@@ -110,9 +111,10 @@ func (d *DefaultPlcBrowseItem) SerializeWithWriteBuffer(ctx context.Context, wri
 	if err := writeBuffer.PushContext("options", utils.WithRenderAsList(true)); err != nil {
 		return err
 	}
-	for name, elem := range d.Options {
+	for _name, elem := range d.Options {
+		name := _name
 
-		var elem interface{} = elem
+		var elem any = elem
 		if serializable, ok := elem.(utils.Serializable); ok {
 			if err := writeBuffer.PushContext(name); err != nil {
 				return err

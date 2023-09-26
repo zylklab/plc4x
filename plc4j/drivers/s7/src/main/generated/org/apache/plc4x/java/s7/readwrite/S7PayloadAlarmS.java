@@ -38,6 +38,10 @@ import org.apache.plc4x.java.spi.generation.*;
 public class S7PayloadAlarmS extends S7PayloadUserDataItem implements Message {
 
   // Accessors for discriminator values.
+  public Byte getCpuFunctionGroup() {
+    return (byte) 0x04;
+  }
+
   public Byte getCpuFunctionType() {
     return (byte) 0x00;
   }
@@ -46,18 +50,15 @@ public class S7PayloadAlarmS extends S7PayloadUserDataItem implements Message {
     return (short) 0x12;
   }
 
-  public Integer getDataLength() {
-    return 0;
-  }
-
   // Properties.
   protected final AlarmMessagePushType alarmMessage;
 
   public S7PayloadAlarmS(
       DataTransportErrorCode returnCode,
       DataTransportSize transportSize,
+      int dataLength,
       AlarmMessagePushType alarmMessage) {
-    super(returnCode, transportSize);
+    super(returnCode, transportSize, dataLength);
     this.alarmMessage = alarmMessage;
   }
 
@@ -70,7 +71,6 @@ public class S7PayloadAlarmS extends S7PayloadUserDataItem implements Message {
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("S7PayloadAlarmS");
 
     // Simple Field (alarmMessage)
@@ -97,11 +97,10 @@ public class S7PayloadAlarmS extends S7PayloadUserDataItem implements Message {
   }
 
   public static S7PayloadUserDataItemBuilder staticParseS7PayloadUserDataItemBuilder(
-      ReadBuffer readBuffer, Byte cpuFunctionType, Short cpuSubfunction) throws ParseException {
+      ReadBuffer readBuffer, Byte cpuFunctionGroup, Byte cpuFunctionType, Short cpuSubfunction)
+      throws ParseException {
     readBuffer.pullContext("S7PayloadAlarmS");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     AlarmMessagePushType alarmMessage =
@@ -124,9 +123,9 @@ public class S7PayloadAlarmS extends S7PayloadUserDataItem implements Message {
     }
 
     public S7PayloadAlarmS build(
-        DataTransportErrorCode returnCode, DataTransportSize transportSize) {
+        DataTransportErrorCode returnCode, DataTransportSize transportSize, int dataLength) {
       S7PayloadAlarmS s7PayloadAlarmS =
-          new S7PayloadAlarmS(returnCode, transportSize, alarmMessage);
+          new S7PayloadAlarmS(returnCode, transportSize, dataLength, alarmMessage);
       return s7PayloadAlarmS;
     }
   }

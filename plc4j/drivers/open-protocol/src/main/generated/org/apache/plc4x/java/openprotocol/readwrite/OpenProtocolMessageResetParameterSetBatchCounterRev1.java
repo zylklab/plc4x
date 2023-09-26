@@ -39,22 +39,22 @@ public class OpenProtocolMessageResetParameterSetBatchCounterRev1
     extends OpenProtocolMessageResetParameterSetBatchCounter implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 1;
+  public Integer getRevision() {
+    return (int) 1;
   }
 
   // Properties.
-  protected final long parameterSetId;
+  protected final int parameterSetId;
 
   public OpenProtocolMessageResetParameterSetBatchCounterRev1(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
       Integer sequenceNumber,
       Short numberOfMessageParts,
       Short messagePartNumber,
-      long parameterSetId) {
+      int parameterSetId) {
     super(
         midRevision,
         noAckFlag,
@@ -66,7 +66,7 @@ public class OpenProtocolMessageResetParameterSetBatchCounterRev1
     this.parameterSetId = parameterSetId;
   }
 
-  public long getParameterSetId() {
+  public int getParameterSetId() {
     return parameterSetId;
   }
 
@@ -75,14 +75,13 @@ public class OpenProtocolMessageResetParameterSetBatchCounterRev1
       WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageResetParameterSetBatchCounterRev1");
 
     // Simple Field (parameterSetId)
     writeSimpleField(
         "parameterSetId",
         parameterSetId,
-        writeUnsignedLong(writeBuffer, 24),
+        writeUnsignedInt(writeBuffer, 24),
         WithOption.WithEncoding("ASCII"));
 
     writeBuffer.popContext("OpenProtocolMessageResetParameterSetBatchCounterRev1");
@@ -107,16 +106,14 @@ public class OpenProtocolMessageResetParameterSetBatchCounterRev1
 
   public static OpenProtocolMessageResetParameterSetBatchCounterBuilder
       staticParseOpenProtocolMessageResetParameterSetBatchCounterBuilder(
-          ReadBuffer readBuffer, Long revision) throws ParseException {
+          ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageResetParameterSetBatchCounterRev1");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
-    long parameterSetId =
+    int parameterSetId =
         readSimpleField(
-            "parameterSetId", readUnsignedLong(readBuffer, 24), WithOption.WithEncoding("ASCII"));
+            "parameterSetId", readUnsignedInt(readBuffer, 24), WithOption.WithEncoding("ASCII"));
 
     readBuffer.closeContext("OpenProtocolMessageResetParameterSetBatchCounterRev1");
     // Create the instance
@@ -126,14 +123,14 @@ public class OpenProtocolMessageResetParameterSetBatchCounterRev1
   public static class OpenProtocolMessageResetParameterSetBatchCounterRev1BuilderImpl
       implements OpenProtocolMessageResetParameterSetBatchCounter
           .OpenProtocolMessageResetParameterSetBatchCounterBuilder {
-    private final long parameterSetId;
+    private final int parameterSetId;
 
-    public OpenProtocolMessageResetParameterSetBatchCounterRev1BuilderImpl(long parameterSetId) {
+    public OpenProtocolMessageResetParameterSetBatchCounterRev1BuilderImpl(int parameterSetId) {
       this.parameterSetId = parameterSetId;
     }
 
     public OpenProtocolMessageResetParameterSetBatchCounterRev1 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

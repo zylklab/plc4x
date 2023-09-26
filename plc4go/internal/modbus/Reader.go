@@ -21,62 +21,73 @@ package modbus
 
 import (
 	"context"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/rs/zerolog"
 	"math"
+	"runtime/debug"
 	"sync/atomic"
 	"time"
 
-	"github.com/apache/plc4x/plc4go/pkg/api/model"
-	"github.com/apache/plc4x/plc4go/pkg/api/values"
+	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
+	apiValues "github.com/apache/plc4x/plc4go/pkg/api/values"
 	readWriteModel "github.com/apache/plc4x/plc4go/protocols/modbus/readwrite/model"
 	"github.com/apache/plc4x/plc4go/spi"
-	plc4goModel "github.com/apache/plc4x/plc4go/spi/model"
+	spiModel "github.com/apache/plc4x/plc4go/spi/model"
+
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 type Reader struct {
 	transactionIdentifier int32
 	unitIdentifier        uint8
 	messageCodec          spi.MessageCodec
+
+	passLogToModel bool
+	log            zerolog.Logger
 }
 
-func NewReader(unitIdentifier uint8, messageCodec spi.MessageCodec) *Reader {
+func NewReader(unitIdentifier uint8, messageCodec spi.MessageCodec, _options ...options.WithOption) *Reader {
+	passLoggerToModel, _ := options.ExtractPassLoggerToModel(_options...)
+	customLogger := options.ExtractCustomLoggerOrDefaultToGlobal(_options...)
 	return &Reader{
 		transactionIdentifier: 0,
 		unitIdentifier:        unitIdentifier,
 		messageCodec:          messageCodec,
+		passLogToModel:        passLoggerToModel,
+		log:                   customLogger,
 	}
 }
 
-func (m *Reader) Read(ctx context.Context, readRequest model.PlcReadRequest) <-chan model.PlcReadRequestResult {
+func (m *Reader) Read(ctx context.Context, readRequest apiModel.PlcReadRequest) <-chan apiModel.PlcReadRequestResult {
 	// TODO: handle ctx
-	log.Trace().Msg("Reading")
-	result := make(chan model.PlcReadRequestResult)
+	m.log.Trace().Msg("Reading")
+	result := make(chan apiModel.PlcReadRequestResult, 1)
 	go func() {
-		if len(readRequest.GetTagNames()) != 1 {
-			result <- &plc4goModel.DefaultPlcReadRequestResult{
-				Request:  readRequest,
-				Response: nil,
-				Err:      errors.New("modbus only supports single-item requests"),
+		defer func() {
+			if err := recover(); err != nil {
+				result <- spiModel.NewDefaultPlcReadRequestResult(readRequest, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
 			}
-			log.Debug().Msgf("modbus only supports single-item requests. Got %d tags", len(readRequest.GetTagNames()))
+		}()
+		if len(readRequest.GetTagNames()) != 1 {
+			result <- spiModel.NewDefaultPlcReadRequestResult(readRequest, nil, errors.New("modbus only supports single-item requests"))
+			m.log.Debug().Int("nTags", len(readRequest.GetTagNames())).Msg("modbus only supports single-item requests. Got nTags tags")
 			return
 		}
 		// If we are requesting only one tag, use a
 		tagName := readRequest.GetTagNames()[0]
 		tag := readRequest.GetTag(tagName)
-		modbusTagVar, err := CastToModbusTagFromPlcTag(tag)
+		modbusTagVar, err := castToModbusTagFromPlcTag(tag)
 		if err != nil {
-			result <- &plc4goModel.DefaultPlcReadRequestResult{
-				Request:  readRequest,
-				Response: nil,
-				Err:      errors.Wrap(err, "invalid tag item type"),
-			}
-			log.Debug().Msgf("Invalid tag item type %T", tag)
+			result <- spiModel.NewDefaultPlcReadRequestResult(
+				readRequest,
+				nil,
+				errors.Wrap(err, "invalid tag item type"),
+			)
+			m.log.Debug().Type("tagType", tag).Msg("Invalid tag item type")
 			return
 		}
 		numWords := uint16(math.Ceil(float64(modbusTagVar.Quantity*uint16(modbusTagVar.Datatype.DataTypeSize())) / float64(2)))
-		log.Debug().Msgf("Working with %d words", numWords)
+		m.log.Debug().Uint16("numWords", numWords).Msg("Working with numWords words")
 		var pdu readWriteModel.ModbusPDU = nil
 		switch modbusTagVar.TagType {
 		case Coil:
@@ -88,19 +99,19 @@ func (m *Reader) Read(ctx context.Context, readRequest model.PlcReadRequest) <-c
 		case HoldingRegister:
 			pdu = readWriteModel.NewModbusPDUReadHoldingRegistersRequest(modbusTagVar.Address, numWords)
 		case ExtendedRegister:
-			result <- &plc4goModel.DefaultPlcReadRequestResult{
-				Request:  readRequest,
-				Response: nil,
-				Err:      errors.New("modbus currently doesn't support extended register requests"),
-			}
+			result <- spiModel.NewDefaultPlcReadRequestResult(
+				readRequest,
+				nil,
+				errors.New("modbus currently doesn't support extended register requests"),
+			)
 			return
 		default:
-			result <- &plc4goModel.DefaultPlcReadRequestResult{
-				Request:  readRequest,
-				Response: nil,
-				Err:      errors.Errorf("unsupported tag type %x", modbusTagVar.TagType),
-			}
-			log.Debug().Msgf("Unsupported tag type %x", modbusTagVar.TagType)
+			result <- spiModel.NewDefaultPlcReadRequestResult(
+				readRequest,
+				nil,
+				errors.Errorf("unsupported tag type %x", modbusTagVar.TagType),
+			)
+			m.log.Debug().Stringer("tagType", modbusTagVar.TagType).Msg("Unsupported tag type")
 			return
 		}
 
@@ -110,57 +121,60 @@ func (m *Reader) Read(ctx context.Context, readRequest model.PlcReadRequest) <-c
 			transactionIdentifier = 1
 			atomic.StoreInt32(&m.transactionIdentifier, 1)
 		}
-		log.Debug().Msgf("Calculated transaction identifier %x", transactionIdentifier)
+		m.log.Debug().Int32("transactionIdentifier", transactionIdentifier).Msg("Calculated transaction identifier")
 
 		// Assemble the finished ADU
-		log.Trace().Msg("Assemble ADU")
+		m.log.Trace().Msg("Assemble ADU")
 		requestAdu := readWriteModel.NewModbusTcpADU(uint16(transactionIdentifier), m.unitIdentifier, pdu, false)
 
 		// Send the ADU over the wire
-		log.Trace().Msg("Send ADU")
+		m.log.Trace().Msg("Send ADU")
 		if err = m.messageCodec.SendRequest(ctx, requestAdu, func(message spi.Message) bool {
 			responseAdu := message.(readWriteModel.ModbusTcpADU)
 			return responseAdu.GetTransactionIdentifier() == uint16(transactionIdentifier) &&
 				responseAdu.GetUnitIdentifier() == requestAdu.UnitIdentifier
 		}, func(message spi.Message) error {
 			// Convert the response into an ADU
-			log.Trace().Msg("convert response to ADU")
+			m.log.Trace().Msg("convert response to ADU")
 			responseAdu := message.(readWriteModel.ModbusTcpADU)
 			// Convert the modbus response into a PLC4X response
-			log.Trace().Msg("convert response to PLC4X response")
+			m.log.Trace().Msg("convert response to PLC4X response")
 			readResponse, err := m.ToPlc4xReadResponse(responseAdu, readRequest)
 
 			if err != nil {
-				result <- &plc4goModel.DefaultPlcReadRequestResult{
-					Request: readRequest,
-					Err:     errors.Wrap(err, "Error decoding response"),
-				}
+				result <- spiModel.NewDefaultPlcReadRequestResult(
+					readRequest,
+					nil,
+					errors.Wrap(err, "Error decoding response"),
+				)
 				// TODO: should we return the error here?
 				return nil
 			}
-			result <- &plc4goModel.DefaultPlcReadRequestResult{
-				Request:  readRequest,
-				Response: readResponse,
-			}
+			result <- spiModel.NewDefaultPlcReadRequestResult(
+				readRequest,
+				readResponse,
+				nil,
+			)
 			return nil
 		}, func(err error) error {
-			result <- &plc4goModel.DefaultPlcReadRequestResult{
-				Request: readRequest,
-				Err:     errors.Wrap(err, "got timeout while waiting for response"),
-			}
+			result <- spiModel.NewDefaultPlcReadRequestResult(
+				readRequest,
+				nil,
+				errors.Wrap(err, "got timeout while waiting for response"),
+			)
 			return nil
 		}, time.Second*1); err != nil {
-			result <- &plc4goModel.DefaultPlcReadRequestResult{
-				Request:  readRequest,
-				Response: nil,
-				Err:      errors.Wrap(err, "error sending message"),
-			}
+			result <- spiModel.NewDefaultPlcReadRequestResult(
+				readRequest,
+				nil,
+				errors.Wrap(err, "error sending message"),
+			)
 		}
 	}()
 	return result
 }
 
-func (m *Reader) ToPlc4xReadResponse(responseAdu readWriteModel.ModbusTcpADU, readRequest model.PlcReadRequest) (model.PlcReadResponse, error) {
+func (m *Reader) ToPlc4xReadResponse(responseAdu readWriteModel.ModbusTcpADU, readRequest apiModel.PlcReadRequest) (apiModel.PlcReadResponse, error) {
 	var data []uint8
 	switch pdu := responseAdu.GetPdu().(type) {
 	case readWriteModel.ModbusPDUReadDiscreteInputsResponse:
@@ -181,25 +195,26 @@ func (m *Reader) ToPlc4xReadResponse(responseAdu readWriteModel.ModbusTcpADU, re
 	}
 
 	// Get the tag from the request
-	log.Trace().Msg("get a tag from request")
+	m.log.Trace().Msg("get a tag from request")
 	tagName := readRequest.GetTagNames()[0]
-	tag, err := CastToModbusTagFromPlcTag(readRequest.GetTag(tagName))
+	tag, err := castToModbusTagFromPlcTag(readRequest.GetTag(tagName))
 	if err != nil {
 		return nil, errors.Wrap(err, "error casting to modbus-tag")
 	}
 
 	// Decode the data according to the information from the request
-	log.Trace().Msg("decode data")
-	value, err := readWriteModel.DataItemParse(context.Background(), data, tag.Datatype, tag.Quantity)
+	m.log.Trace().Msg("decode data")
+	ctxForModel := options.GetLoggerContextForModel(context.TODO(), m.log, options.WithPassLoggerToModel(m.passLogToModel))
+	value, err := readWriteModel.DataItemParse(ctxForModel, data, tag.Datatype, tag.Quantity)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error parsing data item")
 	}
-	responseCodes := map[string]model.PlcResponseCode{}
-	plcValues := map[string]values.PlcValue{}
+	responseCodes := map[string]apiModel.PlcResponseCode{}
+	plcValues := map[string]apiValues.PlcValue{}
 	plcValues[tagName] = value
-	responseCodes[tagName] = model.PlcResponseCode_OK
+	responseCodes[tagName] = apiModel.PlcResponseCode_OK
 
 	// Return the response
-	log.Trace().Msg("Returning the response")
-	return plc4goModel.NewDefaultPlcReadResponse(readRequest, responseCodes, plcValues), nil
+	m.log.Trace().Msg("Returning the response")
+	return spiModel.NewDefaultPlcReadResponse(readRequest, responseCodes, plcValues), nil
 }

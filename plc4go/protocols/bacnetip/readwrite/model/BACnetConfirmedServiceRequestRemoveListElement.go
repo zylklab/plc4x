@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetConfirmedServiceRequestRemoveListElement is the corresponding interface of BACnetConfirmedServiceRequestRemoveListElement
 type BACnetConfirmedServiceRequestRemoveListElement interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConfirmedServiceRequest
@@ -120,7 +123,7 @@ func NewBACnetConfirmedServiceRequestRemoveListElement(objectIdentifier BACnetCo
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConfirmedServiceRequestRemoveListElement(structType interface{}) BACnetConfirmedServiceRequestRemoveListElement {
+func CastBACnetConfirmedServiceRequestRemoveListElement(structType any) BACnetConfirmedServiceRequestRemoveListElement {
 	if casted, ok := structType.(BACnetConfirmedServiceRequestRemoveListElement); ok {
 		return casted
 	}
@@ -160,13 +163,15 @@ func (m *_BACnetConfirmedServiceRequestRemoveListElement) GetLengthInBytes(ctx c
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConfirmedServiceRequestRemoveListElementParse(theBytes []byte, serviceRequestLength uint32) (BACnetConfirmedServiceRequestRemoveListElement, error) {
-	return BACnetConfirmedServiceRequestRemoveListElementParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), serviceRequestLength)
+func BACnetConfirmedServiceRequestRemoveListElementParse(ctx context.Context, theBytes []byte, serviceRequestLength uint32) (BACnetConfirmedServiceRequestRemoveListElement, error) {
+	return BACnetConfirmedServiceRequestRemoveListElementParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), serviceRequestLength)
 }
 
 func BACnetConfirmedServiceRequestRemoveListElementParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, serviceRequestLength uint32) (BACnetConfirmedServiceRequestRemoveListElement, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConfirmedServiceRequestRemoveListElement"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConfirmedServiceRequestRemoveListElement")
 	}
@@ -209,7 +214,7 @@ func BACnetConfirmedServiceRequestRemoveListElementParseWithBuffer(ctx context.C
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(2), BACnetDataType_UNSIGNED_INTEGER)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'arrayIndex' field of BACnetConfirmedServiceRequestRemoveListElement")
@@ -228,10 +233,10 @@ func BACnetConfirmedServiceRequestRemoveListElementParseWithBuffer(ctx context.C
 		if pullErr := readBuffer.PullContext("listOfElements"); pullErr != nil {
 			return nil, errors.Wrap(pullErr, "Error pulling for listOfElements")
 		}
-		_val, _err := BACnetConstructedDataParseWithBuffer(ctx, readBuffer, uint8(3), objectIdentifier.GetObjectType(), propertyIdentifier.GetValue(), (CastBACnetTagPayloadUnsignedInteger(utils.InlineIf(bool((arrayIndex) != (nil)), func() interface{} { return CastBACnetTagPayloadUnsignedInteger((arrayIndex).GetPayload()) }, func() interface{} { return CastBACnetTagPayloadUnsignedInteger(nil) }))))
+		_val, _err := BACnetConstructedDataParseWithBuffer(ctx, readBuffer, uint8(3), objectIdentifier.GetObjectType(), propertyIdentifier.GetValue(), (CastBACnetTagPayloadUnsignedInteger(utils.InlineIf(bool((arrayIndex) != (nil)), func() any { return CastBACnetTagPayloadUnsignedInteger((arrayIndex).GetPayload()) }, func() any { return CastBACnetTagPayloadUnsignedInteger(nil) }))))
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'listOfElements' field of BACnetConfirmedServiceRequestRemoveListElement")
@@ -272,6 +277,8 @@ func (m *_BACnetConfirmedServiceRequestRemoveListElement) Serialize() ([]byte, e
 func (m *_BACnetConfirmedServiceRequestRemoveListElement) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConfirmedServiceRequestRemoveListElement"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConfirmedServiceRequestRemoveListElement")

@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataSubordinateRelationships is the corresponding interface of BACnetConstructedDataSubordinateRelationships
 type BACnetConstructedDataSubordinateRelationships interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataSubordinateRelationships(numberOfDataElements BACne
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataSubordinateRelationships(structType interface{}) BACnetConstructedDataSubordinateRelationships {
+func CastBACnetConstructedDataSubordinateRelationships(structType any) BACnetConstructedDataSubordinateRelationships {
 	if casted, ok := structType.(BACnetConstructedDataSubordinateRelationships); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataSubordinateRelationships) GetLengthInBytes(ctx co
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataSubordinateRelationshipsParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataSubordinateRelationships, error) {
-	return BACnetConstructedDataSubordinateRelationshipsParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataSubordinateRelationshipsParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataSubordinateRelationships, error) {
+	return BACnetConstructedDataSubordinateRelationshipsParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataSubordinateRelationshipsParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataSubordinateRelationships, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataSubordinateRelationships"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataSubordinateRelationships")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataSubordinateRelationshipsParseWithBuffer(ctx context.Co
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataSubordinateRelationships")
@@ -216,7 +220,7 @@ func BACnetConstructedDataSubordinateRelationshipsParseWithBuffer(ctx context.Co
 	// Terminated array
 	var subordinateRelationships []BACnetRelationshipTagged
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetRelationshipTaggedParseWithBuffer(ctx, readBuffer, uint8(0), TagClass_APPLICATION_TAGS)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'subordinateRelationships' field of BACnetConstructedDataSubordinateRelationships")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataSubordinateRelationships) Serialize() ([]byte, er
 func (m *_BACnetConstructedDataSubordinateRelationships) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataSubordinateRelationships"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataSubordinateRelationships")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataSubordinateRelationships) SerializeWithWriteBuffe
 		}
 		for _curItem, _element := range m.GetSubordinateRelationships() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetSubordinateRelationships()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetSubordinateRelationships()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

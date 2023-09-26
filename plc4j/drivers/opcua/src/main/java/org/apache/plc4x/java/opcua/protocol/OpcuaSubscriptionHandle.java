@@ -48,20 +48,20 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpcuaSubscriptionHandle.class);
 
-    private Set<Consumer<PlcSubscriptionEvent>> consumers;
-    private List<String> tagNames;
-    private SecureChannel channel;
-    private PlcSubscriptionRequest subscriptionRequest;
-    private AtomicBoolean destroy = new AtomicBoolean(false);
-    private OpcuaProtocolLogic plcSubscriber;
-    private Long subscriptionId;
-    private long cycleTime;
-    private long revisedCycleTime;
+    private final Set<Consumer<PlcSubscriptionEvent>> consumers;
+    private final List<String> tagNames;
+    private final SecureChannel channel;
+    private final PlcSubscriptionRequest subscriptionRequest;
+    private final AtomicBoolean destroy = new AtomicBoolean(false);
+    private final OpcuaProtocolLogic plcSubscriber;
+    private final Long subscriptionId;
+    private final long cycleTime;
+    private final long revisedCycleTime;
     private boolean complete = false;
 
     private final AtomicLong clientHandles = new AtomicLong(1L);
 
-    private ConversationContext<OpcuaAPU> context;
+    private final ConversationContext<OpcuaAPU> context;
 
     public OpcuaSubscriptionHandle(ConversationContext<OpcuaAPU> context, OpcuaProtocolLogic plcSubscriber, SecureChannel channel, PlcSubscriptionRequest subscriptionRequest, Long subscriptionId, long cycleTime) {
         super(plcSubscriber);
@@ -85,10 +85,10 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
 
     private CompletableFuture<CreateMonitoredItemsResponse> onSubscribeCreateMonitoredItemsRequest() {
         List<ExtensionObjectDefinition> requestList = new ArrayList<>(this.tagNames.size());
-        for (int i = 0; i < this.tagNames.size(); i++) {
-            final DefaultPlcSubscriptionTag tagDefaultPlcSubscription = (DefaultPlcSubscriptionTag) subscriptionRequest.getTag(tagNames.get(i));
+        for (String tagName : this.tagNames) {
+            final DefaultPlcSubscriptionTag tagDefaultPlcSubscription = (DefaultPlcSubscriptionTag) subscriptionRequest.getTag(tagName);
 
-            NodeId idNode = generateNodeId((OpcuaTag) tagDefaultPlcSubscription.getTag());
+            NodeId idNode = OpcuaProtocolLogic.generateNodeId((OpcuaTag) tagDefaultPlcSubscription.getTag());
 
             ReadValueId readValueId = new ReadValueId(
                 idNode,
@@ -442,30 +442,5 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
         consumers.add(consumer);
         return new DefaultPlcConsumerRegistration(plcSubscriber, consumer, this);
     }
-
-    /**
-     * Given an PLC4X OpcuaTag generate the OPC UA Node Id
-     *
-     * @param tag - The PLC4X OpcuaTag, this is the tag generated from the OpcuaTag class from the parsed tag string.
-     * @return NodeId - Returns an OPC UA Node Id which can be sent over the wire.
-     */
-    private NodeId generateNodeId(OpcuaTag tag) {
-        NodeId nodeId = null;
-        if (tag.getIdentifierType() == OpcuaIdentifierType.BINARY_IDENTIFIER) {
-            nodeId = new NodeId(new NodeIdTwoByte(Short.parseShort(tag.getIdentifier())));
-        } else if (tag.getIdentifierType() == OpcuaIdentifierType.NUMBER_IDENTIFIER) {
-            nodeId = new NodeId(new NodeIdNumeric((short) tag.getNamespace(), Long.parseLong(tag.getIdentifier())));
-        } else if (tag.getIdentifierType() == OpcuaIdentifierType.GUID_IDENTIFIER) {
-            UUID guid = UUID.fromString(tag.getIdentifier());
-            byte[] guidBytes = new byte[16];
-            System.arraycopy(guid.getMostSignificantBits(), 0, guidBytes, 0, 8);
-            System.arraycopy(guid.getLeastSignificantBits(), 0, guidBytes, 8, 8);
-            nodeId = new NodeId(new NodeIdGuid((short) tag.getNamespace(), guidBytes));
-        } else if (tag.getIdentifierType() == OpcuaIdentifierType.STRING_IDENTIFIER) {
-            nodeId = new NodeId(new NodeIdString((short) tag.getNamespace(), new PascalString(tag.getIdentifier())));
-        }
-        return nodeId;
-    }
-
 
 }

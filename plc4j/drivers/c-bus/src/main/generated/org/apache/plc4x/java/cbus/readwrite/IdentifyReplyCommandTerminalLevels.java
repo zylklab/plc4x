@@ -46,9 +46,9 @@ public class IdentifyReplyCommandTerminalLevels extends IdentifyReplyCommand imp
   protected final byte[] terminalLevels;
 
   // Arguments.
-  protected final Short numBytes;
+  protected final Byte numBytes;
 
-  public IdentifyReplyCommandTerminalLevels(byte[] terminalLevels, Short numBytes) {
+  public IdentifyReplyCommandTerminalLevels(byte[] terminalLevels, Byte numBytes) {
     super(numBytes);
     this.terminalLevels = terminalLevels;
     this.numBytes = numBytes;
@@ -63,7 +63,6 @@ public class IdentifyReplyCommandTerminalLevels extends IdentifyReplyCommand imp
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("IdentifyReplyCommandTerminalLevels");
 
     // Array Field (terminalLevels)
@@ -92,11 +91,9 @@ public class IdentifyReplyCommandTerminalLevels extends IdentifyReplyCommand imp
   }
 
   public static IdentifyReplyCommandBuilder staticParseIdentifyReplyCommandBuilder(
-      ReadBuffer readBuffer, Attribute attribute, Short numBytes) throws ParseException {
+      ReadBuffer readBuffer, Attribute attribute, Byte numBytes) throws ParseException {
     readBuffer.pullContext("IdentifyReplyCommandTerminalLevels");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     byte[] terminalLevels = readBuffer.readByteArray("terminalLevels", Math.toIntExact(numBytes));
@@ -109,14 +106,14 @@ public class IdentifyReplyCommandTerminalLevels extends IdentifyReplyCommand imp
   public static class IdentifyReplyCommandTerminalLevelsBuilderImpl
       implements IdentifyReplyCommand.IdentifyReplyCommandBuilder {
     private final byte[] terminalLevels;
-    private final Short numBytes;
+    private final Byte numBytes;
 
-    public IdentifyReplyCommandTerminalLevelsBuilderImpl(byte[] terminalLevels, Short numBytes) {
+    public IdentifyReplyCommandTerminalLevelsBuilderImpl(byte[] terminalLevels, Byte numBytes) {
       this.terminalLevels = terminalLevels;
       this.numBytes = numBytes;
     }
 
-    public IdentifyReplyCommandTerminalLevels build(Short numBytes) {
+    public IdentifyReplyCommandTerminalLevels build(Byte numBytes) {
 
       IdentifyReplyCommandTerminalLevels identifyReplyCommandTerminalLevels =
           new IdentifyReplyCommandTerminalLevels(terminalLevels, numBytes);

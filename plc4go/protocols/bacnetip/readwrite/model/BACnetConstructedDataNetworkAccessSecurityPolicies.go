@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataNetworkAccessSecurityPolicies is the corresponding interface of BACnetConstructedDataNetworkAccessSecurityPolicies
 type BACnetConstructedDataNetworkAccessSecurityPolicies interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataNetworkAccessSecurityPolicies(numberOfDataElements 
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataNetworkAccessSecurityPolicies(structType interface{}) BACnetConstructedDataNetworkAccessSecurityPolicies {
+func CastBACnetConstructedDataNetworkAccessSecurityPolicies(structType any) BACnetConstructedDataNetworkAccessSecurityPolicies {
 	if casted, ok := structType.(BACnetConstructedDataNetworkAccessSecurityPolicies); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataNetworkAccessSecurityPolicies) GetLengthInBytes(c
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataNetworkAccessSecurityPoliciesParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataNetworkAccessSecurityPolicies, error) {
-	return BACnetConstructedDataNetworkAccessSecurityPoliciesParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataNetworkAccessSecurityPoliciesParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataNetworkAccessSecurityPolicies, error) {
+	return BACnetConstructedDataNetworkAccessSecurityPoliciesParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataNetworkAccessSecurityPoliciesParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataNetworkAccessSecurityPolicies, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataNetworkAccessSecurityPolicies"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataNetworkAccessSecurityPolicies")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataNetworkAccessSecurityPoliciesParseWithBuffer(ctx conte
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataNetworkAccessSecurityPolicies")
@@ -216,7 +220,7 @@ func BACnetConstructedDataNetworkAccessSecurityPoliciesParseWithBuffer(ctx conte
 	// Terminated array
 	var networkAccessSecurityPolicies []BACnetNetworkSecurityPolicy
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetNetworkSecurityPolicyParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'networkAccessSecurityPolicies' field of BACnetConstructedDataNetworkAccessSecurityPolicies")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataNetworkAccessSecurityPolicies) Serialize() ([]byt
 func (m *_BACnetConstructedDataNetworkAccessSecurityPolicies) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataNetworkAccessSecurityPolicies"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataNetworkAccessSecurityPolicies")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataNetworkAccessSecurityPolicies) SerializeWithWrite
 		}
 		for _curItem, _element := range m.GetNetworkAccessSecurityPolicies() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetNetworkAccessSecurityPolicies()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetNetworkAccessSecurityPolicies()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

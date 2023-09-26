@@ -34,7 +34,7 @@ type PlcLTIME_OF_DAY struct {
 	value time.Time
 }
 
-func NewPlcLTIME_OF_DAY(value interface{}) PlcLTIME_OF_DAY {
+func NewPlcLTIME_OF_DAY(value any) PlcLTIME_OF_DAY {
 	var safeValue time.Time
 	switch value.(type) {
 	case time.Time:
@@ -58,6 +58,10 @@ func NewPlcLTIME_OF_DAY(value interface{}) PlcLTIME_OF_DAY {
 
 func NewPlcLTIME_OF_DAYFromNanosecondsSinceMidnight(nanosecondsSinceMidnight uint64) PlcLTIME_OF_DAY {
 	return NewPlcLTIME_OF_DAY(nanosecondsSinceMidnight)
+}
+
+func (m PlcLTIME_OF_DAY) IsRaw() bool {
+	return true
 }
 
 func (m PlcLTIME_OF_DAY) GetRaw() []byte {

@@ -42,11 +42,12 @@ public abstract class OpenProtocolMessageParameterSetSelectedAcknowledge extends
   public Mid getMid() {
     return Mid.ParameterSetSelectedAcknowledge;
   }
+
   // Abstract accessors for discriminator values.
-  public abstract Long getRevision();
+  public abstract Integer getRevision();
 
   public OpenProtocolMessageParameterSetSelectedAcknowledge(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -71,7 +72,6 @@ public abstract class OpenProtocolMessageParameterSetSelectedAcknowledge extends
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageParameterSetSelectedAcknowledge");
 
     // Switch field (Serialize the sub-type)
@@ -97,16 +97,14 @@ public abstract class OpenProtocolMessageParameterSetSelectedAcknowledge extends
   }
 
   public static OpenProtocolMessageBuilder staticParseOpenProtocolMessageBuilder(
-      ReadBuffer readBuffer, Long revision) throws ParseException {
+      ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageParameterSetSelectedAcknowledge");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     // Switch Field (Depending on the discriminator values, passes the instantiation to a sub-type)
     OpenProtocolMessageParameterSetSelectedAcknowledgeBuilder builder = null;
-    if (EvaluationHelper.equals(revision, (long) 1)) {
+    if (EvaluationHelper.equals(revision, (int) 1)) {
       builder =
           OpenProtocolMessageParameterSetSelectedAcknowledgeRev1
               .staticParseOpenProtocolMessageParameterSetSelectedAcknowledgeBuilder(
@@ -128,7 +126,7 @@ public abstract class OpenProtocolMessageParameterSetSelectedAcknowledge extends
 
   public interface OpenProtocolMessageParameterSetSelectedAcknowledgeBuilder {
     OpenProtocolMessageParameterSetSelectedAcknowledge build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,
@@ -147,7 +145,7 @@ public abstract class OpenProtocolMessageParameterSetSelectedAcknowledge extends
     }
 
     public OpenProtocolMessageParameterSetSelectedAcknowledge build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

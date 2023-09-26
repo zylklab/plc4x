@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataPortFilter is the corresponding interface of BACnetConstructedDataPortFilter
 type BACnetConstructedDataPortFilter interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataPortFilter(numberOfDataElements BACnetApplicationTa
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataPortFilter(structType interface{}) BACnetConstructedDataPortFilter {
+func CastBACnetConstructedDataPortFilter(structType any) BACnetConstructedDataPortFilter {
 	if casted, ok := structType.(BACnetConstructedDataPortFilter); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataPortFilter) GetLengthInBytes(ctx context.Context)
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataPortFilterParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataPortFilter, error) {
-	return BACnetConstructedDataPortFilterParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataPortFilterParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataPortFilter, error) {
+	return BACnetConstructedDataPortFilterParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataPortFilterParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataPortFilter, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataPortFilter"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataPortFilter")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataPortFilterParseWithBuffer(ctx context.Context, readBuf
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataPortFilter")
@@ -216,7 +220,7 @@ func BACnetConstructedDataPortFilterParseWithBuffer(ctx context.Context, readBuf
 	// Terminated array
 	var portFilter []BACnetPortPermission
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetPortPermissionParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'portFilter' field of BACnetConstructedDataPortFilter")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataPortFilter) Serialize() ([]byte, error) {
 func (m *_BACnetConstructedDataPortFilter) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataPortFilter"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataPortFilter")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataPortFilter) SerializeWithWriteBuffer(ctx context.
 		}
 		for _curItem, _element := range m.GetPortFilter() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetPortFilter()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetPortFilter()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

@@ -54,26 +54,36 @@ public class DefaultNettyPlcConnection extends AbstractPlcConnection implements 
 
     protected final Configuration configuration;
     protected final ChannelFactory channelFactory;
-
+    protected final boolean fireDiscoverEvent;
     protected final boolean awaitSessionSetupComplete;
     protected final boolean awaitSessionDisconnectComplete;
     protected final boolean awaitSessionDiscoverComplete;
-    protected final ProtocolStackConfigurer stackConfigurer;
+    protected final ProtocolStackConfigurer<?> stackConfigurer;
     protected final List<EventListener> listeners = new CopyOnWriteArrayList<>();
     protected final CompletableFuture<Void> sessionDisconnectCompleteFuture = new CompletableFuture<>();
 
     protected Channel channel;
     protected boolean connected;
 
-    public DefaultNettyPlcConnection(boolean canRead, boolean canWrite, boolean canSubscribe, boolean canBrowse,
-                                     PlcTagHandler tagHandler, PlcValueHandler valueHandler, Configuration configuration,
-                                     ChannelFactory channelFactory, boolean awaitSessionSetupComplete,
-                                     boolean awaitSessionDisconnectComplete, boolean awaitSessionDiscoverComplete,
-                                     ProtocolStackConfigurer stackConfigurer, BaseOptimizer optimizer,
+    public DefaultNettyPlcConnection(boolean canRead,
+                                     boolean canWrite,
+                                     boolean canSubscribe,
+                                     boolean canBrowse,
+                                     PlcTagHandler tagHandler,
+                                     PlcValueHandler valueHandler,
+                                     Configuration configuration,
+                                     ChannelFactory channelFactory,
+                                     boolean fireDiscoverEvent,
+                                     boolean awaitSessionSetupComplete,
+                                     boolean awaitSessionDisconnectComplete,
+                                     boolean awaitSessionDiscoverComplete,
+                                     ProtocolStackConfigurer<?> stackConfigurer,
+                                     BaseOptimizer optimizer,
                                      PlcAuthentication authentication) {
         super(canRead, canWrite, canSubscribe, canBrowse, tagHandler, valueHandler, optimizer, authentication);
         this.configuration = configuration;
         this.channelFactory = channelFactory;
+        this.fireDiscoverEvent = fireDiscoverEvent;
         this.awaitSessionSetupComplete = awaitSessionSetupComplete;
         //Used to signal that a disconnect has completed while closing a connection.
         this.awaitSessionDisconnectComplete = awaitSessionDisconnectComplete;
@@ -93,7 +103,7 @@ public class DefaultNettyPlcConnection extends AbstractPlcConnection implements 
             CompletableFuture<Void> sessionSetupCompleteFuture = new CompletableFuture<>();
             CompletableFuture<Configuration> sessionDiscoveredCompleteFuture = new CompletableFuture<>();
 
-            if(channelFactory == null) {
+            if (channelFactory == null) {
                 throw new PlcConnectionException("No channel factory provided");
             }
 
@@ -101,7 +111,7 @@ public class DefaultNettyPlcConnection extends AbstractPlcConnection implements 
             ConfigurationFactory.configure(configuration, channelFactory);
 
             // Have the channel factory create a new channel instance.
-            if (awaitSessionDiscoverComplete) {
+            if (fireDiscoverEvent) {
                 channel = channelFactory.createChannel(getChannelHandler(sessionSetupCompleteFuture, sessionDisconnectCompleteFuture, sessionDiscoveredCompleteFuture));
                 channel.closeFuture().addListener(future -> {
                     if (!sessionDiscoveredCompleteFuture.isDone()) {
@@ -115,7 +125,8 @@ public class DefaultNettyPlcConnection extends AbstractPlcConnection implements 
                     }
                 });
                 channel.pipeline().fireUserEventTriggered(new DiscoverEvent());
-
+            }
+            if (awaitSessionDiscoverComplete) {
                 // Wait till the connection is established.
                 sessionDiscoveredCompleteFuture.get();
             }
@@ -148,7 +159,8 @@ public class DefaultNettyPlcConnection extends AbstractPlcConnection implements 
     /**
      * Close the connection by firstly calling disconnect and waiting for a DisconnectedEvent occurs and then calling
      * Close() to finish up any other clean up.
-     * @throws PlcConnectionException
+     *
+     * @throws PlcConnectionException when a error occurs while closing
      */
     @Override
     public void close() throws PlcConnectionException {
@@ -196,7 +208,7 @@ public class DefaultNettyPlcConnection extends AbstractPlcConnection implements 
         /*if (factory == null) {
             throw new IllegalStateException("No Instance Factory is Present!");
         }*/
-        return new ChannelInitializer<Channel>() {
+        return new ChannelInitializer<>() {
             @Override
             protected void initChannel(Channel channel) {
                 // Build the protocol stack for communicating with the s7 protocol.
@@ -212,18 +224,48 @@ public class DefaultNettyPlcConnection extends AbstractPlcConnection implements 
                         } else if (evt instanceof DisconnectedEvent) {
                             sessionDisconnectCompleteFuture.complete(null);
                             eventListeners.forEach(ConnectionStateListener::disconnected);
+                            // Fix for https://github.com/apache/plc4x/issues/801
+                            super.userEventTriggered(ctx, evt);
                         } else if (evt instanceof DiscoveredEvent) {
                             sessionDiscoverCompleteFuture.complete(((DiscoveredEvent) evt).getConfiguration());
+                        } else if (evt instanceof ConnectEvent) {
+                            // Fix for https://github.com/apache/plc4x/issues/801
+                            if (!sessionSetupCompleteFuture.isCompletedExceptionally()) {
+                                if (awaitSessionSetupComplete) {
+                                    setProtocol(
+                                            stackConfigurer.configurePipeline(
+                                                    configuration,
+                                                    pipeline,
+                                                    getAuthentication(),
+                                                    channelFactory.isPassive()
+                                            )
+                                    );
+                                }
+                                super.userEventTriggered(ctx, evt);
+                            }
                         } else {
                             super.userEventTriggered(ctx, evt);
                         }
                     }
                 });
+                // Fix for https://github.com/apache/plc4x/issues/801
+                pipeline.addLast(
+                        new ChannelInboundHandlerAdapter() {
+                            @Override
+                            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws PlcConnectionException {
+                                logger.error("unknown error, close the connection", cause);
+                                close();
+                            }
+                        }
+                );
                 // Initialize via Transport Layer
                 channelFactory.initializePipeline(pipeline);
                 // Initialize Protocol Layer
-                setProtocol(stackConfigurer.configurePipeline(configuration, pipeline, getAuthentication(),
-                    channelFactory.isPassive()));
+                // Fix for https://github.com/apache/plc4x/issues/801
+                if (!awaitSessionSetupComplete) {
+                    setProtocol(stackConfigurer.configurePipeline(configuration, pipeline, getAuthentication(),
+                            channelFactory.isPassive()));
+                }
             }
         };
     }

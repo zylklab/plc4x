@@ -21,24 +21,29 @@ package _default
 
 import (
 	"context"
-
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
 	"github.com/apache/plc4x/plc4go/spi"
-	"github.com/apache/plc4x/plc4go/spi/model"
+	spiModel "github.com/apache/plc4x/plc4go/spi/model"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/rs/zerolog"
+	"runtime/debug"
 )
 
 // DefaultBrowserRequirements adds required methods to Browser that are needed when using DefaultBrowser
 type DefaultBrowserRequirements interface {
-	BrowseQuery(ctx context.Context, browseRequest apiModel.PlcBrowseRequest, interceptor func(result apiModel.PlcBrowseItem) bool, queryName string, query apiModel.PlcQuery) (apiModel.PlcResponseCode, []apiModel.PlcBrowseItem)
+	BrowseQuery(ctx context.Context, interceptor func(result apiModel.PlcBrowseItem) bool, queryName string, query apiModel.PlcQuery) (apiModel.PlcResponseCode, []apiModel.PlcBrowseItem)
 }
 
 type DefaultBrowser interface {
 	spi.PlcBrowser
 }
 
-func NewDefaultBrowser(defaultBrowserRequirements DefaultBrowserRequirements) DefaultBrowser {
+func NewDefaultBrowser(defaultBrowserRequirements DefaultBrowserRequirements, _options ...options.WithOption) DefaultBrowser {
+	customLogger := options.ExtractCustomLoggerOrDefaultToGlobal(_options...)
 	return &defaultBrowser{
-		defaultBrowserRequirements,
+		DefaultBrowserRequirements: defaultBrowserRequirements,
+
+		log: customLogger,
 	}
 }
 
@@ -50,6 +55,8 @@ func NewDefaultBrowser(defaultBrowserRequirements DefaultBrowserRequirements) De
 
 type defaultBrowser struct {
 	DefaultBrowserRequirements
+
+	log zerolog.Logger
 }
 
 //
@@ -65,20 +72,28 @@ func (m *defaultBrowser) Browse(ctx context.Context, browseRequest apiModel.PlcB
 }
 
 func (m *defaultBrowser) BrowseWithInterceptor(ctx context.Context, browseRequest apiModel.PlcBrowseRequest, interceptor func(result apiModel.PlcBrowseItem) bool) <-chan apiModel.PlcBrowseRequestResult {
-	result := make(chan apiModel.PlcBrowseRequestResult)
+	result := make(chan apiModel.PlcBrowseRequestResult, 1)
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				m.log.Error().
+					Str("stack", string(debug.Stack())).
+					Interface("err", err).
+					Msg("panic-ed")
+			}
+		}()
 		responseCodes := map[string]apiModel.PlcResponseCode{}
 		results := map[string][]apiModel.PlcBrowseItem{}
 		for _, queryName := range browseRequest.GetQueryNames() {
 			query := browseRequest.GetQuery(queryName)
-			responseCodes[queryName], results[queryName] = m.BrowseQuery(ctx, browseRequest, interceptor, queryName, query)
+			responseCodes[queryName], results[queryName] = m.BrowseQuery(ctx, interceptor, queryName, query)
 		}
-		browseResponse := model.NewDefaultPlcBrowseResponse(browseRequest, results, responseCodes)
-		result <- &model.DefaultPlcBrowseRequestResult{
-			Request:  browseRequest,
-			Response: &browseResponse,
-			Err:      nil,
-		}
+		browseResponse := spiModel.NewDefaultPlcBrowseResponse(browseRequest, results, responseCodes)
+		result <- spiModel.NewDefaultPlcBrowseRequestResult(
+			browseRequest,
+			browseResponse,
+			nil,
+		)
 	}()
 	return result
 }

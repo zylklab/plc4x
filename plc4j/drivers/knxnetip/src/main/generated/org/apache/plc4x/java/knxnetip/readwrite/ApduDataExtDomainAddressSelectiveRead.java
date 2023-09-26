@@ -38,8 +38,8 @@ import org.apache.plc4x.java.spi.generation.*;
 public class ApduDataExtDomainAddressSelectiveRead extends ApduDataExt implements Message {
 
   // Accessors for discriminator values.
-  public Short getExtApciType() {
-    return (short) 0x23;
+  public Byte getExtApciType() {
+    return (byte) 0x23;
   }
 
   public ApduDataExtDomainAddressSelectiveRead() {
@@ -50,7 +50,6 @@ public class ApduDataExtDomainAddressSelectiveRead extends ApduDataExt implement
   protected void serializeApduDataExtChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ApduDataExtDomainAddressSelectiveRead");
 
     writeBuffer.popContext("ApduDataExtDomainAddressSelectiveRead");
@@ -74,8 +73,6 @@ public class ApduDataExtDomainAddressSelectiveRead extends ApduDataExt implement
       ReadBuffer readBuffer, Short length) throws ParseException {
     readBuffer.pullContext("ApduDataExtDomainAddressSelectiveRead");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     readBuffer.closeContext("ApduDataExtDomainAddressSelectiveRead");

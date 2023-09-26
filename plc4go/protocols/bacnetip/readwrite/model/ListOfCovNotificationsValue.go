@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // ListOfCovNotificationsValue is the corresponding interface of ListOfCovNotificationsValue
 type ListOfCovNotificationsValue interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetPropertyIdentifier returns PropertyIdentifier (property field)
@@ -92,7 +95,7 @@ func NewListOfCovNotificationsValue(propertyIdentifier BACnetPropertyIdentifierT
 }
 
 // Deprecated: use the interface for direct cast
-func CastListOfCovNotificationsValue(structType interface{}) ListOfCovNotificationsValue {
+func CastListOfCovNotificationsValue(structType any) ListOfCovNotificationsValue {
 	if casted, ok := structType.(ListOfCovNotificationsValue); ok {
 		return casted
 	}
@@ -132,13 +135,15 @@ func (m *_ListOfCovNotificationsValue) GetLengthInBytes(ctx context.Context) uin
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func ListOfCovNotificationsValueParse(theBytes []byte, objectTypeArgument BACnetObjectType) (ListOfCovNotificationsValue, error) {
-	return ListOfCovNotificationsValueParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), objectTypeArgument)
+func ListOfCovNotificationsValueParse(ctx context.Context, theBytes []byte, objectTypeArgument BACnetObjectType) (ListOfCovNotificationsValue, error) {
+	return ListOfCovNotificationsValueParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), objectTypeArgument)
 }
 
 func ListOfCovNotificationsValueParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, objectTypeArgument BACnetObjectType) (ListOfCovNotificationsValue, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("ListOfCovNotificationsValue"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for ListOfCovNotificationsValue")
 	}
@@ -168,7 +173,7 @@ func ListOfCovNotificationsValueParseWithBuffer(ctx context.Context, readBuffer 
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(1), BACnetDataType_UNSIGNED_INTEGER)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'arrayIndex' field of ListOfCovNotificationsValue")
@@ -184,7 +189,7 @@ func ListOfCovNotificationsValueParseWithBuffer(ctx context.Context, readBuffer 
 	if pullErr := readBuffer.PullContext("propertyValue"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for propertyValue")
 	}
-	_propertyValue, _propertyValueErr := BACnetConstructedDataParseWithBuffer(ctx, readBuffer, uint8(uint8(2)), BACnetObjectType(objectTypeArgument), BACnetPropertyIdentifier(propertyIdentifier.GetValue()), (CastBACnetTagPayloadUnsignedInteger(utils.InlineIf(bool((arrayIndex) != (nil)), func() interface{} { return CastBACnetTagPayloadUnsignedInteger((arrayIndex).GetPayload()) }, func() interface{} { return CastBACnetTagPayloadUnsignedInteger(nil) }))))
+	_propertyValue, _propertyValueErr := BACnetConstructedDataParseWithBuffer(ctx, readBuffer, uint8(uint8(2)), BACnetObjectType(objectTypeArgument), BACnetPropertyIdentifier(propertyIdentifier.GetValue()), (CastBACnetTagPayloadUnsignedInteger(utils.InlineIf(bool((arrayIndex) != (nil)), func() any { return CastBACnetTagPayloadUnsignedInteger((arrayIndex).GetPayload()) }, func() any { return CastBACnetTagPayloadUnsignedInteger(nil) }))))
 	if _propertyValueErr != nil {
 		return nil, errors.Wrap(_propertyValueErr, "Error parsing 'propertyValue' field of ListOfCovNotificationsValue")
 	}
@@ -203,7 +208,7 @@ func ListOfCovNotificationsValueParseWithBuffer(ctx context.Context, readBuffer 
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(3), BACnetDataType_TIME)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'timeOfChange' field of ListOfCovNotificationsValue")
@@ -240,6 +245,8 @@ func (m *_ListOfCovNotificationsValue) Serialize() ([]byte, error) {
 func (m *_ListOfCovNotificationsValue) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("ListOfCovNotificationsValue"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for ListOfCovNotificationsValue")
 	}

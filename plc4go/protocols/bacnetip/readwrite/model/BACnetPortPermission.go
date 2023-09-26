@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetPortPermission is the corresponding interface of BACnetPortPermission
 type BACnetPortPermission interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetPort returns Port (property field)
@@ -75,7 +78,7 @@ func NewBACnetPortPermission(port BACnetContextTagUnsignedInteger, enable BACnet
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetPortPermission(structType interface{}) BACnetPortPermission {
+func CastBACnetPortPermission(structType any) BACnetPortPermission {
 	if casted, ok := structType.(BACnetPortPermission); ok {
 		return casted
 	}
@@ -107,13 +110,15 @@ func (m *_BACnetPortPermission) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetPortPermissionParse(theBytes []byte) (BACnetPortPermission, error) {
-	return BACnetPortPermissionParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func BACnetPortPermissionParse(ctx context.Context, theBytes []byte) (BACnetPortPermission, error) {
+	return BACnetPortPermissionParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func BACnetPortPermissionParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (BACnetPortPermission, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetPortPermission"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetPortPermission")
 	}
@@ -143,7 +148,7 @@ func BACnetPortPermissionParseWithBuffer(ctx context.Context, readBuffer utils.R
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(1), BACnetDataType_BOOLEAN)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'enable' field of BACnetPortPermission")
@@ -177,6 +182,8 @@ func (m *_BACnetPortPermission) Serialize() ([]byte, error) {
 func (m *_BACnetPortPermission) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetPortPermission"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetPortPermission")
 	}

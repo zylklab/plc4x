@@ -24,7 +24,8 @@ import (
 
 	plc4go "github.com/apache/plc4x/plc4go/pkg/api"
 	"github.com/apache/plc4x/plc4go/pkg/api/drivers"
-	"github.com/apache/plc4x/plc4go/pkg/api/model"
+	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -33,15 +34,20 @@ func main() {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
 	driverManager := plc4go.NewPlcDriverManager()
+	defer func() {
+		if err := driverManager.Close(); err != nil {
+			panic(err)
+		}
+	}()
 	drivers.RegisterAdsDriver(driverManager)
 	connectionChan := driverManager.GetConnection("ads:tcp://192.168.23.20?sourceAmsNetId=192.168.23.200.1.1&sourceAmsPort=65534&targetAmsNetId=192.168.23.20.1.1&targetAmsPort=851")
 	connection := <-connectionChan
 
 	subscriptionRequest, err := connection.GetConnection().SubscriptionRequestBuilder().
 		AddChangeOfStateTagAddress("value-int", "MAIN.rivianTest01.HorizontalPosition").
-		AddPreRegisteredConsumer("value-int", func(event model.PlcSubscriptionEvent) {
+		AddPreRegisteredConsumer("value-int", func(event apiModel.PlcSubscriptionEvent) {
 			value := event.GetValue("value-int")
-			log.Info().Msgf("Got value: %d", value.GetUint16())
+			log.Info().Uint16("value", value.GetUint16()).Msg("Got value")
 		}).
 		Build()
 	if err != nil {
@@ -59,6 +65,6 @@ func main() {
 		print(responseCode)
 	}
 
-	time.Sleep(time.Second * 200)
+	time.Sleep(200 * time.Second)
 
 }

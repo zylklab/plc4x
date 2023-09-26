@@ -42,9 +42,6 @@ func (d *DefaultPlcBrowseRequest) SerializeWithWriteBuffer(ctx context.Context, 
 	if err := writeBuffer.PushContext("PlcBrowseRequest"); err != nil {
 		return err
 	}
-	if err := d.DefaultPlcRequest.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
-		return err
-	}
 
 	if d.browser != nil {
 		if serializableField, ok := d.browser.(utils.Serializable); ok {
@@ -78,9 +75,10 @@ func (d *DefaultPlcBrowseRequest) SerializeWithWriteBuffer(ctx context.Context, 
 	if err := writeBuffer.PushContext("queries", utils.WithRenderAsList(true)); err != nil {
 		return err
 	}
-	for name, elem := range d.queries {
+	for _name, elem := range d.queries {
+		name := _name
 
-		var elem interface{} = elem
+		var elem any = elem
 		if serializable, ok := elem.(utils.Serializable); ok {
 			if err := writeBuffer.PushContext(name); err != nil {
 				return err

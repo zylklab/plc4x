@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetConfirmedServiceRequestConfirmedPrivateTransfer is the corresponding interface of BACnetConfirmedServiceRequestConfirmedPrivateTransfer
 type BACnetConfirmedServiceRequestConfirmedPrivateTransfer interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConfirmedServiceRequest
@@ -112,7 +115,7 @@ func NewBACnetConfirmedServiceRequestConfirmedPrivateTransfer(vendorId BACnetVen
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConfirmedServiceRequestConfirmedPrivateTransfer(structType interface{}) BACnetConfirmedServiceRequestConfirmedPrivateTransfer {
+func CastBACnetConfirmedServiceRequestConfirmedPrivateTransfer(structType any) BACnetConfirmedServiceRequestConfirmedPrivateTransfer {
 	if casted, ok := structType.(BACnetConfirmedServiceRequestConfirmedPrivateTransfer); ok {
 		return casted
 	}
@@ -147,13 +150,15 @@ func (m *_BACnetConfirmedServiceRequestConfirmedPrivateTransfer) GetLengthInByte
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConfirmedServiceRequestConfirmedPrivateTransferParse(theBytes []byte, serviceRequestLength uint32) (BACnetConfirmedServiceRequestConfirmedPrivateTransfer, error) {
-	return BACnetConfirmedServiceRequestConfirmedPrivateTransferParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), serviceRequestLength)
+func BACnetConfirmedServiceRequestConfirmedPrivateTransferParse(ctx context.Context, theBytes []byte, serviceRequestLength uint32) (BACnetConfirmedServiceRequestConfirmedPrivateTransfer, error) {
+	return BACnetConfirmedServiceRequestConfirmedPrivateTransferParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), serviceRequestLength)
 }
 
 func BACnetConfirmedServiceRequestConfirmedPrivateTransferParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, serviceRequestLength uint32) (BACnetConfirmedServiceRequestConfirmedPrivateTransfer, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConfirmedServiceRequestConfirmedPrivateTransfer"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConfirmedServiceRequestConfirmedPrivateTransfer")
 	}
@@ -196,7 +201,7 @@ func BACnetConfirmedServiceRequestConfirmedPrivateTransferParseWithBuffer(ctx co
 		_val, _err := BACnetConstructedDataParseWithBuffer(ctx, readBuffer, uint8(2), BACnetObjectType_VENDOR_PROPRIETARY_VALUE, BACnetPropertyIdentifier_VENDOR_PROPRIETARY_VALUE, nil)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'serviceParameters' field of BACnetConfirmedServiceRequestConfirmedPrivateTransfer")
@@ -236,6 +241,8 @@ func (m *_BACnetConfirmedServiceRequestConfirmedPrivateTransfer) Serialize() ([]
 func (m *_BACnetConfirmedServiceRequestConfirmedPrivateTransfer) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConfirmedServiceRequestConfirmedPrivateTransfer"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConfirmedServiceRequestConfirmedPrivateTransfer")

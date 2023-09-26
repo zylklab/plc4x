@@ -42,7 +42,7 @@ public class UIntTypeTest implements Message {
   protected final byte ThreeField;
   protected final short ByteField;
   protected final int WordField;
-  protected final long WordPlusByteField;
+  protected final int WordPlusByteField;
   protected final long DoubleIntField;
   protected final BigInteger QuadIntField;
 
@@ -50,7 +50,7 @@ public class UIntTypeTest implements Message {
       byte ThreeField,
       short ByteField,
       int WordField,
-      long WordPlusByteField,
+      int WordPlusByteField,
       long DoubleIntField,
       BigInteger QuadIntField) {
     super();
@@ -74,7 +74,7 @@ public class UIntTypeTest implements Message {
     return WordField;
   }
 
-  public long getWordPlusByteField() {
+  public int getWordPlusByteField() {
     return WordPlusByteField;
   }
 
@@ -89,7 +89,6 @@ public class UIntTypeTest implements Message {
   public void serialize(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("UIntTypeTest");
 
     // Simple Field (ThreeField)
@@ -102,7 +101,7 @@ public class UIntTypeTest implements Message {
     writeSimpleField("WordField", WordField, writeUnsignedInt(writeBuffer, 16));
 
     // Simple Field (WordPlusByteField)
-    writeSimpleField("WordPlusByteField", WordPlusByteField, writeUnsignedLong(writeBuffer, 24));
+    writeSimpleField("WordPlusByteField", WordPlusByteField, writeUnsignedInt(writeBuffer, 24));
 
     // Simple Field (DoubleIntField)
     writeSimpleField("DoubleIntField", DoubleIntField, writeUnsignedLong(writeBuffer, 32));
@@ -154,8 +153,6 @@ public class UIntTypeTest implements Message {
   public static UIntTypeTest staticParse(ReadBuffer readBuffer) throws ParseException {
     readBuffer.pullContext("UIntTypeTest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     byte ThreeField = readSimpleField("ThreeField", readUnsignedByte(readBuffer, 3));
@@ -164,7 +161,7 @@ public class UIntTypeTest implements Message {
 
     int WordField = readSimpleField("WordField", readUnsignedInt(readBuffer, 16));
 
-    long WordPlusByteField = readSimpleField("WordPlusByteField", readUnsignedLong(readBuffer, 24));
+    int WordPlusByteField = readSimpleField("WordPlusByteField", readUnsignedInt(readBuffer, 24));
 
     long DoubleIntField = readSimpleField("DoubleIntField", readUnsignedLong(readBuffer, 32));
 

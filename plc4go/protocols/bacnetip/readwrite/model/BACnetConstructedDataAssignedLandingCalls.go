@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataAssignedLandingCalls is the corresponding interface of BACnetConstructedDataAssignedLandingCalls
 type BACnetConstructedDataAssignedLandingCalls interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataAssignedLandingCalls(numberOfDataElements BACnetApp
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataAssignedLandingCalls(structType interface{}) BACnetConstructedDataAssignedLandingCalls {
+func CastBACnetConstructedDataAssignedLandingCalls(structType any) BACnetConstructedDataAssignedLandingCalls {
 	if casted, ok := structType.(BACnetConstructedDataAssignedLandingCalls); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataAssignedLandingCalls) GetLengthInBytes(ctx contex
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataAssignedLandingCallsParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataAssignedLandingCalls, error) {
-	return BACnetConstructedDataAssignedLandingCallsParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataAssignedLandingCallsParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataAssignedLandingCalls, error) {
+	return BACnetConstructedDataAssignedLandingCallsParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataAssignedLandingCallsParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataAssignedLandingCalls, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataAssignedLandingCalls"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataAssignedLandingCalls")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataAssignedLandingCallsParseWithBuffer(ctx context.Contex
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataAssignedLandingCalls")
@@ -216,7 +220,7 @@ func BACnetConstructedDataAssignedLandingCallsParseWithBuffer(ctx context.Contex
 	// Terminated array
 	var assignedLandingCalls []BACnetAssignedLandingCalls
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetAssignedLandingCallsParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'assignedLandingCalls' field of BACnetConstructedDataAssignedLandingCalls")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataAssignedLandingCalls) Serialize() ([]byte, error)
 func (m *_BACnetConstructedDataAssignedLandingCalls) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataAssignedLandingCalls"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataAssignedLandingCalls")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataAssignedLandingCalls) SerializeWithWriteBuffer(ct
 		}
 		for _curItem, _element := range m.GetAssignedLandingCalls() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetAssignedLandingCalls()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetAssignedLandingCalls()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

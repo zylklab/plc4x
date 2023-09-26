@@ -38,16 +38,16 @@ import org.apache.plc4x.java.spi.generation.*;
 public class SDOBlockData implements Message {
 
   // Properties.
-  protected final short flags;
+  protected final byte flags;
   protected final byte[] data;
 
-  public SDOBlockData(short flags, byte[] data) {
+  public SDOBlockData(byte flags, byte[] data) {
     super();
     this.flags = flags;
     this.data = data;
   }
 
-  public short getFlags() {
+  public byte getFlags() {
     return flags;
   }
 
@@ -58,11 +58,10 @@ public class SDOBlockData implements Message {
   public void serialize(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("SDOBlockData");
 
     // Simple Field (flags)
-    writeSimpleField("flags", flags, writeUnsignedShort(writeBuffer, 5));
+    writeSimpleField("flags", flags, writeUnsignedByte(writeBuffer, 5));
 
     // Array Field (data)
     writeByteArrayField("data", data, writeByteArray(writeBuffer, 8));
@@ -101,11 +100,9 @@ public class SDOBlockData implements Message {
   public static SDOBlockData staticParse(ReadBuffer readBuffer) throws ParseException {
     readBuffer.pullContext("SDOBlockData");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
-    short flags = readSimpleField("flags", readUnsignedShort(readBuffer, 5));
+    byte flags = readSimpleField("flags", readUnsignedByte(readBuffer, 5));
 
     byte[] data = readBuffer.readByteArray("data", Math.toIntExact(7));
 

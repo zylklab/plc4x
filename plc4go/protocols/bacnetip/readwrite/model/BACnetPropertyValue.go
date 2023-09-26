@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetPropertyValue is the corresponding interface of BACnetPropertyValue
 type BACnetPropertyValue interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetPropertyIdentifier returns PropertyIdentifier (property field)
@@ -92,7 +95,7 @@ func NewBACnetPropertyValue(propertyIdentifier BACnetPropertyIdentifierTagged, p
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetPropertyValue(structType interface{}) BACnetPropertyValue {
+func CastBACnetPropertyValue(structType any) BACnetPropertyValue {
 	if casted, ok := structType.(BACnetPropertyValue); ok {
 		return casted
 	}
@@ -134,13 +137,15 @@ func (m *_BACnetPropertyValue) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetPropertyValueParse(theBytes []byte, objectTypeArgument BACnetObjectType) (BACnetPropertyValue, error) {
-	return BACnetPropertyValueParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), objectTypeArgument)
+func BACnetPropertyValueParse(ctx context.Context, theBytes []byte, objectTypeArgument BACnetObjectType) (BACnetPropertyValue, error) {
+	return BACnetPropertyValueParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), objectTypeArgument)
 }
 
 func BACnetPropertyValueParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, objectTypeArgument BACnetObjectType) (BACnetPropertyValue, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetPropertyValue"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetPropertyValue")
 	}
@@ -170,7 +175,7 @@ func BACnetPropertyValueParseWithBuffer(ctx context.Context, readBuffer utils.Re
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(1), BACnetDataType_UNSIGNED_INTEGER)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'propertyArrayIndex' field of BACnetPropertyValue")
@@ -189,10 +194,10 @@ func BACnetPropertyValueParseWithBuffer(ctx context.Context, readBuffer utils.Re
 		if pullErr := readBuffer.PullContext("propertyValue"); pullErr != nil {
 			return nil, errors.Wrap(pullErr, "Error pulling for propertyValue")
 		}
-		_val, _err := BACnetConstructedDataElementParseWithBuffer(ctx, readBuffer, objectTypeArgument, propertyIdentifier.GetValue(), (CastBACnetTagPayloadUnsignedInteger(utils.InlineIf(bool((propertyArrayIndex) != (nil)), func() interface{} { return CastBACnetTagPayloadUnsignedInteger((propertyArrayIndex).GetPayload()) }, func() interface{} { return CastBACnetTagPayloadUnsignedInteger(nil) }))))
+		_val, _err := BACnetConstructedDataElementParseWithBuffer(ctx, readBuffer, objectTypeArgument, propertyIdentifier.GetValue(), (CastBACnetTagPayloadUnsignedInteger(utils.InlineIf(bool((propertyArrayIndex) != (nil)), func() any { return CastBACnetTagPayloadUnsignedInteger((propertyArrayIndex).GetPayload()) }, func() any { return CastBACnetTagPayloadUnsignedInteger(nil) }))))
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'propertyValue' field of BACnetPropertyValue")
@@ -214,7 +219,7 @@ func BACnetPropertyValueParseWithBuffer(ctx context.Context, readBuffer utils.Re
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(3), BACnetDataType_UNSIGNED_INTEGER)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'priority' field of BACnetPropertyValue")
@@ -251,6 +256,8 @@ func (m *_BACnetPropertyValue) Serialize() ([]byte, error) {
 func (m *_BACnetPropertyValue) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetPropertyValue"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetPropertyValue")
 	}

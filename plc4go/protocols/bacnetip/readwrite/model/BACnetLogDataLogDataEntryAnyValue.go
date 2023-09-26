@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetLogDataLogDataEntryAnyValue is the corresponding interface of BACnetLogDataLogDataEntryAnyValue
 type BACnetLogDataLogDataEntryAnyValue interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetLogDataLogDataEntry
@@ -93,7 +96,7 @@ func NewBACnetLogDataLogDataEntryAnyValue(anyValue BACnetConstructedData, peeked
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetLogDataLogDataEntryAnyValue(structType interface{}) BACnetLogDataLogDataEntryAnyValue {
+func CastBACnetLogDataLogDataEntryAnyValue(structType any) BACnetLogDataLogDataEntryAnyValue {
 	if casted, ok := structType.(BACnetLogDataLogDataEntryAnyValue); ok {
 		return casted
 	}
@@ -122,13 +125,15 @@ func (m *_BACnetLogDataLogDataEntryAnyValue) GetLengthInBytes(ctx context.Contex
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetLogDataLogDataEntryAnyValueParse(theBytes []byte) (BACnetLogDataLogDataEntryAnyValue, error) {
-	return BACnetLogDataLogDataEntryAnyValueParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func BACnetLogDataLogDataEntryAnyValueParse(ctx context.Context, theBytes []byte) (BACnetLogDataLogDataEntryAnyValue, error) {
+	return BACnetLogDataLogDataEntryAnyValueParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func BACnetLogDataLogDataEntryAnyValueParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (BACnetLogDataLogDataEntryAnyValue, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetLogDataLogDataEntryAnyValue"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetLogDataLogDataEntryAnyValue")
 	}
@@ -145,7 +150,7 @@ func BACnetLogDataLogDataEntryAnyValueParseWithBuffer(ctx context.Context, readB
 		_val, _err := BACnetConstructedDataParseWithBuffer(ctx, readBuffer, uint8(8), BACnetObjectType_VENDOR_PROPRIETARY_VALUE, BACnetPropertyIdentifier_VENDOR_PROPRIETARY_VALUE, nil)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'anyValue' field of BACnetLogDataLogDataEntryAnyValue")
@@ -181,6 +186,8 @@ func (m *_BACnetLogDataLogDataEntryAnyValue) Serialize() ([]byte, error) {
 func (m *_BACnetLogDataLogDataEntryAnyValue) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetLogDataLogDataEntryAnyValue"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetLogDataLogDataEntryAnyValue")

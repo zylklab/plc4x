@@ -37,7 +37,7 @@ type PlcList struct {
 	PlcValueAdapter
 }
 
-func NewPlcList(values []apiValues.PlcValue) apiValues.PlcValue {
+func NewPlcList(values []apiValues.PlcValue) PlcList {
 	return PlcList{
 		Values: values,
 	}
@@ -148,6 +148,10 @@ func (m PlcList) GetDateTime() time.Time { return singleOrAdapter(m, apiValues.P
 
 ////
 // Raw Access
+
+func (m PlcList) IsRaw() bool {
+	return true
+}
 
 func (m PlcList) GetRaw() []byte {
 	if theBytes, err := m.Serialize(); err != nil {

@@ -39,16 +39,16 @@ public class S7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse
     extends S7PayloadUserDataItem implements Message {
 
   // Accessors for discriminator values.
+  public Byte getCpuFunctionGroup() {
+    return (byte) 0x04;
+  }
+
   public Byte getCpuFunctionType() {
     return (byte) 0x08;
   }
 
   public Short getCpuSubfunction() {
     return (short) 0x02;
-  }
-
-  public Integer getDataLength() {
-    return (int) 0x05;
   }
 
   // Properties.
@@ -61,12 +61,13 @@ public class S7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse
   public S7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse(
       DataTransportErrorCode returnCode,
       DataTransportSize transportSize,
+      int dataLength,
       short result,
       short reserved01,
       AlarmType alarmType,
       short reserved02,
       short reserved03) {
-    super(returnCode, transportSize);
+    super(returnCode, transportSize, dataLength);
     this.result = result;
     this.reserved01 = reserved01;
     this.alarmType = alarmType;
@@ -99,7 +100,6 @@ public class S7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("S7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse");
 
     // Simple Field (result)
@@ -155,11 +155,10 @@ public class S7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse
   }
 
   public static S7PayloadUserDataItemBuilder staticParseS7PayloadUserDataItemBuilder(
-      ReadBuffer readBuffer, Byte cpuFunctionType, Short cpuSubfunction) throws ParseException {
+      ReadBuffer readBuffer, Byte cpuFunctionGroup, Byte cpuFunctionType, Short cpuSubfunction)
+      throws ParseException {
     readBuffer.pullContext("S7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     short result = readSimpleField("result", readUnsignedShort(readBuffer, 8));
@@ -200,11 +199,18 @@ public class S7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse
     }
 
     public S7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse build(
-        DataTransportErrorCode returnCode, DataTransportSize transportSize) {
+        DataTransportErrorCode returnCode, DataTransportSize transportSize, int dataLength) {
       S7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse
           s7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse =
               new S7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse(
-                  returnCode, transportSize, result, reserved01, alarmType, reserved02, reserved03);
+                  returnCode,
+                  transportSize,
+                  dataLength,
+                  result,
+                  reserved01,
+                  alarmType,
+                  reserved02,
+                  reserved03);
       return s7PayloadUserDataItemCpuFunctionMsgSubscriptionAlarmResponse;
     }
   }

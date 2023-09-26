@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetNameValue is the corresponding interface of BACnetNameValue
 type BACnetNameValue interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetName returns Name (property field)
@@ -75,7 +78,7 @@ func NewBACnetNameValue(name BACnetContextTagCharacterString, value BACnetConstr
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetNameValue(structType interface{}) BACnetNameValue {
+func CastBACnetNameValue(structType any) BACnetNameValue {
 	if casted, ok := structType.(BACnetNameValue); ok {
 		return casted
 	}
@@ -107,13 +110,15 @@ func (m *_BACnetNameValue) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetNameValueParse(theBytes []byte) (BACnetNameValue, error) {
-	return BACnetNameValueParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func BACnetNameValueParse(ctx context.Context, theBytes []byte) (BACnetNameValue, error) {
+	return BACnetNameValueParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func BACnetNameValueParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (BACnetNameValue, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetNameValue"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetNameValue")
 	}
@@ -143,7 +148,7 @@ func BACnetNameValueParseWithBuffer(ctx context.Context, readBuffer utils.ReadBu
 		_val, _err := BACnetConstructedDataParseWithBuffer(ctx, readBuffer, uint8(1), BACnetObjectType_VENDOR_PROPRIETARY_VALUE, BACnetPropertyIdentifier_VENDOR_PROPRIETARY_VALUE, nil)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'value' field of BACnetNameValue")
@@ -177,6 +182,8 @@ func (m *_BACnetNameValue) Serialize() ([]byte, error) {
 func (m *_BACnetNameValue) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetNameValue"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetNameValue")
 	}

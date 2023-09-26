@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataCommandTimeArray is the corresponding interface of BACnetConstructedDataCommandTimeArray
 type BACnetConstructedDataCommandTimeArray interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataCommandTimeArray(numberOfDataElements BACnetApplica
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataCommandTimeArray(structType interface{}) BACnetConstructedDataCommandTimeArray {
+func CastBACnetConstructedDataCommandTimeArray(structType any) BACnetConstructedDataCommandTimeArray {
 	if casted, ok := structType.(BACnetConstructedDataCommandTimeArray); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataCommandTimeArray) GetLengthInBytes(ctx context.Co
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataCommandTimeArrayParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataCommandTimeArray, error) {
-	return BACnetConstructedDataCommandTimeArrayParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataCommandTimeArrayParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataCommandTimeArray, error) {
+	return BACnetConstructedDataCommandTimeArrayParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataCommandTimeArrayParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataCommandTimeArray, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataCommandTimeArray"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataCommandTimeArray")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataCommandTimeArrayParseWithBuffer(ctx context.Context, r
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataCommandTimeArray")
@@ -216,7 +220,7 @@ func BACnetConstructedDataCommandTimeArrayParseWithBuffer(ctx context.Context, r
 	// Terminated array
 	var commandTimeArray []BACnetTimeStamp
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetTimeStampParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'commandTimeArray' field of BACnetConstructedDataCommandTimeArray")
@@ -261,11 +265,15 @@ func (m *_BACnetConstructedDataCommandTimeArray) Serialize() ([]byte, error) {
 func (m *_BACnetConstructedDataCommandTimeArray) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataCommandTimeArray"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataCommandTimeArray")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -292,7 +300,7 @@ func (m *_BACnetConstructedDataCommandTimeArray) SerializeWithWriteBuffer(ctx co
 		}
 		for _curItem, _element := range m.GetCommandTimeArray() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetCommandTimeArray()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetCommandTimeArray()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

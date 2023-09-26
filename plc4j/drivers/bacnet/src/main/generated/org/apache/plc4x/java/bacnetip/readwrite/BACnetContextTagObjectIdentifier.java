@@ -63,8 +63,8 @@ public class BACnetContextTagObjectIdentifier extends BACnetContextTag implement
     return (BACnetObjectType) (getPayload().getObjectType());
   }
 
-  public long getInstanceNumber() {
-    return (long) (getPayload().getInstanceNumber());
+  public int getInstanceNumber() {
+    return (int) (getPayload().getInstanceNumber());
   }
 
   @Override
@@ -72,7 +72,6 @@ public class BACnetContextTagObjectIdentifier extends BACnetContextTag implement
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("BACnetContextTagObjectIdentifier");
 
     // Simple Field (payload)
@@ -83,7 +82,7 @@ public class BACnetContextTagObjectIdentifier extends BACnetContextTag implement
     writeBuffer.writeVirtual("objectType", objectType);
 
     // Virtual field (doesn't actually serialize anything, just makes the value available)
-    long instanceNumber = getInstanceNumber();
+    int instanceNumber = getInstanceNumber();
     writeBuffer.writeVirtual("instanceNumber", instanceNumber);
 
     writeBuffer.popContext("BACnetContextTagObjectIdentifier");
@@ -115,8 +114,6 @@ public class BACnetContextTagObjectIdentifier extends BACnetContextTag implement
       throws ParseException {
     readBuffer.pullContext("BACnetContextTagObjectIdentifier");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     BACnetTagPayloadObjectIdentifier payload =
@@ -126,8 +123,7 @@ public class BACnetContextTagObjectIdentifier extends BACnetContextTag implement
                 () -> BACnetTagPayloadObjectIdentifier.staticParse(readBuffer), readBuffer));
     BACnetObjectType objectType =
         readVirtualField("objectType", BACnetObjectType.class, payload.getObjectType());
-    long instanceNumber =
-        readVirtualField("instanceNumber", long.class, payload.getInstanceNumber());
+    int instanceNumber = readVirtualField("instanceNumber", int.class, payload.getInstanceNumber());
 
     readBuffer.closeContext("BACnetContextTagObjectIdentifier");
     // Create the instance

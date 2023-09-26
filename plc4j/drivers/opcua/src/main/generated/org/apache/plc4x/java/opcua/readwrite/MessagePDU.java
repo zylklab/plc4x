@@ -52,7 +52,6 @@ public abstract class MessagePDU implements Message {
   public void serialize(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("MessagePDU");
 
     // Discriminator Field (messageType) (Used as input to a switch field)
@@ -107,8 +106,6 @@ public abstract class MessagePDU implements Message {
       throws ParseException {
     readBuffer.pullContext("MessagePDU");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     String messageType = readDiscriminatorField("messageType", readString(readBuffer, 24));
@@ -136,6 +133,9 @@ public abstract class MessagePDU implements Message {
     } else if (EvaluationHelper.equals(messageType, (String) "MSG")
         && EvaluationHelper.equals(response, (boolean) true)) {
       builder = OpcuaMessageResponse.staticParseMessagePDUBuilder(readBuffer, response);
+    } else if (EvaluationHelper.equals(messageType, (String) "ERR")
+        && EvaluationHelper.equals(response, (boolean) true)) {
+      builder = OpcuaMessageError.staticParseMessagePDUBuilder(readBuffer, response);
     }
     if (builder == null) {
       throw new ParseException(

@@ -56,6 +56,7 @@ import (
 	${import}
 	</#list>
 	</#if>
+	"github.com/rs/zerolog"
 )
 
 	${sectionContent}
@@ -83,6 +84,7 @@ const ${type.name}_${field.name?upper_case} ${helper.getLanguageTypeNameForField
 
 // ${type.name} is the corresponding interface of ${type.name?cap_first}
 type ${type.name} interface {
+	fmt.Stringer<@emitImport import="fmt" />
 	utils.LengthAware
 	utils.Serializable
 <#if type.isDiscriminatedChildTypeDefinition()>
@@ -106,6 +108,11 @@ type ${type.name} interface {
     <#assign typeRef=field.asTypedField().orElseThrow().type>
 	// Get${field.name?cap_first} returns ${field.name?cap_first} (virtual field)
 	Get${field.name?cap_first}() <#if helper.needsPointerAccess(field)>*</#if>${helper.getLanguageTypeNameForTypeReference(typeRef)}
+</#list>
+<#list type.abstractFields as field>
+	<#assign namedField=field.asNamedField().orElseThrow()>
+	// Get${namedField.name?cap_first} returns ${namedField.name?cap_first} (abstract field)
+	Get${namedField.name?cap_first}() ${helper.getLanguageTypeNameForField(field)}
 </#list>
 }
 
@@ -151,16 +158,21 @@ type _${type.name} struct {
 }
 
 <#if type.isDiscriminatedParentTypeDefinition()>
-<#assign discriminatedParentType = type.asComplexTypeDefinition().orElseThrow()>
+<#assign complexTypeDefinition = type.asComplexTypeDefinition().orElseThrow()>
 type _${type.name}ChildRequirements interface {
 	utils.Serializable
 	GetLengthInBits(ctx context.Context) uint16
-    <#list discriminatedParentType.getDiscriminatorNames() as discriminatorName>
+    <#list complexTypeDefinition.getDiscriminatorNames() as discriminatorName>
     <#-- If the discriminator name matches that of another field, suppress the methods generation -->
-        <#if !type.isNonDiscriminatorField(discriminatorName)>
+        <#if type.isDiscriminatorField(discriminatorName)>
             <#assign typeRef=helper.getDiscriminatorTypes()[discriminatorName]>
 	Get${discriminatorName?cap_first}() <#if typeRef.isNonSimpleTypeReference() && !typeRef.isEnumTypeReference()>I</#if>${helper.getLanguageTypeNameForTypeReference(typeRef)}
         </#if>
+    </#list>
+    <#list type.abstractFields as field>
+        <#assign namedField=field.asNamedField().orElseThrow()>
+		// Get${namedField.name?cap_first} returns ${namedField.name?cap_first} (abstract field)
+		Get${namedField.name?cap_first}() ${helper.getLanguageTypeNameForField(field)}
     </#list>
 }
 </#if>
@@ -295,8 +307,30 @@ func (m *_${type.name}) Get${field.name?cap_first}() <#if helper.needsPointerAcc
 	${field.name} := m.${field.name?cap_first}
 	_ = ${field.name}
   	  </#list>
+	  <#if typeRef.isStringTypeReference() || typeRef.isVstringTypeReference()>
+    return fmt.Sprintf("%v", ${helper.toSerializationExpression(field, field.type, field.valueExpression, parserArguments)})<@emitImport import="fmt" />
+	  <#else>
 	return <#if typeRef.isNonSimpleTypeReference()>Cast</#if>${helper.getLanguageTypeNameForTypeReference(typeRef)}(${helper.toSerializationExpression(field, field.type, field.valueExpression, parserArguments)})
+	  </#if>
 }
+
+	</#list>
+///////////////////////
+///////////////////////
+///////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
+</#if>
+<#if type.abstractFields?has_content>
+///////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
+/////////////////////// Accessors for abstract fields.
+///////////////////////
+
+	<#list type.abstractFields as field>
+        <#assign typeRef=field.asTypedField().orElseThrow().type>
+		func (m *_${type.name}) Get${field.name?cap_first}() ${helper.getLanguageTypeNameForTypeReference(typeRef)} {
+			return m._${type.name}ChildRequirements.Get${field.name?cap_first}()
+		}
 
 	</#list>
 ///////////////////////
@@ -381,7 +415,7 @@ func New${type.name}(
 }
 
 // Deprecated: use the interface for direct cast
-func Cast${type.name}(structType interface{}) ${type.name} {
+func Cast${type.name}(structType any) ${type.name} {
     if casted, ok := structType.(${type.name}); ok {
 		return casted
 	}
@@ -403,7 +437,6 @@ func (m *_${type.name}) GetLengthInBits(ctx context.Context) uint16 {
 	lengthInBits := uint16(0)
 		</#if>
 		<#list type.fields as field>
-            <#if helper.needsVariable(field, "_lastItem", true)><@emitImportWithAlias alias="spiContext" import="github.com/apache/plc4x/plc4go/spi/context" /></#if>
 			<#switch field.typeName>
 				<#case "array">
 					<#assign arrayField = field.asArrayField().orElseThrow()>
@@ -420,7 +453,7 @@ func (m *_${type.name}) GetLengthInBits(ctx context.Context) uint16 {
 				<#else>
 				<#if arrayField.isCountArrayField()>
 		for _curItem, element := range m.${arrayField.name?cap_first} {
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.${arrayField.name?cap_first}), _curItem)<@emitImportWithAlias alias="spiContext" import="github.com/apache/plc4x/plc4go/spi/context" />
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.${arrayField.name?cap_first}), _curItem)
 			<#-- TODO: find a way to do this nicer -->
 			_ = arrayCtx
 			_ = _curItem
@@ -593,7 +626,7 @@ func (m *_${type.name}) GetParentLengthInBits(ctx context.Context) uint16 {
 				<#else>
 					<#if arrayField.isCountArrayField()>
 		for _curItem, element := range m.${arrayField.name?cap_first} {
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.${arrayField.name?cap_first}), _curItem)<@emitImportWithAlias alias="spiContext" import="github.com/apache/plc4x/plc4go/spi/context" />
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.${arrayField.name?cap_first}), _curItem)
             <#-- TODO: find a way to do this nicer -->
 			_ = arrayCtx
 			_ = _curItem
@@ -749,13 +782,15 @@ func (m *_${type.name}) GetLengthInBytes(ctx context.Context) uint16 {
 <#assign hasParserArguments=parserArguments?has_content/>
 <#assign parserArgumentList><#if hasParserArguments><#list parserArguments as parserArgument>${parserArgument.name} ${helper.getLanguageTypeNameForTypeReference(parserArgument.type)}<#sep>, </#sep></#list></#if></#assign>
 <#assign parserArgumentNameList><#if hasParserArguments><#list parserArguments as parserArgument>${parserArgument.name}<#sep>, </#sep></#list></#if></#assign>
-func ${type.name}Parse(theBytes []byte<#if hasParserArguments>, ${parserArgumentList}</#if>) (${type.name}, error) {
-	return ${type.name}ParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes${helper.getEndiannessOptions(true, true)})<#if hasParserArguments>, ${parserArgumentNameList}</#if>)
+func ${type.name}Parse(ctx context.Context, theBytes []byte<#if hasParserArguments>, ${parserArgumentList}</#if>) (${type.name}, error) {
+	return ${type.name}ParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes${helper.getEndiannessOptions(true, true, parserArguments)})<#if hasParserArguments>, ${parserArgumentNameList}</#if>)
 }
 
 func ${type.name}ParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer<#if hasParserArguments>, ${parserArgumentList}</#if>) (${type.name}, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("${type.name}"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for ${type.name}")<@emitImport import="github.com/pkg/errors" />
 	}
@@ -802,15 +837,15 @@ func ${type.name}ParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffe
 			<#-- If this is a count array, we can directly initialize an array with the given size -->
 					<#if field.isCountArrayField()>
 	// Count array
-	${arrayField.name} := make(${helper.getLanguageTypeNameForField(field)}, ${helper.toIntegerParseExpression(arrayField, 16, arrayField.loopExpression, parserArguments)})
+	${arrayField.name} := make(${helper.getLanguageTypeNameForField(field)}, utils.Max(${helper.toIntegerParseExpression(arrayField, 16, arrayField.loopExpression, parserArguments)}, 0))
 	// This happens when the size is set conditional to 0
 	if len(${arrayField.name}) == 0 {
 		${arrayField.name} = nil
 	}
 	{
-		_numItems := uint16(${helper.toIntegerParseExpression(arrayField, 16, arrayField.loopExpression, parserArguments)})
+		_numItems := uint16(utils.Max(${helper.toIntegerParseExpression(arrayField, 16, arrayField.loopExpression, parserArguments)}, 0))
 		for _curItem := uint16(0); _curItem < _numItems; _curItem++ {
-			arrayCtx := spiContext.CreateArrayContext(ctx, int(_numItems), int(_curItem))<@emitImportWithAlias alias="spiContext" import="github.com/apache/plc4x/plc4go/spi/context" />
+			arrayCtx := utils.CreateArrayContext(ctx, int(_numItems), int(_curItem))
             <#-- TODO: find a way to do this nicer -->
 			_ = arrayCtx
 			_ = _curItem
@@ -1180,7 +1215,7 @@ func ${type.name}ParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffe
 
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):<@emitImport import="io" />
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing '${optionalField.name}' field of ${type.name}")<@emitImport import="github.com/pkg/errors" />
@@ -1264,7 +1299,7 @@ func ${type.name}ParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffe
 			return nil, errors.Wrap(_err, "Error parsing 'reserved' field of ${type.name}")<@emitImport import="github.com/pkg/errors" />
 		}
 		if ${helper.toTypeSafeCompare(reservedField)} {
-			Plc4xModelLog.Info().Fields(map[string]interface{}{
+			log.Info().Fields(map[string]any{
 				"expected value": ${helper.getReservedValue(reservedField)},
 				"got value": reserved,
 			}).Msg("Got unexpected response for reserved field.")
@@ -1337,7 +1372,7 @@ func ${type.name}ParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffe
 		InitializeParent(${type.name}<#if type.propertyFields?has_content>, </#if> <#list type.propertyFields as field><#if helper.needsPointerAccess(field)>*</#if>${helper.getLanguageTypeNameForField(field)}<#sep>, </#sep></#list>)
 		GetParent() ${type.name}
 	}
-	var _childTemp interface{}
+	var _childTemp any
 	var _child ${type.name}ChildSerializeRequirement
 	var typeSwitchError error
 	switch {
@@ -1355,8 +1390,7 @@ func ${type.name}ParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffe
 									<#assign parsedDiscriminatorExpression=tracer.removeTraces(parsedDiscriminatorExpression)>
 									<#if helper.getDiscriminatorTypes()[parsedDiscriminatorExpression]??><#assign discriminatorType=helper.getDiscriminatorTypes()[parsedDiscriminatorExpression]></#if>
 									${helper.toParseExpression(null, null, discriminatorExpression, parserArguments)} ==
-									<#if helper.discriminatorValueNeedsStringEqualityCheck(discriminatorExpression)>"${helper.toParseExpression(null, discriminatorType,discriminatorValueTerm, parserArguments)}"
-									<#elseif discriminatorType?has_content && discriminatorType.isNonSimpleTypeReference()>
+									<#if discriminatorType?has_content && discriminatorType.isNonSimpleTypeReference()>
 										<#if discriminatorType.isEnumTypeReference()>
 											<#assign enumType=helper.getLanguageTypeNameForTypeReference(discriminatorType)>
 											<#assign enumTypeWithoutTraces=tracer.removeTraces(enumType)>
@@ -1406,7 +1440,9 @@ func ${type.name}ParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffe
 
 	// Virtual field
 	_${virtualField.name} := ${helper.toParseExpression(virtualField, virtualField.type, virtualField.valueExpression, parserArguments, true)}
-			<#if virtualField.type.isSimpleTypeReference() || virtualField.type.isEnumTypeReference()>
+			<#if virtualField.type.isStringTypeReference() || typeRef.isVstringTypeReference()>
+	${virtualField.name} := fmt.Sprintf("%v", _${virtualField.name})<@emitImport import="fmt" />
+			<#elseif virtualField.type.isSimpleTypeReference() || virtualField.type.isEnumTypeReference()>
 	${virtualField.name} := ${helper.getLanguageTypeNameForTypeReference(virtualField.type)}(_${virtualField.name})
 			<#else>
 	${virtualField.name} := _${virtualField.name}
@@ -1542,7 +1578,7 @@ func (pm *_${type.name}) SerializeParent(ctx context.Context, writeBuffer utils.
 	_ = m
 <#else>
 func (m *_${type.name}) Serialize() ([]byte, error) {
-	wb := utils.NewWriteBufferByteBased(utils.WithInitialSizeForByteBasedBuffer(int(m.GetLengthInBytes(context.Background())))${helper.getEndiannessOptions(false, true)})
+	wb := utils.NewWriteBufferByteBased(utils.WithInitialSizeForByteBasedBuffer(int(m.GetLengthInBytes(context.Background())))${helper.getEndiannessOptions(false, true, parserArguments)})
 	if err := m.SerializeWithWriteBuffer(context.Background(), wb); err != nil {
 		return nil, err
 	}
@@ -1553,6 +1589,8 @@ func (m *_${type.name}) SerializeWithWriteBuffer(ctx context.Context, writeBuffe
 </#if>
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	<#if helper.hasFieldOfType("unknown")>
 	return errors.New("Unknown field not serializable")
 	<#else>
@@ -1609,7 +1647,7 @@ func (m *_${type.name}) SerializeWithWriteBuffer(ctx context.Context, writeBuffe
 		_elementErr := ${helper.getWriteBufferWriteMethodCall("", simpleTypeReference, "_element", arrayField)}
 						<#else>
 						<#assign complexTypeReference = arrayElementType>
-		arrayCtx := spiContext.CreateArrayContext(ctx, len(m.Get${arrayField.name?cap_first}()), _curItem)<@emitImportWithAlias alias="spiContext" import="github.com/apache/plc4x/plc4go/spi/context" />
+		arrayCtx := utils.CreateArrayContext(ctx, len(m.Get${arrayField.name?cap_first}()), _curItem)
         <#-- TODO: find a way to do this nicer -->
 		_ = arrayCtx
 		_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
@@ -1801,7 +1839,7 @@ func (m *_${type.name}) SerializeWithWriteBuffer(ctx context.Context, writeBuffe
 	{
 		var reserved ${helper.getLanguageTypeNameForTypeReference(simpleTypeReference)} = ${helper.getReservedValue(reservedField)}
 		if <#if type.isAbstract()>p</#if>m.reservedField${reservedFieldIndex} != nil {
-			Plc4xModelLog.Info().Fields(map[string]interface{}{
+			log.Info().Fields(map[string]any{
 				"expected value": ${helper.getReservedValue(reservedField)},
 				"got value": reserved,
 			}).Msg("Overriding reserved field with unexpected value.")
@@ -1853,6 +1891,8 @@ func (m *_${type.name}) SerializeWithWriteBuffer(ctx context.Context, writeBuffe
                 	<#assign typedField = field.asTypedField().orElseThrow()>
                 	<#assign namedField = field.asNamedField().orElseThrow()>
 	// Virtual field
+	${namedField.name} := m.Get${namedField.name?cap_first}()
+	_ =	${namedField.name}
 	if _${namedField.name}Err := writeBuffer.WriteVirtual(ctx, "${namedField.name}", m.Get${namedField.name?cap_first}()); _${namedField.name}Err != nil {
 		return errors.Wrap(_${namedField.name}Err, "Error serializing '${namedField.name}' field")<@emitImport import="github.com/pkg/errors" />
 	}

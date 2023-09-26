@@ -38,8 +38,8 @@ import org.apache.plc4x.java.spi.generation.*;
 public class VariantExpandedNodeId extends Variant implements Message {
 
   // Accessors for discriminator values.
-  public Short getVariantType() {
-    return (short) 18;
+  public Byte getVariantType() {
+    return (byte) 18;
   }
 
   // Properties.
@@ -70,7 +70,6 @@ public class VariantExpandedNodeId extends Variant implements Message {
   protected void serializeVariantChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("VariantExpandedNodeId");
 
     // Optional Field (arrayLength) (Can be skipped, if the value is null)
@@ -114,8 +113,6 @@ public class VariantExpandedNodeId extends Variant implements Message {
       ReadBuffer readBuffer, Boolean arrayLengthSpecified) throws ParseException {
     readBuffer.pullContext("VariantExpandedNodeId");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     Integer arrayLength =

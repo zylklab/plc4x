@@ -21,6 +21,10 @@ package cbus
 
 import (
 	"context"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/transactions"
+	"github.com/rs/zerolog"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -29,34 +33,43 @@ import (
 	"github.com/apache/plc4x/plc4go/spi"
 	spiModel "github.com/apache/plc4x/plc4go/spi/model"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 type Writer struct {
 	alphaGenerator *AlphaGenerator
-	messageCodec   spi.MessageCodec
-	tm             *spi.RequestTransactionManager
+	messageCodec   *MessageCodec
+	tm             transactions.RequestTransactionManager
+
+	log zerolog.Logger
 }
 
-func NewWriter(tpduGenerator *AlphaGenerator, messageCodec spi.MessageCodec, tm *spi.RequestTransactionManager) Writer {
-	return Writer{
+func NewWriter(tpduGenerator *AlphaGenerator, messageCodec *MessageCodec, tm transactions.RequestTransactionManager, _options ...options.WithOption) *Writer {
+	customLogger := options.ExtractCustomLoggerOrDefaultToGlobal(_options...)
+	return &Writer{
 		alphaGenerator: tpduGenerator,
 		messageCodec:   messageCodec,
 		tm:             tm,
+
+		log: customLogger,
 	}
 }
 
-func (m Writer) Write(ctx context.Context, writeRequest apiModel.PlcWriteRequest) <-chan apiModel.PlcWriteRequestResult {
-	log.Trace().Msg("Writing")
-	result := make(chan apiModel.PlcWriteRequestResult)
+func (m *Writer) Write(ctx context.Context, writeRequest apiModel.PlcWriteRequest) <-chan apiModel.PlcWriteRequestResult {
+	m.log.Trace().Msg("Writing")
+	result := make(chan apiModel.PlcWriteRequestResult, 1)
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				result <- spiModel.NewDefaultPlcWriteRequestResult(writeRequest, nil, errors.Errorf("panic-ed %v. Stack: %s", err, debug.Stack()))
+			}
+		}()
 		numTags := len(writeRequest.GetTagNames())
 		if numTags > 20 { // letters g-z
-			result <- &spiModel.DefaultPlcWriteRequestResult{
-				Request:  writeRequest,
-				Response: nil,
-				Err:      errors.New("Only 20 tags can be handled at once"),
-			}
+			result <- spiModel.NewDefaultPlcWriteRequestResult(
+				writeRequest,
+				nil,
+				errors.New("Only 20 tags can be handled at once"),
+			)
 			return
 		}
 
@@ -64,21 +77,21 @@ func (m Writer) Write(ctx context.Context, writeRequest apiModel.PlcWriteRequest
 		for _, tagName := range writeRequest.GetTagNames() {
 			tag := writeRequest.GetTag(tagName)
 			plcValue := writeRequest.GetValue(tagName)
-			message, _, supportsWrite, _, err := TagToCBusMessage(tag, plcValue, m.alphaGenerator, m.messageCodec.(*MessageCodec))
+			message, _, supportsWrite, _, err := TagToCBusMessage(tag, plcValue, m.alphaGenerator, m.messageCodec)
 			if !supportsWrite {
-				result <- &spiModel.DefaultPlcWriteRequestResult{
-					Request:  writeRequest,
-					Response: nil,
-					Err:      errors.Wrapf(err, "Error encoding cbus message for tag %s. Tag is not meant to be written.", tagName),
-				}
+				result <- spiModel.NewDefaultPlcWriteRequestResult(
+					writeRequest,
+					nil,
+					errors.Wrapf(err, "Error encoding cbus message for tag %s. Tag is not meant to be written.", tagName),
+				)
 				return
 			}
 			if err != nil {
-				result <- &spiModel.DefaultPlcWriteRequestResult{
-					Request:  writeRequest,
-					Response: nil,
-					Err:      errors.Wrapf(err, "Error encoding cbus message for tag %s", tagName),
-				}
+				result <- spiModel.NewDefaultPlcWriteRequestResult(
+					writeRequest,
+					nil,
+					errors.Wrapf(err, "Error encoding cbus message for tag %s", tagName),
+				)
 				return
 			}
 			messages[tagName] = message
@@ -92,18 +105,15 @@ func (m Writer) Write(ctx context.Context, writeRequest apiModel.PlcWriteRequest
 		}
 		for tagName, messageToSend := range messages {
 			if err := ctx.Err(); err != nil {
-				result <- &spiModel.DefaultPlcWriteRequestResult{
-					Request: writeRequest,
-					Err:     err,
-				}
+				result <- spiModel.NewDefaultPlcWriteRequestResult(writeRequest, nil, err)
 				return
 			}
 			tagNameCopy := tagName
 			// Start a new request-transaction (Is ended in the response-handler)
 			transaction := m.tm.StartTransaction()
-			transaction.Submit(func() {
+			transaction.Submit(func(transaction transactions.RequestTransaction) {
 				// Send the  over the wire
-				log.Trace().Msg("Send ")
+				m.log.Trace().Msg("Send ")
 				if err := m.messageCodec.SendRequest(ctx, messageToSend, func(receivedMessage spi.Message) bool {
 					cbusMessage, ok := receivedMessage.(readWriteModel.CBusMessageExactly)
 					if !ok {
@@ -129,22 +139,21 @@ func (m Writer) Write(ctx context.Context, writeRequest apiModel.PlcWriteRequest
 					addResponseCode(tagName, apiModel.PlcResponseCode_OK)
 					return transaction.EndRequest()
 				}, func(err error) error {
-					log.Debug().Msgf("Error waiting for tag %s", tagNameCopy)
+					m.log.Debug().Str("tagName", tagNameCopy).Msg("Error waiting for tag")
 					addResponseCode(tagNameCopy, apiModel.PlcResponseCode_REQUEST_TIMEOUT)
 					// TODO: ok or not ok?
 					return transaction.EndRequest()
 				}, time.Second*1); err != nil {
-					log.Debug().Err(err).Msgf("Error sending message for tag %s", tagNameCopy)
+					m.log.Debug().Str("tagName", tagNameCopy).Err(err).Msg("Error sending message for tag")
 					addResponseCode(tagNameCopy, apiModel.PlcResponseCode_INTERNAL_ERROR)
-					_ = transaction.EndRequest()
+					if err := transaction.FailRequest(errors.Errorf("timeout after %s", time.Second*1)); err != nil {
+						m.log.Debug().Err(err).Msg("Error failing request")
+					}
 				}
 			})
 		}
 		readResponse := spiModel.NewDefaultPlcWriteResponse(writeRequest, responseCodes)
-		result <- &spiModel.DefaultPlcWriteRequestResult{
-			Request:  writeRequest,
-			Response: readResponse,
-		}
+		result <- spiModel.NewDefaultPlcWriteRequestResult(writeRequest, readResponse, nil)
 	}()
 	return result
 }

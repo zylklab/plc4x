@@ -42,63 +42,6 @@ func (d *DefaultPlcWriteRequestBuilder) SerializeWithWriteBuffer(ctx context.Con
 	if err := writeBuffer.PushContext("PlcWriteRequestBuilder"); err != nil {
 		return err
 	}
-
-	if d.writer != nil {
-		if serializableField, ok := d.writer.(utils.Serializable); ok {
-			if err := writeBuffer.PushContext("writer"); err != nil {
-				return err
-			}
-			if err := serializableField.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
-				return err
-			}
-			if err := writeBuffer.PopContext("writer"); err != nil {
-				return err
-			}
-		} else {
-			stringValue := fmt.Sprintf("%v", d.writer)
-			if err := writeBuffer.WriteString("writer", uint32(len(stringValue)*8), "UTF-8", stringValue); err != nil {
-				return err
-			}
-		}
-	}
-
-	if d.tagHandler != nil {
-		if serializableField, ok := d.tagHandler.(utils.Serializable); ok {
-			if err := writeBuffer.PushContext("tagHandler"); err != nil {
-				return err
-			}
-			if err := serializableField.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
-				return err
-			}
-			if err := writeBuffer.PopContext("tagHandler"); err != nil {
-				return err
-			}
-		} else {
-			stringValue := fmt.Sprintf("%v", d.tagHandler)
-			if err := writeBuffer.WriteString("tagHandler", uint32(len(stringValue)*8), "UTF-8", stringValue); err != nil {
-				return err
-			}
-		}
-	}
-
-	if d.valueHandler != nil {
-		if serializableField, ok := d.valueHandler.(utils.Serializable); ok {
-			if err := writeBuffer.PushContext("valueHandler"); err != nil {
-				return err
-			}
-			if err := serializableField.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
-				return err
-			}
-			if err := writeBuffer.PopContext("valueHandler"); err != nil {
-				return err
-			}
-		} else {
-			stringValue := fmt.Sprintf("%v", d.valueHandler)
-			if err := writeBuffer.WriteString("valueHandler", uint32(len(stringValue)*8), "UTF-8", stringValue); err != nil {
-				return err
-			}
-		}
-	}
 	if err := writeBuffer.PushContext("tagNames", utils.WithRenderAsList(true)); err != nil {
 		return err
 	}
@@ -113,7 +56,8 @@ func (d *DefaultPlcWriteRequestBuilder) SerializeWithWriteBuffer(ctx context.Con
 	if err := writeBuffer.PushContext("tagAddresses", utils.WithRenderAsList(true)); err != nil {
 		return err
 	}
-	for name, elem := range d.tagAddresses {
+	for _name, elem := range d.tagAddresses {
+		name := _name
 
 		if err := writeBuffer.WriteString(name, uint32(len(elem)*8), "UTF-8", elem); err != nil {
 			return err
@@ -125,9 +69,10 @@ func (d *DefaultPlcWriteRequestBuilder) SerializeWithWriteBuffer(ctx context.Con
 	if err := writeBuffer.PushContext("tags", utils.WithRenderAsList(true)); err != nil {
 		return err
 	}
-	for name, elem := range d.tags {
+	for _name, elem := range d.tags {
+		name := _name
 
-		var elem interface{} = elem
+		var elem any = elem
 		if serializable, ok := elem.(utils.Serializable); ok {
 			if err := writeBuffer.PushContext(name); err != nil {
 				return err
@@ -151,7 +96,8 @@ func (d *DefaultPlcWriteRequestBuilder) SerializeWithWriteBuffer(ctx context.Con
 	if err := writeBuffer.PushContext("values", utils.WithRenderAsList(true)); err != nil {
 		return err
 	}
-	for name, elem := range d.values {
+	for _name, elem := range d.values {
+		name := _name
 		_value := fmt.Sprintf("%v", elem)
 
 		if err := writeBuffer.WriteString(name, uint32(len(_value)*8), "UTF-8", _value); err != nil {
@@ -160,25 +106,6 @@ func (d *DefaultPlcWriteRequestBuilder) SerializeWithWriteBuffer(ctx context.Con
 	}
 	if err := writeBuffer.PopContext("values", utils.WithRenderAsList(true)); err != nil {
 		return err
-	}
-
-	if d.writeRequestInterceptor != nil {
-		if serializableField, ok := d.writeRequestInterceptor.(utils.Serializable); ok {
-			if err := writeBuffer.PushContext("writeRequestInterceptor"); err != nil {
-				return err
-			}
-			if err := serializableField.SerializeWithWriteBuffer(ctx, writeBuffer); err != nil {
-				return err
-			}
-			if err := writeBuffer.PopContext("writeRequestInterceptor"); err != nil {
-				return err
-			}
-		} else {
-			stringValue := fmt.Sprintf("%v", d.writeRequestInterceptor)
-			if err := writeBuffer.WriteString("writeRequestInterceptor", uint32(len(stringValue)*8), "UTF-8", stringValue); err != nil {
-				return err
-			}
-		}
 	}
 	if err := writeBuffer.PopContext("PlcWriteRequestBuilder"); err != nil {
 		return err

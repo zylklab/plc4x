@@ -22,16 +22,13 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.apache.plc4x.java.api.exceptions.PlcConnectionException;
 import org.apache.plc4x.java.api.exceptions.PlcException;
 import org.apache.plc4x.java.api.messages.*;
-import org.apache.plc4x.java.api.model.PlcConsumerRegistration;
 import org.apache.plc4x.java.api.model.PlcSubscriptionHandle;
 import org.apache.plc4x.java.api.model.PlcSubscriptionTag;
 import org.apache.plc4x.java.api.types.PlcResponseCode;
+import org.apache.plc4x.java.profinet.config.ConfigurationProfinetDevice;
 import org.apache.plc4x.java.profinet.config.ProfinetConfiguration;
 import org.apache.plc4x.java.profinet.context.ProfinetDriverContext;
-import org.apache.plc4x.java.profinet.device.ProfinetChannel;
-import org.apache.plc4x.java.profinet.device.ProfinetDevice;
-import org.apache.plc4x.java.profinet.device.ProfinetDeviceMessageHandler;
-import org.apache.plc4x.java.profinet.device.ProfinetSubscriptionHandle;
+import org.apache.plc4x.java.profinet.device.*;
 import org.apache.plc4x.java.profinet.discovery.ProfinetPlcDiscoverer;
 import org.apache.plc4x.java.profinet.readwrite.*;
 import org.apache.plc4x.java.profinet.tag.ProfinetTag;
@@ -40,7 +37,6 @@ import org.apache.plc4x.java.spi.Plc4xProtocolBase;
 import org.apache.plc4x.java.spi.configuration.HasConfiguration;
 import org.apache.plc4x.java.spi.messages.*;
 import org.apache.plc4x.java.spi.messages.utils.ResponseItem;
-import org.apache.plc4x.java.spi.model.DefaultPlcConsumerRegistration;
 import org.apache.plc4x.java.spi.model.DefaultPlcSubscriptionTag;
 import org.apache.plc4x.java.utils.rawsockets.netty.RawSocketChannel;
 import org.pcap4j.core.*;
@@ -48,19 +44,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.*;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
-import java.util.regex.Pattern;
 
 public class ProfinetProtocolLogic extends Plc4xProtocolBase<Ethernet_Frame> implements HasConfiguration<ProfinetConfiguration> {
 
     private final Logger LOGGER = LoggerFactory.getLogger(ProfinetProtocolLogic.class);
 
-    private ProfinetDriverContext driverContext;
+    private ProfinetDriverContext profinetDriverContext;
+    private Map<String, ProfinetDevice> devices = new HashMap<>();
 
     public ProfinetProtocolLogic() {
         super();
@@ -69,14 +63,30 @@ public class ProfinetProtocolLogic extends Plc4xProtocolBase<Ethernet_Frame> imp
 
     public void setDriverContext(ProfinetDriverContext driverContext) {
         super.setDriverContext(driverContext);
-        this.driverContext = driverContext;
+        this.profinetDriverContext = driverContext;
     }
 
     @Override
     public void setConfiguration(ProfinetConfiguration configuration) {
-        driverContext.setConfiguration(configuration);
-        driverContext.setHandler(new ProfinetDeviceMessageHandler(configuration.getDevices()));
-        for (Map.Entry<String, ProfinetDevice> device : configuration.getDevices().getConfiguredDevices().entrySet()) {
+        profinetDriverContext.setConfiguration(configuration);
+
+        Map<String, ConfigurationProfinetDevice> configuredDevices = configuration.getDevices().getConfiguredDevices();
+
+        for (Map.Entry<String, ConfigurationProfinetDevice> entry : configuredDevices.entrySet()) {
+            devices.put(entry.getKey(),
+                new ProfinetDevice(
+                    new ProfinetMessageWrapper(),
+                    entry.getValue().getDevicename(),
+                    entry.getValue().getDeviceaccess(),
+                    entry.getValue().getSubmodules(),
+                    entry.getValue().getGsdHandler()
+                )
+            );
+            devices.get(entry.getValue().getDevicename()).setIpAddress(entry.getValue().getIpaddress());
+        }
+
+        profinetDriverContext.setHandler(new ProfinetDeviceMessageHandler(devices));
+        for (Map.Entry<String, ProfinetDevice> device : devices.entrySet()) {
             device.getValue().getDeviceContext().setConfiguration(configuration);
         }
     }
@@ -87,23 +97,31 @@ public class ProfinetProtocolLogic extends Plc4xProtocolBase<Ethernet_Frame> imp
 
         // Open the receiving UDP port and keep it open.
         try {
-            driverContext.setSocket(new DatagramSocket(ProfinetDriverContext.DEFAULT_UDP_PORT));
+            profinetDriverContext.setSocket(new DatagramSocket(ProfinetDriverContext.DEFAULT_UDP_PORT));
         } catch (SocketException e) {
             throw new RuntimeException(e);
         }
 
-        driverContext.getHandler().setConfiguredDevices(driverContext.getConfiguration().getDevices());
+        profinetDriverContext.getHandler().setConfiguredDevices(devices);
 
-        for (Map.Entry<String, ProfinetDevice> device : driverContext.getConfiguration().getDevices().getConfiguredDevices().entrySet()) {
-            device.getValue().setContext(context, this.driverContext.getChannel());
+        for (Map.Entry<String, ProfinetDevice> device : devices.entrySet()) {
+            device.getValue().setContext(context, this.profinetDriverContext.getChannel());
         }
     }
 
+    /**
+     * Start a PN or LLDP discovery to find PN devices on the network.
+     * We pass in a driverContext handler, that checks if an incoming response has the information needed for
+     * connecting. It just ignores the rest ...
+     *
+     * @throws InterruptedException
+     * @throws PlcConnectionException
+     */
     private void onDeviceDiscovery() throws InterruptedException, PlcConnectionException {
-        ProfinetPlcDiscoverer discoverer = new ProfinetPlcDiscoverer(driverContext.getChannel());
-        driverContext.getChannel().setDiscoverer(discoverer);
+        ProfinetPlcDiscoverer discoverer = new ProfinetPlcDiscoverer(profinetDriverContext.getChannel());
+        profinetDriverContext.getChannel().setDiscoverer(discoverer);
         DefaultPlcDiscoveryRequest request = new DefaultPlcDiscoveryRequest(discoverer, new LinkedHashMap<>());
-        discoverer.ongoingDiscoverWithHandler(request, driverContext.getHandler(), 5000L, 30000L);
+        discoverer.ongoingDiscoverWithHandler(request, profinetDriverContext.getHandler(), 5000L, 30000L);
         waitForDeviceDiscovery();
     }
 
@@ -112,18 +130,30 @@ public class ProfinetProtocolLogic extends Plc4xProtocolBase<Ethernet_Frame> imp
         boolean discovered = false;
         int count = 0;
         while (!discovered) {
+            List<ProfinetDevice> missingDevices = new ArrayList<>();
             discovered = true;
-            for (Map.Entry<String, ProfinetDevice> device : driverContext.getConfiguration().getDevices().getConfiguredDevices().entrySet()) {
-                if (!device.getValue().hasLldpPdu() || !device.getValue().hasDcpPdu()) {
+            // Check for each device, if there was an incoming response for an LLDP and DCP search request.
+            // It seems that we need information from both the LLDP and the DCP response, so we need
+            // to check if both have been received.
+            for (Map.Entry<String, ProfinetDevice> device : devices.entrySet()) {
+                if (/*!device.getValue().hasLldpPdu() ||*/ !device.getValue().hasDcpPdu()) {
                     discovered = false;
+                    missingDevices.add(device.getValue());
                 }
             }
+            // If we've come past this more than 5 times (15 seconds), give up.
+            if (count > 5) {
+                for (ProfinetDevice missingDevice : missingDevices) {
+                    if(missingDevice.hasDcpPdu()/* && !missingDevice.hasLldpPdu()*/) {
+                        LOGGER.info("- For device {} we only managed to get a DCP discovery response, is the device possibly not connected via an LLDP enables switch?", missingDevice.getDeviceId());
+                    }
+                }
+                throw new PlcConnectionException("One device failed to respond to discovery packet");
+            }
+            // If at least one device hasn't responded yet, we'll wait for 3 more seconds and then check again.
             if (!discovered) {
                 Thread.sleep(3000L);
                 count += 1;
-            }
-            if (count > 5) {
-                throw new PlcConnectionException("One device failed to respond to discovery packet");
             }
         }
     }
@@ -135,7 +165,7 @@ public class ProfinetProtocolLogic extends Plc4xProtocolBase<Ethernet_Frame> imp
         Map<String, PlcResponseCode> codes = new HashMap<>();
         Map<String, List<PlcBrowseItem>> responseValues = new HashMap<>();
 
-        for (Map.Entry<String, ProfinetDevice> device : driverContext.getConfiguration().getDevices().getConfiguredDevices().entrySet()) {
+        for (Map.Entry<String, ProfinetDevice> device : devices.entrySet()) {
             device.getValue().browseTags(values);
         }
 
@@ -156,25 +186,27 @@ public class ProfinetProtocolLogic extends Plc4xProtocolBase<Ethernet_Frame> imp
             String localAddress = channel.getLocalAddress().toString().substring(1).split(":")[0];
             localIpAddress = InetAddress.getByName(localAddress);
             PcapNetworkInterface devByAddress = Pcaps.getDevByAddress(localIpAddress);
-            driverContext.setChannel(new ProfinetChannel(Collections.singletonList(devByAddress), driverContext.getConfiguration().getDevices()));
-            driverContext.getChannel().setConfiguredDevices(driverContext.getConfiguration().getDevices());
+            profinetDriverContext.setChannel(new ProfinetChannel(Collections.singletonList(devByAddress), devices));
+            profinetDriverContext.getChannel().setConfiguredDevices(devices);
+            // Set both the network-interface and the channel for this device
+            // TODO: Find out what they are needed for ...
+            for (Map.Entry<String, ProfinetDevice> entry : devices.entrySet()) {
+                entry.getValue().getDeviceContext().setNetworkInterface(new ProfinetNetworkInterface(devByAddress));
+                entry.getValue().getDeviceContext().setChannel(profinetDriverContext.getChannel());
+            }
         } catch (PcapNativeException | UnknownHostException e) {
             throw new RuntimeException(e);
         }
 
+        // Resolve missing information such as the remote ethernet mac address using LLDP or DCP auto-discovery.
         try {
             onDeviceDiscovery();
         } catch (PlcException | InterruptedException e) {
             throw new RuntimeException(e);
         }
 
-        for (Map.Entry<String, ProfinetDevice> device : driverContext.getConfiguration().getDevices().getConfiguredDevices().entrySet()) {
-            device.getValue().getDeviceContext().setChannel(driverContext.getChannel());
-            device.getValue().getDeviceContext().setLocalIpAddress(localIpAddress);
-        }
-
         try {
-            for (Map.Entry<String, ProfinetDevice> device : driverContext.getConfiguration().getDevices().getConfiguredDevices().entrySet()) {
+            for (Map.Entry<String, ProfinetDevice> device : devices.entrySet()) {
                 device.getValue().onConnect();
             }
             context.fireConnected();
@@ -212,7 +244,7 @@ public class ProfinetProtocolLogic extends Plc4xProtocolBase<Ethernet_Frame> imp
                 PlcSubscriptionTag tag = subscriptionRequest.getTag(fieldName);
                 final DefaultPlcSubscriptionTag fieldDefaultPlcSubscription = (DefaultPlcSubscriptionTag) subscriptionRequest.getTag(fieldName);
                 String deviceString = fieldDefaultPlcSubscription.getAddressString().split("\\.")[0].toUpperCase();
-                ProfinetDevice device = driverContext.getConfiguration().getDevices().getConfiguredDevices().get(deviceString);
+                ProfinetDevice device = devices.get(deviceString);
 
                 ProfinetSubscriptionHandle subscriptionHandle = new ProfinetSubscriptionHandle(device, fieldName, tag);
                 device.getDeviceContext().addSubscriptionHandle(fieldDefaultPlcSubscription.getAddressString(), subscriptionHandle);

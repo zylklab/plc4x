@@ -39,15 +39,15 @@ public class OpenProtocolMessageLinkLevelPositiveAcknowledgeRev1
     extends OpenProtocolMessageLinkLevelPositiveAcknowledge implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 1;
+  public Integer getRevision() {
+    return (int) 1;
   }
 
   // Properties.
   protected final Mid midNumber;
 
   public OpenProtocolMessageLinkLevelPositiveAcknowledgeRev1(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -75,7 +75,6 @@ public class OpenProtocolMessageLinkLevelPositiveAcknowledgeRev1
       WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageLinkLevelPositiveAcknowledgeRev1");
 
     // Simple Field (midNumber)
@@ -108,11 +107,9 @@ public class OpenProtocolMessageLinkLevelPositiveAcknowledgeRev1
 
   public static OpenProtocolMessageLinkLevelPositiveAcknowledgeBuilder
       staticParseOpenProtocolMessageLinkLevelPositiveAcknowledgeBuilder(
-          ReadBuffer readBuffer, Long revision) throws ParseException {
+          ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageLinkLevelPositiveAcknowledgeRev1");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     Mid midNumber =
@@ -137,7 +134,7 @@ public class OpenProtocolMessageLinkLevelPositiveAcknowledgeRev1
     }
 
     public OpenProtocolMessageLinkLevelPositiveAcknowledgeRev1 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

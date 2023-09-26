@@ -39,16 +39,16 @@ public class S7PayloadUserDataItemCpuFunctionAlarmAckResponse extends S7PayloadU
     implements Message {
 
   // Accessors for discriminator values.
+  public Byte getCpuFunctionGroup() {
+    return (byte) 0x04;
+  }
+
   public Byte getCpuFunctionType() {
     return (byte) 0x08;
   }
 
   public Short getCpuSubfunction() {
     return (short) 0x0b;
-  }
-
-  public Integer getDataLength() {
-    return 0;
   }
 
   // Properties.
@@ -58,9 +58,10 @@ public class S7PayloadUserDataItemCpuFunctionAlarmAckResponse extends S7PayloadU
   public S7PayloadUserDataItemCpuFunctionAlarmAckResponse(
       DataTransportErrorCode returnCode,
       DataTransportSize transportSize,
+      int dataLength,
       short functionId,
       List<Short> messageObjects) {
-    super(returnCode, transportSize);
+    super(returnCode, transportSize, dataLength);
     this.functionId = functionId;
     this.messageObjects = messageObjects;
   }
@@ -78,7 +79,6 @@ public class S7PayloadUserDataItemCpuFunctionAlarmAckResponse extends S7PayloadU
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("S7PayloadUserDataItemCpuFunctionAlarmAckResponse");
 
     // Simple Field (functionId)
@@ -121,11 +121,10 @@ public class S7PayloadUserDataItemCpuFunctionAlarmAckResponse extends S7PayloadU
   }
 
   public static S7PayloadUserDataItemBuilder staticParseS7PayloadUserDataItemBuilder(
-      ReadBuffer readBuffer, Byte cpuFunctionType, Short cpuSubfunction) throws ParseException {
+      ReadBuffer readBuffer, Byte cpuFunctionGroup, Byte cpuFunctionType, Short cpuSubfunction)
+      throws ParseException {
     readBuffer.pullContext("S7PayloadUserDataItemCpuFunctionAlarmAckResponse");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     short functionId = readSimpleField("functionId", readUnsignedShort(readBuffer, 8));
@@ -153,11 +152,11 @@ public class S7PayloadUserDataItemCpuFunctionAlarmAckResponse extends S7PayloadU
     }
 
     public S7PayloadUserDataItemCpuFunctionAlarmAckResponse build(
-        DataTransportErrorCode returnCode, DataTransportSize transportSize) {
+        DataTransportErrorCode returnCode, DataTransportSize transportSize, int dataLength) {
       S7PayloadUserDataItemCpuFunctionAlarmAckResponse
           s7PayloadUserDataItemCpuFunctionAlarmAckResponse =
               new S7PayloadUserDataItemCpuFunctionAlarmAckResponse(
-                  returnCode, transportSize, functionId, messageObjects);
+                  returnCode, transportSize, dataLength, functionId, messageObjects);
       return s7PayloadUserDataItemCpuFunctionAlarmAckResponse;
     }
   }

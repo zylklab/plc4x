@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetLandingCallStatus is the corresponding interface of BACnetLandingCallStatus
 type BACnetLandingCallStatus interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetFloorNumber returns FloorNumber (property field)
@@ -82,7 +85,7 @@ func NewBACnetLandingCallStatus(floorNumber BACnetContextTagUnsignedInteger, com
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetLandingCallStatus(structType interface{}) BACnetLandingCallStatus {
+func CastBACnetLandingCallStatus(structType any) BACnetLandingCallStatus {
 	if casted, ok := structType.(BACnetLandingCallStatus); ok {
 		return casted
 	}
@@ -117,13 +120,15 @@ func (m *_BACnetLandingCallStatus) GetLengthInBytes(ctx context.Context) uint16 
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetLandingCallStatusParse(theBytes []byte) (BACnetLandingCallStatus, error) {
-	return BACnetLandingCallStatusParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes))
+func BACnetLandingCallStatusParse(ctx context.Context, theBytes []byte) (BACnetLandingCallStatus, error) {
+	return BACnetLandingCallStatusParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes))
 }
 
 func BACnetLandingCallStatusParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer) (BACnetLandingCallStatus, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetLandingCallStatus"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetLandingCallStatus")
 	}
@@ -166,7 +171,7 @@ func BACnetLandingCallStatusParseWithBuffer(ctx context.Context, readBuffer util
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(3), BACnetDataType_CHARACTER_STRING)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'floorText' field of BACnetLandingCallStatus")
@@ -201,6 +206,8 @@ func (m *_BACnetLandingCallStatus) Serialize() ([]byte, error) {
 func (m *_BACnetLandingCallStatus) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetLandingCallStatus"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetLandingCallStatus")
 	}

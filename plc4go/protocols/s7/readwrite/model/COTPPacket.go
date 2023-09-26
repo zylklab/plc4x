@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // COTPPacket is the corresponding interface of COTPPacket
 type COTPPacket interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetTpduCode returns TpduCode (discriminator field)
@@ -102,7 +104,7 @@ func NewCOTPPacket(parameters []COTPParameter, payload S7Message, cotpLen uint16
 }
 
 // Deprecated: use the interface for direct cast
-func CastCOTPPacket(structType interface{}) COTPPacket {
+func CastCOTPPacket(structType any) COTPPacket {
 	if casted, ok := structType.(COTPPacket); ok {
 		return casted
 	}
@@ -143,13 +145,15 @@ func (m *_COTPPacket) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func COTPPacketParse(theBytes []byte, cotpLen uint16) (COTPPacket, error) {
-	return COTPPacketParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), cotpLen)
+func COTPPacketParse(ctx context.Context, theBytes []byte, cotpLen uint16) (COTPPacket, error) {
+	return COTPPacketParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), cotpLen)
 }
 
 func COTPPacketParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, cotpLen uint16) (COTPPacket, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("COTPPacket"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for COTPPacket")
 	}
@@ -177,7 +181,7 @@ func COTPPacketParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer,
 		InitializeParent(COTPPacket, []COTPParameter, S7Message)
 		GetParent() COTPPacket
 	}
-	var _childTemp interface{}
+	var _childTemp any
 	var _child COTPPacketChildSerializeRequirement
 	var typeSwitchError error
 	switch {
@@ -232,7 +236,7 @@ func COTPPacketParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer,
 		_val, _err := S7MessageParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'payload' field of COTPPacket")
@@ -259,12 +263,14 @@ func (pm *_COTPPacket) SerializeParent(ctx context.Context, writeBuffer utils.Wr
 	_ = m
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("COTPPacket"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for COTPPacket")
 	}
 
 	// Implicit Field (headerLength) (Used for parsing, but it's value is not stored as it's implicitly given by the objects content)
-	headerLength := uint8(uint8(uint8(m.GetLengthInBytes(ctx))) - uint8((uint8((utils.InlineIf((bool((m.GetPayload()) != (nil))), func() interface{} { return uint8((m.GetPayload()).GetLengthInBytes(ctx)) }, func() interface{} { return uint8(uint8(0)) }).(uint8))) + uint8(uint8(1)))))
+	headerLength := uint8(uint8(uint8(m.GetLengthInBytes(ctx))) - uint8((uint8((utils.InlineIf((bool((m.GetPayload()) != (nil))), func() any { return uint8((m.GetPayload()).GetLengthInBytes(ctx)) }, func() any { return uint8(uint8(0)) }).(uint8))) + uint8(uint8(1)))))
 	_headerLengthErr := writeBuffer.WriteUint8("headerLength", 8, (headerLength))
 	if _headerLengthErr != nil {
 		return errors.Wrap(_headerLengthErr, "Error serializing 'headerLength' field")
@@ -289,7 +295,7 @@ func (pm *_COTPPacket) SerializeParent(ctx context.Context, writeBuffer utils.Wr
 	}
 	for _curItem, _element := range m.GetParameters() {
 		_ = _curItem
-		arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetParameters()), _curItem)
+		arrayCtx := utils.CreateArrayContext(ctx, len(m.GetParameters()), _curItem)
 		_ = arrayCtx
 		_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 		if _elementErr != nil {

@@ -39,6 +39,10 @@ public class S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse extends S7P
     implements Message {
 
   // Accessors for discriminator values.
+  public Byte getCpuFunctionGroup() {
+    return (byte) 0x04;
+  }
+
   public Byte getCpuFunctionType() {
     return (byte) 0x08;
   }
@@ -47,13 +51,9 @@ public class S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse extends S7P
     return (short) 0x02;
   }
 
-  public Integer getDataLength() {
-    return (int) 0x00;
-  }
-
   public S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse(
-      DataTransportErrorCode returnCode, DataTransportSize transportSize) {
-    super(returnCode, transportSize);
+      DataTransportErrorCode returnCode, DataTransportSize transportSize, int dataLength) {
+    super(returnCode, transportSize, dataLength);
   }
 
   @Override
@@ -61,7 +61,6 @@ public class S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse extends S7P
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse");
 
     writeBuffer.popContext("S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse");
@@ -82,11 +81,10 @@ public class S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse extends S7P
   }
 
   public static S7PayloadUserDataItemBuilder staticParseS7PayloadUserDataItemBuilder(
-      ReadBuffer readBuffer, Byte cpuFunctionType, Short cpuSubfunction) throws ParseException {
+      ReadBuffer readBuffer, Byte cpuFunctionGroup, Byte cpuFunctionType, Short cpuSubfunction)
+      throws ParseException {
     readBuffer.pullContext("S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     readBuffer.closeContext("S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse");
@@ -100,11 +98,11 @@ public class S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse extends S7P
     public S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponseBuilderImpl() {}
 
     public S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse build(
-        DataTransportErrorCode returnCode, DataTransportSize transportSize) {
+        DataTransportErrorCode returnCode, DataTransportSize transportSize, int dataLength) {
       S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse
           s7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse =
               new S7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse(
-                  returnCode, transportSize);
+                  returnCode, transportSize, dataLength);
       return s7PayloadUserDataItemCpuFunctionMsgSubscriptionResponse;
     }
   }

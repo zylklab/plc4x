@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // NPDU is the corresponding interface of NPDU
 type NPDU interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetProtocolVersionNumber returns ProtocolVersionNumber (property field)
@@ -163,7 +165,7 @@ func (m *_NPDU) GetDestinationLengthAddon() uint16 {
 	_ = nlm
 	apdu := m.Apdu
 	_ = apdu
-	return uint16(utils.InlineIf(m.GetControl().GetDestinationSpecified(), func() interface{} { return uint16((uint16(uint16(3)) + uint16((*m.GetDestinationLength())))) }, func() interface{} { return uint16(uint16(0)) }).(uint16))
+	return uint16(utils.InlineIf(m.GetControl().GetDestinationSpecified(), func() any { return uint16((uint16(uint16(3)) + uint16((*m.GetDestinationLength())))) }, func() any { return uint16(uint16(0)) }).(uint16))
 }
 
 func (m *_NPDU) GetSourceLengthAddon() uint16 {
@@ -183,7 +185,7 @@ func (m *_NPDU) GetSourceLengthAddon() uint16 {
 	_ = nlm
 	apdu := m.Apdu
 	_ = apdu
-	return uint16(utils.InlineIf(m.GetControl().GetSourceSpecified(), func() interface{} { return uint16((uint16(uint16(3)) + uint16((*m.GetSourceLength())))) }, func() interface{} { return uint16(uint16(0)) }).(uint16))
+	return uint16(utils.InlineIf(m.GetControl().GetSourceSpecified(), func() any { return uint16((uint16(uint16(3)) + uint16((*m.GetSourceLength())))) }, func() any { return uint16(uint16(0)) }).(uint16))
 }
 
 func (m *_NPDU) GetPayloadSubtraction() uint16 {
@@ -203,7 +205,7 @@ func (m *_NPDU) GetPayloadSubtraction() uint16 {
 	_ = nlm
 	apdu := m.Apdu
 	_ = apdu
-	return uint16(uint16(uint16(2)) + uint16((uint16(uint16(m.GetSourceLengthAddon())+uint16(m.GetDestinationLengthAddon())) + uint16((utils.InlineIf((m.GetControl().GetDestinationSpecified()), func() interface{} { return uint16(uint16(1)) }, func() interface{} { return uint16(uint16(0)) }).(uint16))))))
+	return uint16(uint16(uint16(2)) + uint16((uint16(uint16(m.GetSourceLengthAddon())+uint16(m.GetDestinationLengthAddon())) + uint16((utils.InlineIf((m.GetControl().GetDestinationSpecified()), func() any { return uint16(uint16(1)) }, func() any { return uint16(uint16(0)) }).(uint16))))))
 }
 
 ///////////////////////
@@ -217,7 +219,7 @@ func NewNPDU(protocolVersionNumber uint8, control NPDUControl, destinationNetwor
 }
 
 // Deprecated: use the interface for direct cast
-func CastNPDU(structType interface{}) NPDU {
+func CastNPDU(structType any) NPDU {
 	if casted, ok := structType.(NPDU); ok {
 		return casted
 	}
@@ -298,13 +300,15 @@ func (m *_NPDU) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func NPDUParse(theBytes []byte, npduLength uint16) (NPDU, error) {
-	return NPDUParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), npduLength)
+func NPDUParse(ctx context.Context, theBytes []byte, npduLength uint16) (NPDU, error) {
+	return NPDUParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), npduLength)
 }
 
 func NPDUParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, npduLength uint16) (NPDU, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("NPDU"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for NPDU")
 	}
@@ -356,15 +360,15 @@ func NPDUParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, npduL
 		return nil, errors.Wrap(pullErr, "Error pulling for destinationAddress")
 	}
 	// Count array
-	destinationAddress := make([]uint8, utils.InlineIf(control.GetDestinationSpecified(), func() interface{} { return uint16((*destinationLength)) }, func() interface{} { return uint16(uint16(0)) }).(uint16))
+	destinationAddress := make([]uint8, utils.Max(utils.InlineIf(control.GetDestinationSpecified(), func() any { return uint16((*destinationLength)) }, func() any { return uint16(uint16(0)) }).(uint16), 0))
 	// This happens when the size is set conditional to 0
 	if len(destinationAddress) == 0 {
 		destinationAddress = nil
 	}
 	{
-		_numItems := uint16(utils.InlineIf(control.GetDestinationSpecified(), func() interface{} { return uint16((*destinationLength)) }, func() interface{} { return uint16(uint16(0)) }).(uint16))
+		_numItems := uint16(utils.Max(utils.InlineIf(control.GetDestinationSpecified(), func() any { return uint16((*destinationLength)) }, func() any { return uint16(uint16(0)) }).(uint16), 0))
 		for _curItem := uint16(0); _curItem < _numItems; _curItem++ {
-			arrayCtx := spiContext.CreateArrayContext(ctx, int(_numItems), int(_curItem))
+			arrayCtx := utils.CreateArrayContext(ctx, int(_numItems), int(_curItem))
 			_ = arrayCtx
 			_ = _curItem
 			_item, _err := readBuffer.ReadUint8("", 8)
@@ -379,7 +383,7 @@ func NPDUParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, npduL
 	}
 
 	// Virtual field
-	_destinationLengthAddon := utils.InlineIf(control.GetDestinationSpecified(), func() interface{} { return uint16((uint16(uint16(3)) + uint16((*destinationLength)))) }, func() interface{} { return uint16(uint16(0)) }).(uint16)
+	_destinationLengthAddon := utils.InlineIf(control.GetDestinationSpecified(), func() any { return uint16((uint16(uint16(3)) + uint16((*destinationLength)))) }, func() any { return uint16(uint16(0)) }).(uint16)
 	destinationLengthAddon := uint16(_destinationLengthAddon)
 	_ = destinationLengthAddon
 
@@ -408,15 +412,15 @@ func NPDUParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, npduL
 		return nil, errors.Wrap(pullErr, "Error pulling for sourceAddress")
 	}
 	// Count array
-	sourceAddress := make([]uint8, utils.InlineIf(control.GetSourceSpecified(), func() interface{} { return uint16((*sourceLength)) }, func() interface{} { return uint16(uint16(0)) }).(uint16))
+	sourceAddress := make([]uint8, utils.Max(utils.InlineIf(control.GetSourceSpecified(), func() any { return uint16((*sourceLength)) }, func() any { return uint16(uint16(0)) }).(uint16), 0))
 	// This happens when the size is set conditional to 0
 	if len(sourceAddress) == 0 {
 		sourceAddress = nil
 	}
 	{
-		_numItems := uint16(utils.InlineIf(control.GetSourceSpecified(), func() interface{} { return uint16((*sourceLength)) }, func() interface{} { return uint16(uint16(0)) }).(uint16))
+		_numItems := uint16(utils.Max(utils.InlineIf(control.GetSourceSpecified(), func() any { return uint16((*sourceLength)) }, func() any { return uint16(uint16(0)) }).(uint16), 0))
 		for _curItem := uint16(0); _curItem < _numItems; _curItem++ {
-			arrayCtx := spiContext.CreateArrayContext(ctx, int(_numItems), int(_curItem))
+			arrayCtx := utils.CreateArrayContext(ctx, int(_numItems), int(_curItem))
 			_ = arrayCtx
 			_ = _curItem
 			_item, _err := readBuffer.ReadUint8("", 8)
@@ -431,7 +435,7 @@ func NPDUParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, npduL
 	}
 
 	// Virtual field
-	_sourceLengthAddon := utils.InlineIf(control.GetSourceSpecified(), func() interface{} { return uint16((uint16(uint16(3)) + uint16((*sourceLength)))) }, func() interface{} { return uint16(uint16(0)) }).(uint16)
+	_sourceLengthAddon := utils.InlineIf(control.GetSourceSpecified(), func() any { return uint16((uint16(uint16(3)) + uint16((*sourceLength)))) }, func() any { return uint16(uint16(0)) }).(uint16)
 	sourceLengthAddon := uint16(_sourceLengthAddon)
 	_ = sourceLengthAddon
 
@@ -446,7 +450,7 @@ func NPDUParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, npduL
 	}
 
 	// Virtual field
-	_payloadSubtraction := uint16(uint16(2)) + uint16((uint16(uint16(sourceLengthAddon)+uint16(destinationLengthAddon)) + uint16((utils.InlineIf((control.GetDestinationSpecified()), func() interface{} { return uint16(uint16(1)) }, func() interface{} { return uint16(uint16(0)) }).(uint16)))))
+	_payloadSubtraction := uint16(uint16(2)) + uint16((uint16(uint16(sourceLengthAddon)+uint16(destinationLengthAddon)) + uint16((utils.InlineIf((control.GetDestinationSpecified()), func() any { return uint16(uint16(1)) }, func() any { return uint16(uint16(0)) }).(uint16)))))
 	payloadSubtraction := uint16(_payloadSubtraction)
 	_ = payloadSubtraction
 
@@ -460,7 +464,7 @@ func NPDUParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, npduL
 		_val, _err := NLMParseWithBuffer(ctx, readBuffer, uint16(npduLength)-uint16(payloadSubtraction))
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'nlm' field of NPDU")
@@ -482,7 +486,7 @@ func NPDUParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, npduL
 		_val, _err := APDUParseWithBuffer(ctx, readBuffer, uint16(npduLength)-uint16(payloadSubtraction))
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'apdu' field of NPDU")
@@ -531,6 +535,8 @@ func (m *_NPDU) Serialize() ([]byte, error) {
 func (m *_NPDU) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("NPDU"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for NPDU")
 	}
@@ -589,6 +595,8 @@ func (m *_NPDU) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.
 		return errors.Wrap(popErr, "Error popping for destinationAddress")
 	}
 	// Virtual field
+	destinationLengthAddon := m.GetDestinationLengthAddon()
+	_ = destinationLengthAddon
 	if _destinationLengthAddonErr := writeBuffer.WriteVirtual(ctx, "destinationLengthAddon", m.GetDestinationLengthAddon()); _destinationLengthAddonErr != nil {
 		return errors.Wrap(_destinationLengthAddonErr, "Error serializing 'destinationLengthAddon' field")
 	}
@@ -628,6 +636,8 @@ func (m *_NPDU) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.
 		return errors.Wrap(popErr, "Error popping for sourceAddress")
 	}
 	// Virtual field
+	sourceLengthAddon := m.GetSourceLengthAddon()
+	_ = sourceLengthAddon
 	if _sourceLengthAddonErr := writeBuffer.WriteVirtual(ctx, "sourceLengthAddon", m.GetSourceLengthAddon()); _sourceLengthAddonErr != nil {
 		return errors.Wrap(_sourceLengthAddonErr, "Error serializing 'sourceLengthAddon' field")
 	}
@@ -642,6 +652,8 @@ func (m *_NPDU) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.
 		}
 	}
 	// Virtual field
+	payloadSubtraction := m.GetPayloadSubtraction()
+	_ = payloadSubtraction
 	if _payloadSubtractionErr := writeBuffer.WriteVirtual(ctx, "payloadSubtraction", m.GetPayloadSubtraction()); _payloadSubtractionErr != nil {
 		return errors.Wrap(_payloadSubtractionErr, "Error serializing 'payloadSubtraction' field")
 	}

@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetConfirmedServiceRequestWriteProperty is the corresponding interface of BACnetConfirmedServiceRequestWriteProperty
 type BACnetConfirmedServiceRequestWriteProperty interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConfirmedServiceRequest
@@ -128,7 +131,7 @@ func NewBACnetConfirmedServiceRequestWriteProperty(objectIdentifier BACnetContex
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConfirmedServiceRequestWriteProperty(structType interface{}) BACnetConfirmedServiceRequestWriteProperty {
+func CastBACnetConfirmedServiceRequestWriteProperty(structType any) BACnetConfirmedServiceRequestWriteProperty {
 	if casted, ok := structType.(BACnetConfirmedServiceRequestWriteProperty); ok {
 		return casted
 	}
@@ -171,13 +174,15 @@ func (m *_BACnetConfirmedServiceRequestWriteProperty) GetLengthInBytes(ctx conte
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConfirmedServiceRequestWritePropertyParse(theBytes []byte, serviceRequestLength uint32) (BACnetConfirmedServiceRequestWriteProperty, error) {
-	return BACnetConfirmedServiceRequestWritePropertyParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), serviceRequestLength)
+func BACnetConfirmedServiceRequestWritePropertyParse(ctx context.Context, theBytes []byte, serviceRequestLength uint32) (BACnetConfirmedServiceRequestWriteProperty, error) {
+	return BACnetConfirmedServiceRequestWritePropertyParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), serviceRequestLength)
 }
 
 func BACnetConfirmedServiceRequestWritePropertyParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, serviceRequestLength uint32) (BACnetConfirmedServiceRequestWriteProperty, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConfirmedServiceRequestWriteProperty"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConfirmedServiceRequestWriteProperty")
 	}
@@ -220,7 +225,7 @@ func BACnetConfirmedServiceRequestWritePropertyParseWithBuffer(ctx context.Conte
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(2), BACnetDataType_UNSIGNED_INTEGER)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'arrayIndex' field of BACnetConfirmedServiceRequestWriteProperty")
@@ -236,7 +241,7 @@ func BACnetConfirmedServiceRequestWritePropertyParseWithBuffer(ctx context.Conte
 	if pullErr := readBuffer.PullContext("propertyValue"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for propertyValue")
 	}
-	_propertyValue, _propertyValueErr := BACnetConstructedDataParseWithBuffer(ctx, readBuffer, uint8(uint8(3)), BACnetObjectType(objectIdentifier.GetObjectType()), BACnetPropertyIdentifier(propertyIdentifier.GetValue()), (CastBACnetTagPayloadUnsignedInteger(utils.InlineIf(bool((arrayIndex) != (nil)), func() interface{} { return CastBACnetTagPayloadUnsignedInteger((arrayIndex).GetPayload()) }, func() interface{} { return CastBACnetTagPayloadUnsignedInteger(nil) }))))
+	_propertyValue, _propertyValueErr := BACnetConstructedDataParseWithBuffer(ctx, readBuffer, uint8(uint8(3)), BACnetObjectType(objectIdentifier.GetObjectType()), BACnetPropertyIdentifier(propertyIdentifier.GetValue()), (CastBACnetTagPayloadUnsignedInteger(utils.InlineIf(bool((arrayIndex) != (nil)), func() any { return CastBACnetTagPayloadUnsignedInteger((arrayIndex).GetPayload()) }, func() any { return CastBACnetTagPayloadUnsignedInteger(nil) }))))
 	if _propertyValueErr != nil {
 		return nil, errors.Wrap(_propertyValueErr, "Error parsing 'propertyValue' field of BACnetConfirmedServiceRequestWriteProperty")
 	}
@@ -255,7 +260,7 @@ func BACnetConfirmedServiceRequestWritePropertyParseWithBuffer(ctx context.Conte
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(4), BACnetDataType_UNSIGNED_INTEGER)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'priority' field of BACnetConfirmedServiceRequestWriteProperty")
@@ -297,6 +302,8 @@ func (m *_BACnetConfirmedServiceRequestWriteProperty) Serialize() ([]byte, error
 func (m *_BACnetConfirmedServiceRequestWriteProperty) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConfirmedServiceRequestWriteProperty"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConfirmedServiceRequestWriteProperty")

@@ -74,7 +74,6 @@ public class AssociatedValueType implements Message {
   public void serialize(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("AssociatedValueType");
 
     // Simple Field (returnCode)
@@ -129,7 +128,7 @@ public class AssociatedValueType implements Message {
     lengthInBits += 8;
 
     // Manual Field (valueLength)
-    lengthInBits += 16;
+    lengthInBits += 2;
 
     // Array field
     if (data != null) {
@@ -148,8 +147,6 @@ public class AssociatedValueType implements Message {
   public static AssociatedValueType staticParse(ReadBuffer readBuffer) throws ParseException {
     readBuffer.pullContext("AssociatedValueType");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     DataTransportErrorCode returnCode =
@@ -173,7 +170,7 @@ public class AssociatedValueType implements Message {
             () ->
                 (int)
                     (org.apache.plc4x.java.s7.readwrite.utils.StaticHelper.RightShift3(
-                        readBuffer)));
+                        readBuffer, transportSize)));
 
     List<Short> data =
         readCountArrayField(

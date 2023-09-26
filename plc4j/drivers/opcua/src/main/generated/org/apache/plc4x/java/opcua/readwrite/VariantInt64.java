@@ -38,8 +38,8 @@ import org.apache.plc4x.java.spi.generation.*;
 public class VariantInt64 extends Variant implements Message {
 
   // Accessors for discriminator values.
-  public Short getVariantType() {
-    return (short) 8;
+  public Byte getVariantType() {
+    return (byte) 8;
   }
 
   // Properties.
@@ -70,7 +70,6 @@ public class VariantInt64 extends Variant implements Message {
   protected void serializeVariantChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("VariantInt64");
 
     // Optional Field (arrayLength) (Can be skipped, if the value is null)
@@ -110,8 +109,6 @@ public class VariantInt64 extends Variant implements Message {
       ReadBuffer readBuffer, Boolean arrayLengthSpecified) throws ParseException {
     readBuffer.pullContext("VariantInt64");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     Integer arrayLength =

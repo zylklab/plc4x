@@ -35,10 +35,10 @@ public class BacnetServerAdapter extends ChannelInboundHandlerAdapter {
     private Context context;
 
     // TODO: make configurable
-    private static int DEVICE_INSTANCE = 4711;
+    private static final int DEVICE_INSTANCE = 4711;
 
     // TODO: make configurable
-    private static int DEVICE_ID = 815;
+    private static final int DEVICE_ID = 815;
 
     public BacnetServerAdapter(Context context) {
         LOGGER.info("Creating adapter with context {}", context);
@@ -169,7 +169,7 @@ public class BacnetServerAdapter extends ChannelInboundHandlerAdapter {
                         null,
                         null,
                         new BACnetServiceAckReadProperty(
-                            StaticHelper.createBACnetContextTagObjectIdentifier((byte) 0, 2, 1L),
+                            StaticHelper.createBACnetContextTagObjectIdentifier((byte) 0, (short) 2, 1),
                             StaticHelper.createBACnetPropertyIdentifierTagged((byte) 1, 85),
                             null,
                             new BACnetConstructedDataAnalogValuePresentValue(

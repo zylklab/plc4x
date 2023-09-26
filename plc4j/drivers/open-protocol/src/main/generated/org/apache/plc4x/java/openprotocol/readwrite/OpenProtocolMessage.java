@@ -44,7 +44,7 @@ public abstract class OpenProtocolMessage implements Message {
   public static final Short END = 0x00;
 
   // Properties.
-  protected final Long midRevision;
+  protected final Integer midRevision;
   protected final Short noAckFlag;
   protected final Integer targetStationId;
   protected final Integer targetSpindleId;
@@ -53,7 +53,7 @@ public abstract class OpenProtocolMessage implements Message {
   protected final Short messagePartNumber;
 
   public OpenProtocolMessage(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -70,7 +70,7 @@ public abstract class OpenProtocolMessage implements Message {
     this.messagePartNumber = messagePartNumber;
   }
 
-  public Long getMidRevision() {
+  public Integer getMidRevision() {
     return midRevision;
   }
 
@@ -108,7 +108,6 @@ public abstract class OpenProtocolMessage implements Message {
   public void serialize(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessage");
 
     // Implicit Field (length) (Used for parsing, but its value is not stored as it's implicitly
@@ -129,7 +128,7 @@ public abstract class OpenProtocolMessage implements Message {
     writeOptionalField(
         "midRevision",
         midRevision,
-        writeUnsignedLong(writeBuffer, 24),
+        writeUnsignedInt(writeBuffer, 24),
         WithOption.WithEncoding("ASCII"),
         WithOption.WithNullBytesHex("202020"));
 
@@ -243,25 +242,23 @@ public abstract class OpenProtocolMessage implements Message {
       throw new PlcRuntimeException(
           "Wrong number of arguments, expected 1, but got " + args.length);
     }
-    Long revision;
-    if (args[0] instanceof Long) {
-      revision = (Long) args[0];
+    Integer revision;
+    if (args[0] instanceof Integer) {
+      revision = (Integer) args[0];
     } else if (args[0] instanceof String) {
-      revision = Long.valueOf((String) args[0]);
+      revision = Integer.valueOf((String) args[0]);
     } else {
       throw new PlcRuntimeException(
-          "Argument 0 expected to be of type Long or a string which is parseable but was "
+          "Argument 0 expected to be of type Integer or a string which is parseable but was "
               + args[0].getClass().getName());
     }
     return staticParse(readBuffer, revision);
   }
 
-  public static OpenProtocolMessage staticParse(ReadBuffer readBuffer, Long revision)
+  public static OpenProtocolMessage staticParse(ReadBuffer readBuffer, Integer revision)
       throws ParseException {
     readBuffer.pullContext("OpenProtocolMessage");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     long length =
@@ -274,10 +271,10 @@ public abstract class OpenProtocolMessage implements Message {
             new DataReaderEnumDefault<>(Mid::enumForValue, readUnsignedLong(readBuffer, 32)),
             WithOption.WithEncoding("ASCII"));
 
-    Long midRevision =
+    Integer midRevision =
         readOptionalField(
             "midRevision",
-            readUnsignedLong(readBuffer, 24),
+            readUnsignedInt(readBuffer, 24),
             WithOption.WithEncoding("ASCII"),
             WithOption.WithNullBytesHex("202020"));
 
@@ -518,7 +515,7 @@ public abstract class OpenProtocolMessage implements Message {
 
   public interface OpenProtocolMessageBuilder {
     OpenProtocolMessage build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

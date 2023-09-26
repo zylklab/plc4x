@@ -39,17 +39,17 @@ public class OpenProtocolMessageApplicationGenericUnsubscribeRev1
     extends OpenProtocolMessageApplicationGenericUnsubscribe implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 1;
+  public Integer getRevision() {
+    return (int) 1;
   }
 
   // Properties.
   protected final Mid subscriptionMid;
-  protected final long extraDataRevision;
+  protected final int extraDataRevision;
   protected final byte[] extraData;
 
   public OpenProtocolMessageApplicationGenericUnsubscribeRev1(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -57,7 +57,7 @@ public class OpenProtocolMessageApplicationGenericUnsubscribeRev1
       Short numberOfMessageParts,
       Short messagePartNumber,
       Mid subscriptionMid,
-      long extraDataRevision,
+      int extraDataRevision,
       byte[] extraData) {
     super(
         midRevision,
@@ -76,7 +76,7 @@ public class OpenProtocolMessageApplicationGenericUnsubscribeRev1
     return subscriptionMid;
   }
 
-  public long getExtraDataRevision() {
+  public int getExtraDataRevision() {
     return extraDataRevision;
   }
 
@@ -89,7 +89,6 @@ public class OpenProtocolMessageApplicationGenericUnsubscribeRev1
       WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageApplicationGenericUnsubscribeRev1");
 
     // Simple Field (subscriptionMid)
@@ -104,7 +103,7 @@ public class OpenProtocolMessageApplicationGenericUnsubscribeRev1
     writeSimpleField(
         "extraDataRevision",
         extraDataRevision,
-        writeUnsignedLong(writeBuffer, 24),
+        writeUnsignedInt(writeBuffer, 24),
         WithOption.WithEncoding("ASCII"));
 
     // Implicit Field (extraDataLength) (Used for parsing, but its value is not stored as it's
@@ -152,11 +151,9 @@ public class OpenProtocolMessageApplicationGenericUnsubscribeRev1
 
   public static OpenProtocolMessageApplicationGenericUnsubscribeBuilder
       staticParseOpenProtocolMessageApplicationGenericUnsubscribeBuilder(
-          ReadBuffer readBuffer, Long revision) throws ParseException {
+          ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageApplicationGenericUnsubscribeRev1");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     Mid subscriptionMid =
@@ -166,11 +163,9 @@ public class OpenProtocolMessageApplicationGenericUnsubscribeRev1
             new DataReaderEnumDefault<>(Mid::enumForValue, readUnsignedLong(readBuffer, 32)),
             WithOption.WithEncoding("ASCII"));
 
-    long extraDataRevision =
+    int extraDataRevision =
         readSimpleField(
-            "extraDataRevision",
-            readUnsignedLong(readBuffer, 24),
-            WithOption.WithEncoding("ASCII"));
+            "extraDataRevision", readUnsignedInt(readBuffer, 24), WithOption.WithEncoding("ASCII"));
 
     int extraDataLength =
         readImplicitField(
@@ -188,18 +183,18 @@ public class OpenProtocolMessageApplicationGenericUnsubscribeRev1
       implements OpenProtocolMessageApplicationGenericUnsubscribe
           .OpenProtocolMessageApplicationGenericUnsubscribeBuilder {
     private final Mid subscriptionMid;
-    private final long extraDataRevision;
+    private final int extraDataRevision;
     private final byte[] extraData;
 
     public OpenProtocolMessageApplicationGenericUnsubscribeRev1BuilderImpl(
-        Mid subscriptionMid, long extraDataRevision, byte[] extraData) {
+        Mid subscriptionMid, int extraDataRevision, byte[] extraData) {
       this.subscriptionMid = subscriptionMid;
       this.extraDataRevision = extraDataRevision;
       this.extraData = extraData;
     }
 
     public OpenProtocolMessageApplicationGenericUnsubscribeRev1 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

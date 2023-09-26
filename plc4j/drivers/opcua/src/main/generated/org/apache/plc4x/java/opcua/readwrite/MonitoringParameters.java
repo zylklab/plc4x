@@ -88,7 +88,6 @@ public class MonitoringParameters extends ExtensionObjectDefinition implements M
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("MonitoringParameters");
 
     // Simple Field (clientHandle)
@@ -104,7 +103,7 @@ public class MonitoringParameters extends ExtensionObjectDefinition implements M
     writeSimpleField("queueSize", queueSize, writeUnsignedLong(writeBuffer, 32));
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 7));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 7));
 
     // Simple Field (discardOldest)
     writeSimpleField("discardOldest", discardOldest, writeBoolean(writeBuffer));
@@ -148,8 +147,6 @@ public class MonitoringParameters extends ExtensionObjectDefinition implements M
       ReadBuffer readBuffer, String identifier) throws ParseException {
     readBuffer.pullContext("MonitoringParameters");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     long clientHandle = readSimpleField("clientHandle", readUnsignedLong(readBuffer, 32));
@@ -164,8 +161,8 @@ public class MonitoringParameters extends ExtensionObjectDefinition implements M
 
     long queueSize = readSimpleField("queueSize", readUnsignedLong(readBuffer, 32));
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 7), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 7), (byte) 0x00);
 
     boolean discardOldest = readSimpleField("discardOldest", readBoolean(readBuffer));
 

@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // APDUConfirmedRequest is the corresponding interface of APDUConfirmedRequest
 type APDUConfirmedRequest interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	APDU
@@ -175,7 +178,7 @@ func (m *_APDUConfirmedRequest) GetApduHeaderReduction() uint16 {
 	_ = serviceRequest
 	segmentServiceChoice := m.SegmentServiceChoice
 	_ = segmentServiceChoice
-	return uint16(uint16(uint16(3)) + uint16((utils.InlineIf(m.GetSegmentedMessage(), func() interface{} { return uint16(uint16(2)) }, func() interface{} { return uint16(uint16(0)) }).(uint16))))
+	return uint16(uint16(uint16(3)) + uint16((utils.InlineIf(m.GetSegmentedMessage(), func() any { return uint16(uint16(2)) }, func() any { return uint16(uint16(0)) }).(uint16))))
 }
 
 func (m *_APDUConfirmedRequest) GetSegmentReduction() uint16 {
@@ -189,7 +192,7 @@ func (m *_APDUConfirmedRequest) GetSegmentReduction() uint16 {
 	_ = serviceRequest
 	segmentServiceChoice := m.SegmentServiceChoice
 	_ = segmentServiceChoice
-	return uint16(utils.InlineIf((bool((m.GetSegmentServiceChoice()) != (nil))), func() interface{} { return uint16((uint16(m.GetApduHeaderReduction()) + uint16(uint16(1)))) }, func() interface{} { return uint16(m.GetApduHeaderReduction()) }).(uint16))
+	return uint16(utils.InlineIf((bool((m.GetSegmentServiceChoice()) != (nil))), func() any { return uint16((uint16(m.GetApduHeaderReduction()) + uint16(uint16(1)))) }, func() any { return uint16(m.GetApduHeaderReduction()) }).(uint16))
 }
 
 ///////////////////////
@@ -218,7 +221,7 @@ func NewAPDUConfirmedRequest(segmentedMessage bool, moreFollows bool, segmentedR
 }
 
 // Deprecated: use the interface for direct cast
-func CastAPDUConfirmedRequest(structType interface{}) APDUConfirmedRequest {
+func CastAPDUConfirmedRequest(structType any) APDUConfirmedRequest {
 	if casted, ok := structType.(APDUConfirmedRequest); ok {
 		return casted
 	}
@@ -292,13 +295,15 @@ func (m *_APDUConfirmedRequest) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func APDUConfirmedRequestParse(theBytes []byte, apduLength uint16) (APDUConfirmedRequest, error) {
-	return APDUConfirmedRequestParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), apduLength)
+func APDUConfirmedRequestParse(ctx context.Context, theBytes []byte, apduLength uint16) (APDUConfirmedRequest, error) {
+	return APDUConfirmedRequestParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), apduLength)
 }
 
 func APDUConfirmedRequestParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, apduLength uint16) (APDUConfirmedRequest, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("APDUConfirmedRequest"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for APDUConfirmedRequest")
 	}
@@ -334,7 +339,7 @@ func APDUConfirmedRequestParseWithBuffer(ctx context.Context, readBuffer utils.R
 			return nil, errors.Wrap(_err, "Error parsing 'reserved' field of APDUConfirmedRequest")
 		}
 		if reserved != uint8(0) {
-			Plc4xModelLog.Info().Fields(map[string]interface{}{
+			log.Info().Fields(map[string]any{
 				"expected value": uint8(0),
 				"got value":      reserved,
 			}).Msg("Got unexpected response for reserved field.")
@@ -397,7 +402,7 @@ func APDUConfirmedRequestParseWithBuffer(ctx context.Context, readBuffer utils.R
 	}
 
 	// Virtual field
-	_apduHeaderReduction := uint16(uint16(3)) + uint16((utils.InlineIf(segmentedMessage, func() interface{} { return uint16(uint16(2)) }, func() interface{} { return uint16(uint16(0)) }).(uint16)))
+	_apduHeaderReduction := uint16(uint16(3)) + uint16((utils.InlineIf(segmentedMessage, func() any { return uint16(uint16(2)) }, func() any { return uint16(uint16(0)) }).(uint16)))
 	apduHeaderReduction := uint16(_apduHeaderReduction)
 	_ = apduHeaderReduction
 
@@ -411,7 +416,7 @@ func APDUConfirmedRequestParseWithBuffer(ctx context.Context, readBuffer utils.R
 		_val, _err := BACnetConfirmedServiceRequestParseWithBuffer(ctx, readBuffer, uint32(apduLength)-uint32(apduHeaderReduction))
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'serviceRequest' field of APDUConfirmedRequest")
@@ -445,13 +450,13 @@ func APDUConfirmedRequestParseWithBuffer(ctx context.Context, readBuffer utils.R
 	}
 
 	// Virtual field
-	_segmentReduction := utils.InlineIf((bool((segmentServiceChoice) != (nil))), func() interface{} { return uint16((uint16(apduHeaderReduction) + uint16(uint16(1)))) }, func() interface{} { return uint16(apduHeaderReduction) }).(uint16)
+	_segmentReduction := utils.InlineIf((bool((segmentServiceChoice) != (nil))), func() any { return uint16((uint16(apduHeaderReduction) + uint16(uint16(1)))) }, func() any { return uint16(apduHeaderReduction) }).(uint16)
 	segmentReduction := uint16(_segmentReduction)
 	_ = segmentReduction
 	// Byte Array field (segment)
-	numberOfBytessegment := int(utils.InlineIf(segmentedMessage, func() interface{} {
-		return uint16((utils.InlineIf((bool((apduLength) > (0))), func() interface{} { return uint16((uint16(apduLength) - uint16(segmentReduction))) }, func() interface{} { return uint16(uint16(0)) }).(uint16)))
-	}, func() interface{} { return uint16(uint16(0)) }).(uint16))
+	numberOfBytessegment := int(utils.InlineIf(segmentedMessage, func() any {
+		return uint16((utils.InlineIf((bool((apduLength) > (0))), func() any { return uint16((uint16(apduLength) - uint16(segmentReduction))) }, func() any { return uint16(uint16(0)) }).(uint16)))
+	}, func() any { return uint16(uint16(0)) }).(uint16))
 	segment, _readArrayErr := readBuffer.ReadByteArray("segment", numberOfBytessegment)
 	if _readArrayErr != nil {
 		return nil, errors.Wrap(_readArrayErr, "Error parsing 'segment' field of APDUConfirmedRequest")
@@ -494,6 +499,8 @@ func (m *_APDUConfirmedRequest) Serialize() ([]byte, error) {
 func (m *_APDUConfirmedRequest) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("APDUConfirmedRequest"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for APDUConfirmedRequest")
@@ -524,7 +531,7 @@ func (m *_APDUConfirmedRequest) SerializeWithWriteBuffer(ctx context.Context, wr
 		{
 			var reserved uint8 = uint8(0)
 			if m.reservedField0 != nil {
-				Plc4xModelLog.Info().Fields(map[string]interface{}{
+				log.Info().Fields(map[string]any{
 					"expected value": uint8(0),
 					"got value":      reserved,
 				}).Msg("Overriding reserved field with unexpected value.")
@@ -587,6 +594,8 @@ func (m *_APDUConfirmedRequest) SerializeWithWriteBuffer(ctx context.Context, wr
 			}
 		}
 		// Virtual field
+		apduHeaderReduction := m.GetApduHeaderReduction()
+		_ = apduHeaderReduction
 		if _apduHeaderReductionErr := writeBuffer.WriteVirtual(ctx, "apduHeaderReduction", m.GetApduHeaderReduction()); _apduHeaderReductionErr != nil {
 			return errors.Wrap(_apduHeaderReductionErr, "Error serializing 'apduHeaderReduction' field")
 		}
@@ -623,6 +632,8 @@ func (m *_APDUConfirmedRequest) SerializeWithWriteBuffer(ctx context.Context, wr
 			}
 		}
 		// Virtual field
+		segmentReduction := m.GetSegmentReduction()
+		_ = segmentReduction
 		if _segmentReductionErr := writeBuffer.WriteVirtual(ctx, "segmentReduction", m.GetSegmentReduction()); _segmentReductionErr != nil {
 			return errors.Wrap(_segmentReductionErr, "Error serializing 'segmentReduction' field")
 		}

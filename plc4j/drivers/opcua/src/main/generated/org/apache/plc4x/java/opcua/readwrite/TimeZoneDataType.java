@@ -65,14 +65,13 @@ public class TimeZoneDataType extends ExtensionObjectDefinition implements Messa
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("TimeZoneDataType");
 
     // Simple Field (offset)
     writeSimpleField("offset", offset, writeSignedShort(writeBuffer, 16));
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 7));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 7));
 
     // Simple Field (daylightSavingInOffset)
     writeSimpleField("daylightSavingInOffset", daylightSavingInOffset, writeBoolean(writeBuffer));
@@ -107,14 +106,12 @@ public class TimeZoneDataType extends ExtensionObjectDefinition implements Messa
       ReadBuffer readBuffer, String identifier) throws ParseException {
     readBuffer.pullContext("TimeZoneDataType");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     short offset = readSimpleField("offset", readSignedShort(readBuffer, 16));
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 7), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 7), (byte) 0x00);
 
     boolean daylightSavingInOffset =
         readSimpleField("daylightSavingInOffset", readBoolean(readBuffer));

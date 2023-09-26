@@ -42,8 +42,8 @@ public class ModbusPDUReadHoldingRegistersRequest extends ModbusPDU implements M
     return (boolean) false;
   }
 
-  public Short getFunctionFlag() {
-    return (short) 0x03;
+  public Byte getFunctionFlag() {
+    return (byte) 0x03;
   }
 
   public Boolean getResponse() {
@@ -72,7 +72,6 @@ public class ModbusPDUReadHoldingRegistersRequest extends ModbusPDU implements M
   protected void serializeModbusPDUChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ModbusPDUReadHoldingRegistersRequest");
 
     // Simple Field (startingAddress)
@@ -108,8 +107,6 @@ public class ModbusPDUReadHoldingRegistersRequest extends ModbusPDU implements M
       ReadBuffer readBuffer, Boolean response) throws ParseException {
     readBuffer.pullContext("ModbusPDUReadHoldingRegistersRequest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     int startingAddress = readSimpleField("startingAddress", readUnsignedInt(readBuffer, 16));

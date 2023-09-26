@@ -42,11 +42,12 @@ public abstract class OpenProtocolMessageLockAtBatchDoneUnsubscribe extends Open
   public Mid getMid() {
     return Mid.LockAtBatchDoneUnsubscribe;
   }
+
   // Abstract accessors for discriminator values.
-  public abstract Long getRevision();
+  public abstract Integer getRevision();
 
   public OpenProtocolMessageLockAtBatchDoneUnsubscribe(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -71,7 +72,6 @@ public abstract class OpenProtocolMessageLockAtBatchDoneUnsubscribe extends Open
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageLockAtBatchDoneUnsubscribe");
 
     // Switch field (Serialize the sub-type)
@@ -97,16 +97,14 @@ public abstract class OpenProtocolMessageLockAtBatchDoneUnsubscribe extends Open
   }
 
   public static OpenProtocolMessageBuilder staticParseOpenProtocolMessageBuilder(
-      ReadBuffer readBuffer, Long revision) throws ParseException {
+      ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageLockAtBatchDoneUnsubscribe");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     // Switch Field (Depending on the discriminator values, passes the instantiation to a sub-type)
     OpenProtocolMessageLockAtBatchDoneUnsubscribeBuilder builder = null;
-    if (EvaluationHelper.equals(revision, (long) 1)) {
+    if (EvaluationHelper.equals(revision, (int) 1)) {
       builder =
           OpenProtocolMessageLockAtBatchDoneUnsubscribeRev1
               .staticParseOpenProtocolMessageLockAtBatchDoneUnsubscribeBuilder(
@@ -128,7 +126,7 @@ public abstract class OpenProtocolMessageLockAtBatchDoneUnsubscribe extends Open
 
   public interface OpenProtocolMessageLockAtBatchDoneUnsubscribeBuilder {
     OpenProtocolMessageLockAtBatchDoneUnsubscribe build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,
@@ -147,7 +145,7 @@ public abstract class OpenProtocolMessageLockAtBatchDoneUnsubscribe extends Open
     }
 
     public OpenProtocolMessageLockAtBatchDoneUnsubscribe build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

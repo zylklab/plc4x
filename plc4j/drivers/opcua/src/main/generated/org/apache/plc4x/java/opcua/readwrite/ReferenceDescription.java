@@ -102,7 +102,6 @@ public class ReferenceDescription extends ExtensionObjectDefinition implements M
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ReferenceDescription");
 
     // Simple Field (referenceTypeId)
@@ -110,7 +109,7 @@ public class ReferenceDescription extends ExtensionObjectDefinition implements M
         "referenceTypeId", referenceTypeId, new DataWriterComplexDefault<>(writeBuffer));
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 7));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 7));
 
     // Simple Field (isForward)
     writeSimpleField("isForward", isForward, writeBoolean(writeBuffer));
@@ -180,8 +179,6 @@ public class ReferenceDescription extends ExtensionObjectDefinition implements M
       ReadBuffer readBuffer, String identifier) throws ParseException {
     readBuffer.pullContext("ReferenceDescription");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     NodeId referenceTypeId =
@@ -189,8 +186,8 @@ public class ReferenceDescription extends ExtensionObjectDefinition implements M
             "referenceTypeId",
             new DataReaderComplexDefault<>(() -> NodeId.staticParse(readBuffer), readBuffer));
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 7), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 7), (byte) 0x00);
 
     boolean isForward = readSimpleField("isForward", readBoolean(readBuffer));
 

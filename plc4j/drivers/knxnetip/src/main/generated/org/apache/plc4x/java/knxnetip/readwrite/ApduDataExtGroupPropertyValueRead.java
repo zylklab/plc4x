@@ -38,8 +38,8 @@ import org.apache.plc4x.java.spi.generation.*;
 public class ApduDataExtGroupPropertyValueRead extends ApduDataExt implements Message {
 
   // Accessors for discriminator values.
-  public Short getExtApciType() {
-    return (short) 0x28;
+  public Byte getExtApciType() {
+    return (byte) 0x28;
   }
 
   public ApduDataExtGroupPropertyValueRead() {
@@ -50,7 +50,6 @@ public class ApduDataExtGroupPropertyValueRead extends ApduDataExt implements Me
   protected void serializeApduDataExtChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ApduDataExtGroupPropertyValueRead");
 
     writeBuffer.popContext("ApduDataExtGroupPropertyValueRead");
@@ -74,8 +73,6 @@ public class ApduDataExtGroupPropertyValueRead extends ApduDataExt implements Me
       ReadBuffer readBuffer, Short length) throws ParseException {
     readBuffer.pullContext("ApduDataExtGroupPropertyValueRead");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     readBuffer.closeContext("ApduDataExtGroupPropertyValueRead");

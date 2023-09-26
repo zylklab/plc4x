@@ -20,18 +20,19 @@
 package bacnetip
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"strings"
 
-	"github.com/apache/plc4x/plc4go/pkg/api/model"
-	"github.com/apache/plc4x/plc4go/pkg/api/values"
+	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
+	apiValues "github.com/apache/plc4x/plc4go/pkg/api/values"
 	readWriteModel "github.com/apache/plc4x/plc4go/protocols/bacnetip/readwrite/model"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 )
 
 type BacNetPlcTag interface {
-	model.PlcTag
+	apiModel.PlcTag
 
 	GetObjectId() objectId
 	GetProperties() []property
@@ -110,12 +111,12 @@ func (m plcTag) GetAddressString() string {
 	return fmt.Sprintf("%v/%s", m.ObjectId, propertiesString)
 }
 
-func (m plcTag) GetValueType() values.PlcValueType {
-	return values.Struct
+func (m plcTag) GetValueType() apiValues.PlcValueType {
+	return apiValues.Struct
 }
 
-func (m plcTag) GetArrayInfo() []model.ArrayInfo {
-	return []model.ArrayInfo{}
+func (m plcTag) GetArrayInfo() []apiModel.ArrayInfo {
+	return []apiModel.ArrayInfo{}
 }
 
 func (m plcTag) GetObjectId() objectId {
@@ -128,13 +129,13 @@ func (m plcTag) GetProperties() []property {
 
 func (m plcTag) Serialize() ([]byte, error) {
 	wb := utils.NewWriteBufferByteBased(utils.WithByteOrderForByteBasedBuffer(binary.BigEndian))
-	if err := m.SerializeWithWriteBuffer(wb); err != nil {
+	if err := m.SerializeWithWriteBuffer(context.Background(), wb); err != nil {
 		return nil, err
 	}
 	return wb.GetBytes(), nil
 }
 
-func (m plcTag) SerializeWithWriteBuffer(writeBuffer utils.WriteBuffer) error {
+func (m plcTag) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	if err := writeBuffer.PushContext("BacNetPlcTag"); err != nil {
 		return err
 	}
@@ -159,4 +160,12 @@ func (m plcTag) SerializeWithWriteBuffer(writeBuffer utils.WriteBuffer) error {
 		return err
 	}
 	return nil
+}
+
+func (m plcTag) String() string {
+	writeBuffer := utils.NewWriteBufferBoxBasedWithOptions(true, true)
+	if err := writeBuffer.WriteSerializable(context.Background(), m); err != nil {
+		return err.Error()
+	}
+	return writeBuffer.GetBox().String()
 }

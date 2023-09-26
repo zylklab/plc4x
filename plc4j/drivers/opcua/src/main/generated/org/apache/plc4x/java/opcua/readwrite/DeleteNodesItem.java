@@ -65,14 +65,13 @@ public class DeleteNodesItem extends ExtensionObjectDefinition implements Messag
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("DeleteNodesItem");
 
     // Simple Field (nodeId)
     writeSimpleField("nodeId", nodeId, new DataWriterComplexDefault<>(writeBuffer));
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 7));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 7));
 
     // Simple Field (deleteTargetReferences)
     writeSimpleField("deleteTargetReferences", deleteTargetReferences, writeBoolean(writeBuffer));
@@ -107,8 +106,6 @@ public class DeleteNodesItem extends ExtensionObjectDefinition implements Messag
       ReadBuffer readBuffer, String identifier) throws ParseException {
     readBuffer.pullContext("DeleteNodesItem");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     NodeId nodeId =
@@ -116,8 +113,8 @@ public class DeleteNodesItem extends ExtensionObjectDefinition implements Messag
             "nodeId",
             new DataReaderComplexDefault<>(() -> NodeId.staticParse(readBuffer), readBuffer));
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 7), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 7), (byte) 0x00);
 
     boolean deleteTargetReferences =
         readSimpleField("deleteTargetReferences", readBoolean(readBuffer));

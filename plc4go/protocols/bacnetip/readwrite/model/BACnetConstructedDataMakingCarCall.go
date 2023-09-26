@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataMakingCarCall is the corresponding interface of BACnetConstructedDataMakingCarCall
 type BACnetConstructedDataMakingCarCall interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataMakingCarCall(numberOfDataElements BACnetApplicatio
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataMakingCarCall(structType interface{}) BACnetConstructedDataMakingCarCall {
+func CastBACnetConstructedDataMakingCarCall(structType any) BACnetConstructedDataMakingCarCall {
 	if casted, ok := structType.(BACnetConstructedDataMakingCarCall); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataMakingCarCall) GetLengthInBytes(ctx context.Conte
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataMakingCarCallParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataMakingCarCall, error) {
-	return BACnetConstructedDataMakingCarCallParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataMakingCarCallParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataMakingCarCall, error) {
+	return BACnetConstructedDataMakingCarCallParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataMakingCarCallParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataMakingCarCall, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataMakingCarCall"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataMakingCarCall")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataMakingCarCallParseWithBuffer(ctx context.Context, read
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataMakingCarCall")
@@ -216,7 +220,7 @@ func BACnetConstructedDataMakingCarCallParseWithBuffer(ctx context.Context, read
 	// Terminated array
 	var makingCarCall []BACnetApplicationTagUnsignedInteger
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'makingCarCall' field of BACnetConstructedDataMakingCarCall")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataMakingCarCall) Serialize() ([]byte, error) {
 func (m *_BACnetConstructedDataMakingCarCall) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataMakingCarCall"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataMakingCarCall")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataMakingCarCall) SerializeWithWriteBuffer(ctx conte
 		}
 		for _curItem, _element := range m.GetMakingCarCall() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetMakingCarCall()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetMakingCarCall()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

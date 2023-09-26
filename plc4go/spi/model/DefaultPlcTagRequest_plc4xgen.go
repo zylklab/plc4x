@@ -45,9 +45,10 @@ func (d *DefaultPlcTagRequest) SerializeWithWriteBuffer(ctx context.Context, wri
 	if err := writeBuffer.PushContext("tags", utils.WithRenderAsList(true)); err != nil {
 		return err
 	}
-	for name, elem := range d.tags {
+	for _name, elem := range d.tags {
+		name := _name
 
-		var elem interface{} = elem
+		var elem any = elem
 		if serializable, ok := elem.(utils.Serializable); ok {
 			if err := writeBuffer.PushContext(name); err != nil {
 				return err
@@ -66,17 +67,6 @@ func (d *DefaultPlcTagRequest) SerializeWithWriteBuffer(ctx context.Context, wri
 		}
 	}
 	if err := writeBuffer.PopContext("tags", utils.WithRenderAsList(true)); err != nil {
-		return err
-	}
-	if err := writeBuffer.PushContext("tagNames", utils.WithRenderAsList(true)); err != nil {
-		return err
-	}
-	for _, elem := range d.tagNames {
-		if err := writeBuffer.WriteString("", uint32(len(elem)*8), "UTF-8", elem); err != nil {
-			return err
-		}
-	}
-	if err := writeBuffer.PopContext("tagNames", utils.WithRenderAsList(true)); err != nil {
 		return err
 	}
 	if err := writeBuffer.PopContext("PlcTagRequest"); err != nil {

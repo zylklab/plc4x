@@ -110,7 +110,6 @@ public class S7ParameterUserDataItemCPUFunctions extends S7ParameterUserDataItem
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("S7ParameterUserDataItemCPUFunctions");
 
     // Implicit Field (itemLength) (Used for parsing, but its value is not stored as it's implicitly
@@ -197,8 +196,6 @@ public class S7ParameterUserDataItemCPUFunctions extends S7ParameterUserDataItem
       ReadBuffer readBuffer) throws ParseException {
     readBuffer.pullContext("S7ParameterUserDataItemCPUFunctions");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     short itemLength = readImplicitField("itemLength", readUnsignedShort(readBuffer, 8));
@@ -215,14 +212,24 @@ public class S7ParameterUserDataItemCPUFunctions extends S7ParameterUserDataItem
 
     Short dataUnitReferenceNumber =
         readOptionalField(
-            "dataUnitReferenceNumber", readUnsignedShort(readBuffer, 8), (cpuFunctionType) == (8));
+            "dataUnitReferenceNumber",
+            readUnsignedShort(readBuffer, 8),
+            (((cpuFunctionType) == (8)))
+                || (((((cpuFunctionType) == (0))) && (((cpuFunctionGroup) == (2))))));
 
     Short lastDataUnit =
         readOptionalField(
-            "lastDataUnit", readUnsignedShort(readBuffer, 8), (cpuFunctionType) == (8));
+            "lastDataUnit",
+            readUnsignedShort(readBuffer, 8),
+            (((cpuFunctionType) == (8)))
+                || (((((cpuFunctionType) == (0))) && (((cpuFunctionGroup) == (2))))));
 
     Integer errorCode =
-        readOptionalField("errorCode", readUnsignedInt(readBuffer, 16), (cpuFunctionType) == (8));
+        readOptionalField(
+            "errorCode",
+            readUnsignedInt(readBuffer, 16),
+            (((cpuFunctionType) == (8)))
+                || (((((cpuFunctionType) == (0))) && (((cpuFunctionGroup) == (2))))));
 
     readBuffer.closeContext("S7ParameterUserDataItemCPUFunctions");
     // Create the instance

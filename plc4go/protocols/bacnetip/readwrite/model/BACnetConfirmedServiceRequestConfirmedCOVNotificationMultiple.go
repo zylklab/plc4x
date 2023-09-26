@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple is the corresponding interface of BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple
 type BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConfirmedServiceRequest
@@ -128,7 +131,7 @@ func NewBACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple(subscriber
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple(structType interface{}) BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple {
+func CastBACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple(structType any) BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple {
 	if casted, ok := structType.(BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple); ok {
 		return casted
 	}
@@ -169,13 +172,15 @@ func (m *_BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple) GetLeng
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConfirmedServiceRequestConfirmedCOVNotificationMultipleParse(theBytes []byte, serviceRequestLength uint32) (BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple, error) {
-	return BACnetConfirmedServiceRequestConfirmedCOVNotificationMultipleParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), serviceRequestLength)
+func BACnetConfirmedServiceRequestConfirmedCOVNotificationMultipleParse(ctx context.Context, theBytes []byte, serviceRequestLength uint32) (BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple, error) {
+	return BACnetConfirmedServiceRequestConfirmedCOVNotificationMultipleParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), serviceRequestLength)
 }
 
 func BACnetConfirmedServiceRequestConfirmedCOVNotificationMultipleParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, serviceRequestLength uint32) (BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple")
 	}
@@ -231,7 +236,7 @@ func BACnetConfirmedServiceRequestConfirmedCOVNotificationMultipleParseWithBuffe
 		_val, _err := BACnetTimeStampEnclosedParseWithBuffer(ctx, readBuffer, uint8(3))
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'timestamp' field of BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple")
@@ -286,6 +291,8 @@ func (m *_BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple) Seriali
 func (m *_BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConfirmedServiceRequestConfirmedCOVNotificationMultiple")

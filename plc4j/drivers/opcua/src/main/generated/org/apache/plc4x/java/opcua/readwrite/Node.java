@@ -50,11 +50,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
   protected final LocalizedText description;
   protected final long writeMask;
   protected final long userWriteMask;
-  protected final int noOfRolePermissions;
-  protected final List<ExtensionObjectDefinition> rolePermissions;
-  protected final int noOfUserRolePermissions;
-  protected final List<ExtensionObjectDefinition> userRolePermissions;
-  protected final int accessRestrictions;
   protected final int noOfReferences;
   protected final List<ExtensionObjectDefinition> references;
 
@@ -66,11 +61,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
       LocalizedText description,
       long writeMask,
       long userWriteMask,
-      int noOfRolePermissions,
-      List<ExtensionObjectDefinition> rolePermissions,
-      int noOfUserRolePermissions,
-      List<ExtensionObjectDefinition> userRolePermissions,
-      int accessRestrictions,
       int noOfReferences,
       List<ExtensionObjectDefinition> references) {
     super();
@@ -81,11 +71,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
     this.description = description;
     this.writeMask = writeMask;
     this.userWriteMask = userWriteMask;
-    this.noOfRolePermissions = noOfRolePermissions;
-    this.rolePermissions = rolePermissions;
-    this.noOfUserRolePermissions = noOfUserRolePermissions;
-    this.userRolePermissions = userRolePermissions;
-    this.accessRestrictions = accessRestrictions;
     this.noOfReferences = noOfReferences;
     this.references = references;
   }
@@ -118,26 +103,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
     return userWriteMask;
   }
 
-  public int getNoOfRolePermissions() {
-    return noOfRolePermissions;
-  }
-
-  public List<ExtensionObjectDefinition> getRolePermissions() {
-    return rolePermissions;
-  }
-
-  public int getNoOfUserRolePermissions() {
-    return noOfUserRolePermissions;
-  }
-
-  public List<ExtensionObjectDefinition> getUserRolePermissions() {
-    return userRolePermissions;
-  }
-
-  public int getAccessRestrictions() {
-    return accessRestrictions;
-  }
-
   public int getNoOfReferences() {
     return noOfReferences;
   }
@@ -151,7 +116,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("Node");
 
     // Simple Field (nodeId)
@@ -179,22 +143,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
 
     // Simple Field (userWriteMask)
     writeSimpleField("userWriteMask", userWriteMask, writeUnsignedLong(writeBuffer, 32));
-
-    // Simple Field (noOfRolePermissions)
-    writeSimpleField("noOfRolePermissions", noOfRolePermissions, writeSignedInt(writeBuffer, 32));
-
-    // Array Field (rolePermissions)
-    writeComplexTypeArrayField("rolePermissions", rolePermissions, writeBuffer);
-
-    // Simple Field (noOfUserRolePermissions)
-    writeSimpleField(
-        "noOfUserRolePermissions", noOfUserRolePermissions, writeSignedInt(writeBuffer, 32));
-
-    // Array Field (userRolePermissions)
-    writeComplexTypeArrayField("userRolePermissions", userRolePermissions, writeBuffer);
-
-    // Simple Field (accessRestrictions)
-    writeSimpleField("accessRestrictions", accessRestrictions, writeUnsignedInt(writeBuffer, 16));
 
     // Simple Field (noOfReferences)
     writeSimpleField("noOfReferences", noOfReferences, writeSignedInt(writeBuffer, 32));
@@ -237,33 +185,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
     // Simple field (userWriteMask)
     lengthInBits += 32;
 
-    // Simple field (noOfRolePermissions)
-    lengthInBits += 32;
-
-    // Array field
-    if (rolePermissions != null) {
-      int i = 0;
-      for (ExtensionObjectDefinition element : rolePermissions) {
-        ThreadLocalHelper.lastItemThreadLocal.set(++i >= rolePermissions.size());
-        lengthInBits += element.getLengthInBits();
-      }
-    }
-
-    // Simple field (noOfUserRolePermissions)
-    lengthInBits += 32;
-
-    // Array field
-    if (userRolePermissions != null) {
-      int i = 0;
-      for (ExtensionObjectDefinition element : userRolePermissions) {
-        ThreadLocalHelper.lastItemThreadLocal.set(++i >= userRolePermissions.size());
-        lengthInBits += element.getLengthInBits();
-      }
-    }
-
-    // Simple field (accessRestrictions)
-    lengthInBits += 16;
-
     // Simple field (noOfReferences)
     lengthInBits += 32;
 
@@ -283,8 +204,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
       ReadBuffer readBuffer, String identifier) throws ParseException {
     readBuffer.pullContext("Node");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     NodeId nodeId =
@@ -320,29 +239,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
 
     long userWriteMask = readSimpleField("userWriteMask", readUnsignedLong(readBuffer, 32));
 
-    int noOfRolePermissions = readSimpleField("noOfRolePermissions", readSignedInt(readBuffer, 32));
-
-    List<ExtensionObjectDefinition> rolePermissions =
-        readCountArrayField(
-            "rolePermissions",
-            new DataReaderComplexDefault<>(
-                () -> ExtensionObjectDefinition.staticParse(readBuffer, (String) ("98")),
-                readBuffer),
-            noOfRolePermissions);
-
-    int noOfUserRolePermissions =
-        readSimpleField("noOfUserRolePermissions", readSignedInt(readBuffer, 32));
-
-    List<ExtensionObjectDefinition> userRolePermissions =
-        readCountArrayField(
-            "userRolePermissions",
-            new DataReaderComplexDefault<>(
-                () -> ExtensionObjectDefinition.staticParse(readBuffer, (String) ("98")),
-                readBuffer),
-            noOfUserRolePermissions);
-
-    int accessRestrictions = readSimpleField("accessRestrictions", readUnsignedInt(readBuffer, 16));
-
     int noOfReferences = readSimpleField("noOfReferences", readSignedInt(readBuffer, 32));
 
     List<ExtensionObjectDefinition> references =
@@ -363,11 +259,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
         description,
         writeMask,
         userWriteMask,
-        noOfRolePermissions,
-        rolePermissions,
-        noOfUserRolePermissions,
-        userRolePermissions,
-        accessRestrictions,
         noOfReferences,
         references);
   }
@@ -381,11 +272,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
     private final LocalizedText description;
     private final long writeMask;
     private final long userWriteMask;
-    private final int noOfRolePermissions;
-    private final List<ExtensionObjectDefinition> rolePermissions;
-    private final int noOfUserRolePermissions;
-    private final List<ExtensionObjectDefinition> userRolePermissions;
-    private final int accessRestrictions;
     private final int noOfReferences;
     private final List<ExtensionObjectDefinition> references;
 
@@ -397,11 +283,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
         LocalizedText description,
         long writeMask,
         long userWriteMask,
-        int noOfRolePermissions,
-        List<ExtensionObjectDefinition> rolePermissions,
-        int noOfUserRolePermissions,
-        List<ExtensionObjectDefinition> userRolePermissions,
-        int accessRestrictions,
         int noOfReferences,
         List<ExtensionObjectDefinition> references) {
       this.nodeId = nodeId;
@@ -411,11 +292,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
       this.description = description;
       this.writeMask = writeMask;
       this.userWriteMask = userWriteMask;
-      this.noOfRolePermissions = noOfRolePermissions;
-      this.rolePermissions = rolePermissions;
-      this.noOfUserRolePermissions = noOfUserRolePermissions;
-      this.userRolePermissions = userRolePermissions;
-      this.accessRestrictions = accessRestrictions;
       this.noOfReferences = noOfReferences;
       this.references = references;
     }
@@ -430,11 +306,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
               description,
               writeMask,
               userWriteMask,
-              noOfRolePermissions,
-              rolePermissions,
-              noOfUserRolePermissions,
-              userRolePermissions,
-              accessRestrictions,
               noOfReferences,
               references);
       return node;
@@ -457,11 +328,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
         && (getDescription() == that.getDescription())
         && (getWriteMask() == that.getWriteMask())
         && (getUserWriteMask() == that.getUserWriteMask())
-        && (getNoOfRolePermissions() == that.getNoOfRolePermissions())
-        && (getRolePermissions() == that.getRolePermissions())
-        && (getNoOfUserRolePermissions() == that.getNoOfUserRolePermissions())
-        && (getUserRolePermissions() == that.getUserRolePermissions())
-        && (getAccessRestrictions() == that.getAccessRestrictions())
         && (getNoOfReferences() == that.getNoOfReferences())
         && (getReferences() == that.getReferences())
         && super.equals(that)
@@ -479,11 +345,6 @@ public class Node extends ExtensionObjectDefinition implements Message {
         getDescription(),
         getWriteMask(),
         getUserWriteMask(),
-        getNoOfRolePermissions(),
-        getRolePermissions(),
-        getNoOfUserRolePermissions(),
-        getUserRolePermissions(),
-        getAccessRestrictions(),
         getNoOfReferences(),
         getReferences());
   }

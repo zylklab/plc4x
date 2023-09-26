@@ -52,11 +52,10 @@ public class DeviceStatus implements Message {
   public void serialize(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("DeviceStatus");
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 7));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 7));
 
     // Simple Field (programMode)
     writeSimpleField("programMode", programMode, writeBoolean(writeBuffer));
@@ -93,12 +92,10 @@ public class DeviceStatus implements Message {
   public static DeviceStatus staticParse(ReadBuffer readBuffer) throws ParseException {
     readBuffer.pullContext("DeviceStatus");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 7), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 7), (byte) 0x00);
 
     boolean programMode = readSimpleField("programMode", readBoolean(readBuffer));
 

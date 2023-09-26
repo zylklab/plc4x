@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataGlobalGroupPresentValue is the corresponding interface of BACnetConstructedDataGlobalGroupPresentValue
 type BACnetConstructedDataGlobalGroupPresentValue interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataGlobalGroupPresentValue(numberOfDataElements BACnet
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataGlobalGroupPresentValue(structType interface{}) BACnetConstructedDataGlobalGroupPresentValue {
+func CastBACnetConstructedDataGlobalGroupPresentValue(structType any) BACnetConstructedDataGlobalGroupPresentValue {
 	if casted, ok := structType.(BACnetConstructedDataGlobalGroupPresentValue); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataGlobalGroupPresentValue) GetLengthInBytes(ctx con
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataGlobalGroupPresentValueParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataGlobalGroupPresentValue, error) {
-	return BACnetConstructedDataGlobalGroupPresentValueParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataGlobalGroupPresentValueParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataGlobalGroupPresentValue, error) {
+	return BACnetConstructedDataGlobalGroupPresentValueParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataGlobalGroupPresentValueParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataGlobalGroupPresentValue, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataGlobalGroupPresentValue"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataGlobalGroupPresentValue")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataGlobalGroupPresentValueParseWithBuffer(ctx context.Con
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataGlobalGroupPresentValue")
@@ -216,7 +220,7 @@ func BACnetConstructedDataGlobalGroupPresentValueParseWithBuffer(ctx context.Con
 	// Terminated array
 	var presentValue []BACnetPropertyAccessResult
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetPropertyAccessResultParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'presentValue' field of BACnetConstructedDataGlobalGroupPresentValue")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataGlobalGroupPresentValue) Serialize() ([]byte, err
 func (m *_BACnetConstructedDataGlobalGroupPresentValue) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataGlobalGroupPresentValue"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataGlobalGroupPresentValue")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataGlobalGroupPresentValue) SerializeWithWriteBuffer
 		}
 		for _curItem, _element := range m.GetPresentValue() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetPresentValue()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetPresentValue()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

@@ -39,16 +39,16 @@ public class S7PayloadUserDataItemCpuFunctionReadSzlRequest extends S7PayloadUse
     implements Message {
 
   // Accessors for discriminator values.
+  public Byte getCpuFunctionGroup() {
+    return (byte) 0x04;
+  }
+
   public Byte getCpuFunctionType() {
     return (byte) 0x04;
   }
 
   public Short getCpuSubfunction() {
     return (short) 0x01;
-  }
-
-  public Integer getDataLength() {
-    return 0;
   }
 
   // Properties.
@@ -58,9 +58,10 @@ public class S7PayloadUserDataItemCpuFunctionReadSzlRequest extends S7PayloadUse
   public S7PayloadUserDataItemCpuFunctionReadSzlRequest(
       DataTransportErrorCode returnCode,
       DataTransportSize transportSize,
+      int dataLength,
       SzlId szlId,
       int szlIndex) {
-    super(returnCode, transportSize);
+    super(returnCode, transportSize, dataLength);
     this.szlId = szlId;
     this.szlIndex = szlIndex;
   }
@@ -78,7 +79,6 @@ public class S7PayloadUserDataItemCpuFunctionReadSzlRequest extends S7PayloadUse
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("S7PayloadUserDataItemCpuFunctionReadSzlRequest");
 
     // Simple Field (szlId)
@@ -111,11 +111,10 @@ public class S7PayloadUserDataItemCpuFunctionReadSzlRequest extends S7PayloadUse
   }
 
   public static S7PayloadUserDataItemBuilder staticParseS7PayloadUserDataItemBuilder(
-      ReadBuffer readBuffer, Byte cpuFunctionType, Short cpuSubfunction) throws ParseException {
+      ReadBuffer readBuffer, Byte cpuFunctionGroup, Byte cpuFunctionType, Short cpuSubfunction)
+      throws ParseException {
     readBuffer.pullContext("S7PayloadUserDataItemCpuFunctionReadSzlRequest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     SzlId szlId =
@@ -141,11 +140,11 @@ public class S7PayloadUserDataItemCpuFunctionReadSzlRequest extends S7PayloadUse
     }
 
     public S7PayloadUserDataItemCpuFunctionReadSzlRequest build(
-        DataTransportErrorCode returnCode, DataTransportSize transportSize) {
+        DataTransportErrorCode returnCode, DataTransportSize transportSize, int dataLength) {
       S7PayloadUserDataItemCpuFunctionReadSzlRequest
           s7PayloadUserDataItemCpuFunctionReadSzlRequest =
               new S7PayloadUserDataItemCpuFunctionReadSzlRequest(
-                  returnCode, transportSize, szlId, szlIndex);
+                  returnCode, transportSize, dataLength, szlId, szlIndex);
       return s7PayloadUserDataItemCpuFunctionReadSzlRequest;
     }
   }

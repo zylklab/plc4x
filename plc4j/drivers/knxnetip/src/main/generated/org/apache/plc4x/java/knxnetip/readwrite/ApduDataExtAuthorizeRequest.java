@@ -38,8 +38,8 @@ import org.apache.plc4x.java.spi.generation.*;
 public class ApduDataExtAuthorizeRequest extends ApduDataExt implements Message {
 
   // Accessors for discriminator values.
-  public Short getExtApciType() {
-    return (short) 0x11;
+  public Byte getExtApciType() {
+    return (byte) 0x11;
   }
 
   // Properties.
@@ -64,7 +64,6 @@ public class ApduDataExtAuthorizeRequest extends ApduDataExt implements Message 
   protected void serializeApduDataExtChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ApduDataExtAuthorizeRequest");
 
     // Simple Field (level)
@@ -102,8 +101,6 @@ public class ApduDataExtAuthorizeRequest extends ApduDataExt implements Message 
       ReadBuffer readBuffer, Short length) throws ParseException {
     readBuffer.pullContext("ApduDataExtAuthorizeRequest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     short level = readSimpleField("level", readUnsignedShort(readBuffer, 8));

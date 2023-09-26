@@ -42,11 +42,12 @@ public abstract class OpenProtocolMessageIdentifierDownloadRequest extends OpenP
   public Mid getMid() {
     return Mid.IdentifierDownloadRequest;
   }
+
   // Abstract accessors for discriminator values.
-  public abstract Long getRevision();
+  public abstract Integer getRevision();
 
   public OpenProtocolMessageIdentifierDownloadRequest(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -71,7 +72,6 @@ public abstract class OpenProtocolMessageIdentifierDownloadRequest extends OpenP
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageIdentifierDownloadRequest");
 
     // Switch field (Serialize the sub-type)
@@ -97,16 +97,14 @@ public abstract class OpenProtocolMessageIdentifierDownloadRequest extends OpenP
   }
 
   public static OpenProtocolMessageBuilder staticParseOpenProtocolMessageBuilder(
-      ReadBuffer readBuffer, Long revision) throws ParseException {
+      ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageIdentifierDownloadRequest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     // Switch Field (Depending on the discriminator values, passes the instantiation to a sub-type)
     OpenProtocolMessageIdentifierDownloadRequestBuilder builder = null;
-    if (EvaluationHelper.equals(revision, (long) 1)) {
+    if (EvaluationHelper.equals(revision, (int) 1)) {
       builder =
           OpenProtocolMessageIdentifierDownloadRequestRev1
               .staticParseOpenProtocolMessageIdentifierDownloadRequestBuilder(readBuffer, revision);
@@ -127,7 +125,7 @@ public abstract class OpenProtocolMessageIdentifierDownloadRequest extends OpenP
 
   public interface OpenProtocolMessageIdentifierDownloadRequestBuilder {
     OpenProtocolMessageIdentifierDownloadRequest build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,
@@ -146,7 +144,7 @@ public abstract class OpenProtocolMessageIdentifierDownloadRequest extends OpenP
     }
 
     public OpenProtocolMessageIdentifierDownloadRequest build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

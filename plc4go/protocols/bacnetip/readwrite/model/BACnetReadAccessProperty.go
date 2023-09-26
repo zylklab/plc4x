@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetReadAccessProperty is the corresponding interface of BACnetReadAccessProperty
 type BACnetReadAccessProperty interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetPropertyIdentifier returns PropertyIdentifier (property field)
@@ -85,7 +88,7 @@ func NewBACnetReadAccessProperty(propertyIdentifier BACnetPropertyIdentifierTagg
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetReadAccessProperty(structType interface{}) BACnetReadAccessProperty {
+func CastBACnetReadAccessProperty(structType any) BACnetReadAccessProperty {
 	if casted, ok := structType.(BACnetReadAccessProperty); ok {
 		return casted
 	}
@@ -122,13 +125,15 @@ func (m *_BACnetReadAccessProperty) GetLengthInBytes(ctx context.Context) uint16
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetReadAccessPropertyParse(theBytes []byte, objectTypeArgument BACnetObjectType) (BACnetReadAccessProperty, error) {
-	return BACnetReadAccessPropertyParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), objectTypeArgument)
+func BACnetReadAccessPropertyParse(ctx context.Context, theBytes []byte, objectTypeArgument BACnetObjectType) (BACnetReadAccessProperty, error) {
+	return BACnetReadAccessPropertyParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), objectTypeArgument)
 }
 
 func BACnetReadAccessPropertyParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, objectTypeArgument BACnetObjectType) (BACnetReadAccessProperty, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetReadAccessProperty"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetReadAccessProperty")
 	}
@@ -158,7 +163,7 @@ func BACnetReadAccessPropertyParseWithBuffer(ctx context.Context, readBuffer uti
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, uint8(3), BACnetDataType_UNSIGNED_INTEGER)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'arrayIndex' field of BACnetReadAccessProperty")
@@ -177,10 +182,10 @@ func BACnetReadAccessPropertyParseWithBuffer(ctx context.Context, readBuffer uti
 		if pullErr := readBuffer.PullContext("readResult"); pullErr != nil {
 			return nil, errors.Wrap(pullErr, "Error pulling for readResult")
 		}
-		_val, _err := BACnetReadAccessPropertyReadResultParseWithBuffer(ctx, readBuffer, objectTypeArgument, propertyIdentifier.GetValue(), (CastBACnetTagPayloadUnsignedInteger(utils.InlineIf(bool((arrayIndex) != (nil)), func() interface{} { return CastBACnetTagPayloadUnsignedInteger((arrayIndex).GetPayload()) }, func() interface{} { return CastBACnetTagPayloadUnsignedInteger(nil) }))))
+		_val, _err := BACnetReadAccessPropertyReadResultParseWithBuffer(ctx, readBuffer, objectTypeArgument, propertyIdentifier.GetValue(), (CastBACnetTagPayloadUnsignedInteger(utils.InlineIf(bool((arrayIndex) != (nil)), func() any { return CastBACnetTagPayloadUnsignedInteger((arrayIndex).GetPayload()) }, func() any { return CastBACnetTagPayloadUnsignedInteger(nil) }))))
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'readResult' field of BACnetReadAccessProperty")
@@ -216,6 +221,8 @@ func (m *_BACnetReadAccessProperty) Serialize() ([]byte, error) {
 func (m *_BACnetReadAccessProperty) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetReadAccessProperty"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetReadAccessProperty")
 	}

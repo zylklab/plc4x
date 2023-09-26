@@ -38,6 +38,10 @@ import org.apache.plc4x.java.spi.generation.*;
 public class S7PayloadAlarmAckInd extends S7PayloadUserDataItem implements Message {
 
   // Accessors for discriminator values.
+  public Byte getCpuFunctionGroup() {
+    return (byte) 0x04;
+  }
+
   public Byte getCpuFunctionType() {
     return (byte) 0x00;
   }
@@ -46,18 +50,15 @@ public class S7PayloadAlarmAckInd extends S7PayloadUserDataItem implements Messa
     return (short) 0x0c;
   }
 
-  public Integer getDataLength() {
-    return 0;
-  }
-
   // Properties.
   protected final AlarmMessageAckPushType alarmMessage;
 
   public S7PayloadAlarmAckInd(
       DataTransportErrorCode returnCode,
       DataTransportSize transportSize,
+      int dataLength,
       AlarmMessageAckPushType alarmMessage) {
-    super(returnCode, transportSize);
+    super(returnCode, transportSize, dataLength);
     this.alarmMessage = alarmMessage;
   }
 
@@ -70,7 +71,6 @@ public class S7PayloadAlarmAckInd extends S7PayloadUserDataItem implements Messa
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("S7PayloadAlarmAckInd");
 
     // Simple Field (alarmMessage)
@@ -97,11 +97,10 @@ public class S7PayloadAlarmAckInd extends S7PayloadUserDataItem implements Messa
   }
 
   public static S7PayloadUserDataItemBuilder staticParseS7PayloadUserDataItemBuilder(
-      ReadBuffer readBuffer, Byte cpuFunctionType, Short cpuSubfunction) throws ParseException {
+      ReadBuffer readBuffer, Byte cpuFunctionGroup, Byte cpuFunctionType, Short cpuSubfunction)
+      throws ParseException {
     readBuffer.pullContext("S7PayloadAlarmAckInd");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     AlarmMessageAckPushType alarmMessage =
@@ -124,9 +123,9 @@ public class S7PayloadAlarmAckInd extends S7PayloadUserDataItem implements Messa
     }
 
     public S7PayloadAlarmAckInd build(
-        DataTransportErrorCode returnCode, DataTransportSize transportSize) {
+        DataTransportErrorCode returnCode, DataTransportSize transportSize, int dataLength) {
       S7PayloadAlarmAckInd s7PayloadAlarmAckInd =
-          new S7PayloadAlarmAckInd(returnCode, transportSize, alarmMessage);
+          new S7PayloadAlarmAckInd(returnCode, transportSize, dataLength, alarmMessage);
       return s7PayloadAlarmAckInd;
     }
   }

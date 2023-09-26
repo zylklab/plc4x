@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // CALData is the corresponding interface of CALData
 type CALData interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetCommandTypeContainer returns CommandTypeContainer (property field)
@@ -62,6 +65,8 @@ type _CALData struct {
 type _CALDataChildRequirements interface {
 	utils.Serializable
 	GetLengthInBits(ctx context.Context) uint16
+	GetCommandType() CALCommandType
+	GetSendIdentifyRequestBefore() bool
 }
 
 type CALDataParent interface {
@@ -113,7 +118,7 @@ func (m *_CALData) GetSendIdentifyRequestBefore() bool {
 	_ = ctx
 	additionalData := m.AdditionalData
 	_ = additionalData
-	return bool(utils.InlineIf(bool((m.RequestContext) != (nil)), func() interface{} { return bool(m.RequestContext.GetSendIdentifyRequestBefore()) }, func() interface{} { return bool(bool(false)) }).(bool))
+	return bool(utils.InlineIf(bool((m.RequestContext) != (nil)), func() any { return bool(m.RequestContext.GetSendIdentifyRequestBefore()) }, func() any { return bool(bool(false)) }).(bool))
 }
 
 ///////////////////////
@@ -127,7 +132,7 @@ func NewCALData(commandTypeContainer CALCommandTypeContainer, additionalData CAL
 }
 
 // Deprecated: use the interface for direct cast
-func CastCALData(structType interface{}) CALData {
+func CastCALData(structType any) CALData {
 	if casted, ok := structType.(CALData); ok {
 		return casted
 	}
@@ -163,13 +168,15 @@ func (m *_CALData) GetLengthInBytes(ctx context.Context) uint16 {
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func CALDataParse(theBytes []byte, requestContext RequestContext) (CALData, error) {
-	return CALDataParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), requestContext)
+func CALDataParse(ctx context.Context, theBytes []byte, requestContext RequestContext) (CALData, error) {
+	return CALDataParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), requestContext)
 }
 
 func CALDataParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, requestContext RequestContext) (CALData, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("CALData"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for CALData")
 	}
@@ -177,7 +184,7 @@ func CALDataParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, re
 	_ = currentPos
 
 	// Validation
-	if !(KnowsCALCommandTypeContainer(readBuffer)) {
+	if !(KnowsCALCommandTypeContainer(ctx, readBuffer)) {
 		return nil, errors.WithStack(utils.ParseAssertError{"no command type could be found"})
 	}
 
@@ -200,7 +207,7 @@ func CALDataParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, re
 	_ = commandType
 
 	// Virtual field
-	_sendIdentifyRequestBefore := utils.InlineIf(bool((requestContext) != (nil)), func() interface{} { return bool(requestContext.GetSendIdentifyRequestBefore()) }, func() interface{} { return bool(bool(false)) }).(bool)
+	_sendIdentifyRequestBefore := utils.InlineIf(bool((requestContext) != (nil)), func() any { return bool(requestContext.GetSendIdentifyRequestBefore()) }, func() any { return bool(bool(false)) }).(bool)
 	sendIdentifyRequestBefore := bool(_sendIdentifyRequestBefore)
 	_ = sendIdentifyRequestBefore
 
@@ -210,7 +217,7 @@ func CALDataParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, re
 		InitializeParent(CALData, CALCommandTypeContainer, CALData)
 		GetParent() CALData
 	}
-	var _childTemp interface{}
+	var _childTemp any
 	var _child CALDataChildSerializeRequirement
 	var typeSwitchError error
 	switch {
@@ -252,7 +259,7 @@ func CALDataParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, re
 		_val, _err := CALDataParseWithBuffer(ctx, readBuffer, nil)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'additionalData' field of CALData")
@@ -279,6 +286,8 @@ func (pm *_CALData) SerializeParent(ctx context.Context, writeBuffer utils.Write
 	_ = m
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("CALData"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for CALData")
 	}
@@ -295,10 +304,14 @@ func (pm *_CALData) SerializeParent(ctx context.Context, writeBuffer utils.Write
 		return errors.Wrap(_commandTypeContainerErr, "Error serializing 'commandTypeContainer' field")
 	}
 	// Virtual field
+	commandType := m.GetCommandType()
+	_ = commandType
 	if _commandTypeErr := writeBuffer.WriteVirtual(ctx, "commandType", m.GetCommandType()); _commandTypeErr != nil {
 		return errors.Wrap(_commandTypeErr, "Error serializing 'commandType' field")
 	}
 	// Virtual field
+	sendIdentifyRequestBefore := m.GetSendIdentifyRequestBefore()
+	_ = sendIdentifyRequestBefore
 	if _sendIdentifyRequestBeforeErr := writeBuffer.WriteVirtual(ctx, "sendIdentifyRequestBefore", m.GetSendIdentifyRequestBefore()); _sendIdentifyRequestBeforeErr != nil {
 		return errors.Wrap(_sendIdentifyRequestBeforeErr, "Error serializing 'sendIdentifyRequestBefore' field")
 	}

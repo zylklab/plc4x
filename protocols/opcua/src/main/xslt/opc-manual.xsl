@@ -125,6 +125,12 @@
            [simple          int 32             requestId]
            [array           byte               message count 'messageSize - 24']
        ]
+       ['"ERR"','true'     OpcuaMessageError
+           [simple          string 8           chunk ]
+           [implicit        int 32             messageSize 'lengthInBytes']
+           [simple          OpcuaStatusCode    error ]
+           [simple          PascalString       reason]
+       ]
     ]
 ]
 
@@ -176,7 +182,7 @@
         ['"0"' NullExtension
         ]
 
-        <xsl:for-each select="/opc:TypeDictionary/opc:StructuredType[(@BaseType = 'ua:ExtensionObject') and not(@Name = 'UserIdentityToken') and not(@Name = 'PublishedDataSetDataType') and not(@Name = 'DataSetReaderDataType')]">
+        <xsl:for-each select="/opc:TypeDictionary/opc:StructuredType[(@BaseType = 'ua:ExtensionObject') and not(@Name = 'UserIdentityToken') and not(@Name = 'PublishedDataSetDataType') and not(@Name = 'DataSetReaderDataType') and not(@Name = 'PubSubConfigurationValueDataType') and not(@Name = 'PortableNodeId')]">
             <xsl:variable name="extensionName" select="@Name"/>
             <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName=$extensionName]"/>
         </xsl:for-each>
@@ -380,9 +386,9 @@
 ]
 
 [type PascalString
-    [implicit int 32 sLength          'STATIC_CALL("utf8Length", stringValue) == 0 ? -1 : STATIC_CALL("utf8Length", stringValue)']
-    [simple vstring 'sLength == -1 ? 0 : sLength * 8' stringValue]
-    [virtual  int 32 stringLength     'STATIC_CALL("utf8Length", stringValue) == -1 ? 0 : STATIC_CALL("utf8Length", stringValue)']
+    [implicit int 32    sLength      'STATIC_CALL("utf8LengthToPascalLength", stringValue)' ]
+    [virtual  int 32    stringLength 'STATIC_CALL("pascalLengthToUtf8Length", sLength)'     ]
+    [simple   vstring   'stringLength*8' stringValue                                        ]
 ]
 
 [type PascalByteString

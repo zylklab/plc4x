@@ -46,9 +46,9 @@ public class IdentifyReplyCommandGAVValuesStored extends IdentifyReplyCommand im
   protected final byte[] values;
 
   // Arguments.
-  protected final Short numBytes;
+  protected final Byte numBytes;
 
-  public IdentifyReplyCommandGAVValuesStored(byte[] values, Short numBytes) {
+  public IdentifyReplyCommandGAVValuesStored(byte[] values, Byte numBytes) {
     super(numBytes);
     this.values = values;
     this.numBytes = numBytes;
@@ -63,7 +63,6 @@ public class IdentifyReplyCommandGAVValuesStored extends IdentifyReplyCommand im
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("IdentifyReplyCommandGAVValuesStored");
 
     // Array Field (values)
@@ -92,11 +91,9 @@ public class IdentifyReplyCommandGAVValuesStored extends IdentifyReplyCommand im
   }
 
   public static IdentifyReplyCommandBuilder staticParseIdentifyReplyCommandBuilder(
-      ReadBuffer readBuffer, Attribute attribute, Short numBytes) throws ParseException {
+      ReadBuffer readBuffer, Attribute attribute, Byte numBytes) throws ParseException {
     readBuffer.pullContext("IdentifyReplyCommandGAVValuesStored");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     byte[] values = readBuffer.readByteArray("values", Math.toIntExact(numBytes));
@@ -109,14 +106,14 @@ public class IdentifyReplyCommandGAVValuesStored extends IdentifyReplyCommand im
   public static class IdentifyReplyCommandGAVValuesStoredBuilderImpl
       implements IdentifyReplyCommand.IdentifyReplyCommandBuilder {
     private final byte[] values;
-    private final Short numBytes;
+    private final Byte numBytes;
 
-    public IdentifyReplyCommandGAVValuesStoredBuilderImpl(byte[] values, Short numBytes) {
+    public IdentifyReplyCommandGAVValuesStoredBuilderImpl(byte[] values, Byte numBytes) {
       this.values = values;
       this.numBytes = numBytes;
     }
 
-    public IdentifyReplyCommandGAVValuesStored build(Short numBytes) {
+    public IdentifyReplyCommandGAVValuesStored build(Byte numBytes) {
 
       IdentifyReplyCommandGAVValuesStored identifyReplyCommandGAVValuesStored =
           new IdentifyReplyCommandGAVValuesStored(values, numBytes);

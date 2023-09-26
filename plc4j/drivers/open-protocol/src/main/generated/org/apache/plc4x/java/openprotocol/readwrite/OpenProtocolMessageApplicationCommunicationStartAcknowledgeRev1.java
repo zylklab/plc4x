@@ -39,8 +39,8 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev1
     extends OpenProtocolMessageApplicationCommunicationStartAcknowledge implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 1;
+  public Integer getRevision() {
+    return (int) 1;
   }
 
   // Constant values.
@@ -54,7 +54,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev1
   protected final String controllerName;
 
   public OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev1(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -106,7 +106,6 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev1
       WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev1");
 
     // Const Field (blockIdCellId)
@@ -185,11 +184,9 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev1
 
   public static OpenProtocolMessageApplicationCommunicationStartAcknowledgeBuilder
       staticParseOpenProtocolMessageApplicationCommunicationStartAcknowledgeBuilder(
-          ReadBuffer readBuffer, Long revision) throws ParseException {
+          ReadBuffer readBuffer, Integer revision) throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev1");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     int blockIdCellId =
@@ -246,7 +243,7 @@ public class OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev1
     }
 
     public OpenProtocolMessageApplicationCommunicationStartAcknowledgeRev1 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

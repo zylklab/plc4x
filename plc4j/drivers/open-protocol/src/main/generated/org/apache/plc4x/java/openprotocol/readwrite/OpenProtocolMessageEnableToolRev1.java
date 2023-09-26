@@ -39,12 +39,12 @@ public class OpenProtocolMessageEnableToolRev1 extends OpenProtocolMessageEnable
     implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 1;
+  public Integer getRevision() {
+    return (int) 1;
   }
 
   public OpenProtocolMessageEnableToolRev1(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -66,7 +66,6 @@ public class OpenProtocolMessageEnableToolRev1 extends OpenProtocolMessageEnable
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageEnableToolRev1");
 
     writeBuffer.popContext("OpenProtocolMessageEnableToolRev1");
@@ -87,12 +86,10 @@ public class OpenProtocolMessageEnableToolRev1 extends OpenProtocolMessageEnable
   }
 
   public static OpenProtocolMessageEnableToolBuilder
-      staticParseOpenProtocolMessageEnableToolBuilder(ReadBuffer readBuffer, Long revision)
+      staticParseOpenProtocolMessageEnableToolBuilder(ReadBuffer readBuffer, Integer revision)
           throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageEnableToolRev1");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     readBuffer.closeContext("OpenProtocolMessageEnableToolRev1");
@@ -106,7 +103,7 @@ public class OpenProtocolMessageEnableToolRev1 extends OpenProtocolMessageEnable
     public OpenProtocolMessageEnableToolRev1BuilderImpl() {}
 
     public OpenProtocolMessageEnableToolRev1 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,

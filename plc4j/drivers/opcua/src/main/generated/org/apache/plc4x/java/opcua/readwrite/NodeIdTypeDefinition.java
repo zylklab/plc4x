@@ -52,7 +52,6 @@ public abstract class NodeIdTypeDefinition implements Message {
   public void serialize(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("NodeIdTypeDefinition");
 
     // Discriminator Field (nodeType) (Used as input to a switch field)
@@ -61,7 +60,7 @@ public abstract class NodeIdTypeDefinition implements Message {
         "NodeIdType",
         getNodeType(),
         new DataWriterEnumDefault<>(
-            NodeIdType::getValue, NodeIdType::name, writeUnsignedShort(writeBuffer, 6)));
+            NodeIdType::getValue, NodeIdType::name, writeUnsignedByte(writeBuffer, 6)));
 
     // Switch field (Serialize the sub-type)
     serializeNodeIdTypeDefinitionChild(writeBuffer);
@@ -97,15 +96,12 @@ public abstract class NodeIdTypeDefinition implements Message {
   public static NodeIdTypeDefinition staticParse(ReadBuffer readBuffer) throws ParseException {
     readBuffer.pullContext("NodeIdTypeDefinition");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     NodeIdType nodeType =
         readDiscriminatorField(
             "nodeType",
-            new DataReaderEnumDefault<>(
-                NodeIdType::enumForValue, readUnsignedShort(readBuffer, 6)));
+            new DataReaderEnumDefault<>(NodeIdType::enumForValue, readUnsignedByte(readBuffer, 6)));
 
     // Switch Field (Depending on the discriminator values, passes the instantiation to a sub-type)
     NodeIdTypeDefinitionBuilder builder = null;

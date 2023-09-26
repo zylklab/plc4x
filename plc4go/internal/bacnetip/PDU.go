@@ -108,7 +108,7 @@ type Address struct {
 	AddrBroadcastTuple *AddressTuple[string, uint16]
 }
 
-func NewAddress(args ...interface{}) (*Address, error) {
+func NewAddress(args ...any) (*Address, error) {
 	log.Debug().Interface("args", args).Msg("NewAddress")
 	a := &Address{}
 	a.AddrNet = nil
@@ -142,8 +142,8 @@ func NewAddress(args ...interface{}) (*Address, error) {
 }
 
 // decodeAddress Initialize the address from a string.  Lots of different forms are supported
-func (a *Address) decodeAddress(addr interface{}) error {
-	log.Debug().Msgf("decodeAddress %v (%T)", addr, addr)
+func (a *Address) decodeAddress(addr any) error {
+	log.Debug().Type("addrType", addr).Interface("addr", addr).Msg("decodeAddress")
 
 	// start out assuming this is a local station and didn't get routed
 	a.AddrType = LOCAL_STATION_ADDRESS
@@ -209,7 +209,7 @@ func (a *Address) decodeAddress(addr interface{}) error {
 			if m {
 				log.Debug().Msg("combined pattern")
 				groups := combined_pattern.FindStringSubmatch(addr)
-				net := groups[0]
+				_net := groups[0]
 				global_broadcast := groups[1]
 				local_broadcast := groups[2]
 				local_addr := groups[3]
@@ -220,10 +220,10 @@ func (a *Address) decodeAddress(addr interface{}) error {
 				route_ip_addr := groups[8]
 				route_ip_port := groups[9]
 
-				a := func(...interface{}) {
+				a := func(...any) {
 
 				}
-				a(net, global_broadcast, local_broadcast, local_addr, local_ip_addr, local_ip_net, local_ip_port, route_addr, route_ip_addr, route_ip_port)
+				a(_net, global_broadcast, local_broadcast, local_addr, local_ip_addr, local_ip_net, local_ip_port, route_addr, route_ip_addr, route_ip_port)
 			}
 			panic("parsing not yet ported")
 		case AddressTuple[string, uint16]:
@@ -239,7 +239,7 @@ func (a *Address) decodeAddress(addr interface{}) error {
 				addrstr = net.ParseIP(uaddr)
 			}
 			a.AddrTuple = &AddressTuple[string, uint16]{uaddr, *a.AddrPort}
-			log.Debug().Msgf("addrstr: %s", addrstr)
+			log.Debug().Hex("addrstr", addrstr).Msg("addrstr:")
 
 			ip := ipv4ToUint32(addrstr)
 			a.AddrIP = &ip
@@ -260,7 +260,7 @@ func (a *Address) decodeAddress(addr interface{}) error {
 
 			addrstr := uint32ToIpv4(uint32(uaddr))
 			a.AddrTuple = &AddressTuple[string, uint16]{addrstr.String(), *a.AddrPort}
-			log.Debug().Msgf("addrstr: %s", addrstr)
+			log.Debug().Hex("addrstr", addrstr).Msg("addrstr:")
 
 			ip := ipv4ToUint32(addrstr)
 			a.AddrIP = &ip
@@ -282,7 +282,7 @@ func (a *Address) decodeAddress(addr interface{}) error {
 	return nil
 }
 
-func (a *Address) Equals(other interface{}) bool {
+func (a *Address) Equals(other any) bool {
 	if a == nil && other == nil {
 		return true
 	} else if a == nil && other != nil {
@@ -375,7 +375,7 @@ func uint32ToIpv4(number uint32) net.IP {
 	return ipv4
 }
 
-func NewLocalStation(addr interface{}, route *Address) (*Address, error) {
+func NewLocalStation(addr any, route *Address) (*Address, error) {
 	l := &Address{}
 	l.AddrType = LOCAL_STATION_ADDRESS
 	l.AddrRoute = route
@@ -399,7 +399,7 @@ func NewLocalStation(addr interface{}, route *Address) (*Address, error) {
 	return l, nil
 }
 
-func NewRemoteStation(net *uint16, addr interface{}, route *Address) (*Address, error) {
+func NewRemoteStation(net *uint16, addr any, route *Address) (*Address, error) {
 	l := &Address{}
 	l.AddrType = REMOTE_STATION_ADDRESS
 	l.AddrNet = net
@@ -465,6 +465,7 @@ func NewPCI(msg spi.Message, pduSource *Address, pduDestination *Address, expect
 }
 
 type _PDU interface {
+	fmt.Stringer
 	GetMessage() spi.Message
 	GetPDUSource() *Address
 	GetPDUDestination() *Address

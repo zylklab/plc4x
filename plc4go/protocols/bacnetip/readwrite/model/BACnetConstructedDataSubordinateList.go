@@ -21,9 +21,10 @@ package model
 
 import (
 	"context"
-	spiContext "github.com/apache/plc4x/plc4go/spi/context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -31,6 +32,7 @@ import (
 
 // BACnetConstructedDataSubordinateList is the corresponding interface of BACnetConstructedDataSubordinateList
 type BACnetConstructedDataSubordinateList interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	BACnetConstructedData
@@ -131,7 +133,7 @@ func NewBACnetConstructedDataSubordinateList(numberOfDataElements BACnetApplicat
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataSubordinateList(structType interface{}) BACnetConstructedDataSubordinateList {
+func CastBACnetConstructedDataSubordinateList(structType any) BACnetConstructedDataSubordinateList {
 	if casted, ok := structType.(BACnetConstructedDataSubordinateList); ok {
 		return casted
 	}
@@ -169,13 +171,15 @@ func (m *_BACnetConstructedDataSubordinateList) GetLengthInBytes(ctx context.Con
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataSubordinateListParse(theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataSubordinateList, error) {
-	return BACnetConstructedDataSubordinateListParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataSubordinateListParse(ctx context.Context, theBytes []byte, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataSubordinateList, error) {
+	return BACnetConstructedDataSubordinateListParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), tagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataSubordinateListParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, tagNumber uint8, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataSubordinateList, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataSubordinateList"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataSubordinateList")
 	}
@@ -197,7 +201,7 @@ func BACnetConstructedDataSubordinateListParseWithBuffer(ctx context.Context, re
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'numberOfDataElements' field of BACnetConstructedDataSubordinateList")
@@ -216,7 +220,7 @@ func BACnetConstructedDataSubordinateListParseWithBuffer(ctx context.Context, re
 	// Terminated array
 	var subordinateList []BACnetDeviceObjectReference
 	{
-		for !bool(IsBACnetConstructedDataClosingTag(readBuffer, false, tagNumber)) {
+		for !bool(IsBACnetConstructedDataClosingTag(ctx, readBuffer, false, tagNumber)) {
 			_item, _err := BACnetDeviceObjectReferenceParseWithBuffer(ctx, readBuffer)
 			if _err != nil {
 				return nil, errors.Wrap(_err, "Error parsing 'subordinateList' field of BACnetConstructedDataSubordinateList")
@@ -256,11 +260,15 @@ func (m *_BACnetConstructedDataSubordinateList) Serialize() ([]byte, error) {
 func (m *_BACnetConstructedDataSubordinateList) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("BACnetConstructedDataSubordinateList"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataSubordinateList")
 		}
 		// Virtual field
+		zero := m.GetZero()
+		_ = zero
 		if _zeroErr := writeBuffer.WriteVirtual(ctx, "zero", m.GetZero()); _zeroErr != nil {
 			return errors.Wrap(_zeroErr, "Error serializing 'zero' field")
 		}
@@ -287,7 +295,7 @@ func (m *_BACnetConstructedDataSubordinateList) SerializeWithWriteBuffer(ctx con
 		}
 		for _curItem, _element := range m.GetSubordinateList() {
 			_ = _curItem
-			arrayCtx := spiContext.CreateArrayContext(ctx, len(m.GetSubordinateList()), _curItem)
+			arrayCtx := utils.CreateArrayContext(ctx, len(m.GetSubordinateList()), _curItem)
 			_ = arrayCtx
 			_elementErr := writeBuffer.WriteSerializable(arrayCtx, _element)
 			if _elementErr != nil {

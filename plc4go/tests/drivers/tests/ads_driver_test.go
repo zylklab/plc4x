@@ -25,16 +25,24 @@ import (
 
 	"github.com/apache/plc4x/plc4go/internal/ads"
 	adsIO "github.com/apache/plc4x/plc4go/protocols/ads/readwrite"
-	adsModel "github.com/apache/plc4x/plc4go/protocols/ads/readwrite/model"
+	readWriteModel "github.com/apache/plc4x/plc4go/protocols/ads/readwrite/model"
 	"github.com/apache/plc4x/plc4go/spi/testutils"
 	"github.com/apache/plc4x/plc4go/spi/utils"
-	_ "github.com/apache/plc4x/plc4go/tests/initializetest"
 )
 
 func TestAdsDriver(t *testing.T) {
 	t.Skip("I have to port the commands for reading the symbol-table first")
-	options := []testutils.WithOption{testutils.WithRootTypeParser(func(readBufferByteBased utils.ReadBufferByteBased) (interface{}, error) {
-		return adsModel.AmsTCPPacketParseWithBuffer(context.Background(), readBufferByteBased)
-	})}
-	testutils.RunDriverTestsuiteWithOptions(t, ads.NewDriver(), "assets/testing/protocols/ads/DriverTestsuite.xml", adsIO.AdsXmlParserHelper{}, options)
+	parser := func(readBufferByteBased utils.ReadBufferByteBased) (any, error) {
+		return readWriteModel.AmsTCPPacketParseWithBuffer(context.Background(), readBufferByteBased)
+	}
+	optionsForTesting := testutils.EnrichOptionsWithOptionsForTesting(t)
+	testutils.RunDriverTestsuite(
+		t,
+		ads.NewDriver(optionsForTesting...),
+		"assets/testing/protocols/ads/DriverTestsuite.xml",
+		adsIO.AdsXmlParserHelper{},
+		append(optionsForTesting,
+			testutils.WithRootTypeParser(parser),
+		)...,
+	)
 }

@@ -93,7 +93,6 @@
             <Bundle-Activator>org.apache.plc4x.java.osgi.DriverActivator</Bundle-Activator>
             <Export-Service>org.apache.plc4x.java.api.PlcDriver,org.apache.plc4x.java.opcua.OpcuaPlcDriver</Export-Service>
             <Import-Package>
-              com.fasterxml.jackson.annotation;resolution:=optional,
               *
             </Import-Package>
           </instructions>
@@ -149,6 +148,10 @@
       <groupId>io.netty</groupId>
       <artifactId>netty-buffer</artifactId>
     </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.apache.commons</groupId>
@@ -161,11 +164,11 @@
     </dependency>
     <dependency>
       <groupId>org.bouncycastle</groupId>
-      <artifactId>bcpkix-jdk15on</artifactId>
+      <artifactId>bcpkix-jdk18on</artifactId>
     </dependency>
     <dependency>
       <groupId>org.bouncycastle</groupId>
-      <artifactId>bcprov-jdk15on</artifactId>
+      <artifactId>bcprov-jdk18on</artifactId>
     </dependency>
 
     <dependency>

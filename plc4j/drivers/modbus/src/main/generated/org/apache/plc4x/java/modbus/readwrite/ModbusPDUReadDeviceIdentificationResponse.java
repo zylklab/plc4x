@@ -42,8 +42,8 @@ public class ModbusPDUReadDeviceIdentificationResponse extends ModbusPDU impleme
     return (boolean) false;
   }
 
-  public Short getFunctionFlag() {
-    return (short) 0x2B;
+  public Byte getFunctionFlag() {
+    return (byte) 0x2B;
   }
 
   public Boolean getResponse() {
@@ -109,7 +109,6 @@ public class ModbusPDUReadDeviceIdentificationResponse extends ModbusPDU impleme
   protected void serializeModbusPDUChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ModbusPDUReadDeviceIdentificationResponse");
 
     // Const Field (meiType)
@@ -136,7 +135,7 @@ public class ModbusPDUReadDeviceIdentificationResponse extends ModbusPDU impleme
         new DataWriterEnumDefault<>(
             ModbusDeviceInformationConformityLevel::getValue,
             ModbusDeviceInformationConformityLevel::name,
-            writeUnsignedShort(writeBuffer, 7)));
+            writeUnsignedByte(writeBuffer, 7)));
 
     // Simple Field (moreFollows)
     writeSimpleEnumField(
@@ -210,8 +209,6 @@ public class ModbusPDUReadDeviceIdentificationResponse extends ModbusPDU impleme
       ReadBuffer readBuffer, Boolean response) throws ParseException {
     readBuffer.pullContext("ModbusPDUReadDeviceIdentificationResponse");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     short meiType =
@@ -235,7 +232,7 @@ public class ModbusPDUReadDeviceIdentificationResponse extends ModbusPDU impleme
             "ModbusDeviceInformationConformityLevel",
             new DataReaderEnumDefault<>(
                 ModbusDeviceInformationConformityLevel::enumForValue,
-                readUnsignedShort(readBuffer, 7)));
+                readUnsignedByte(readBuffer, 7)));
 
     ModbusDeviceInformationMoreFollows moreFollows =
         readEnumField(

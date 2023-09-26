@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // MonitoredSALShortFormBasicMode is the corresponding interface of MonitoredSALShortFormBasicMode
 type MonitoredSALShortFormBasicMode interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	MonitoredSAL
@@ -133,7 +136,7 @@ func NewMonitoredSALShortFormBasicMode(counts byte, bridgeCount *uint8, networkN
 }
 
 // Deprecated: use the interface for direct cast
-func CastMonitoredSALShortFormBasicMode(structType interface{}) MonitoredSALShortFormBasicMode {
+func CastMonitoredSALShortFormBasicMode(structType any) MonitoredSALShortFormBasicMode {
 	if casted, ok := structType.(MonitoredSALShortFormBasicMode); ok {
 		return casted
 	}
@@ -180,13 +183,15 @@ func (m *_MonitoredSALShortFormBasicMode) GetLengthInBytes(ctx context.Context) 
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func MonitoredSALShortFormBasicModeParse(theBytes []byte, cBusOptions CBusOptions) (MonitoredSALShortFormBasicMode, error) {
-	return MonitoredSALShortFormBasicModeParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), cBusOptions)
+func MonitoredSALShortFormBasicModeParse(ctx context.Context, theBytes []byte, cBusOptions CBusOptions) (MonitoredSALShortFormBasicMode, error) {
+	return MonitoredSALShortFormBasicModeParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), cBusOptions)
 }
 
 func MonitoredSALShortFormBasicModeParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, cBusOptions CBusOptions) (MonitoredSALShortFormBasicMode, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("MonitoredSALShortFormBasicMode"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for MonitoredSALShortFormBasicMode")
 	}
@@ -255,7 +260,7 @@ func MonitoredSALShortFormBasicModeParseWithBuffer(ctx context.Context, readBuff
 		_val, _err := SALDataParseWithBuffer(ctx, readBuffer, application.ApplicationId())
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'salData' field of MonitoredSALShortFormBasicMode")
@@ -298,6 +303,8 @@ func (m *_MonitoredSALShortFormBasicMode) Serialize() ([]byte, error) {
 func (m *_MonitoredSALShortFormBasicMode) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	ser := func() error {
 		if pushErr := writeBuffer.PushContext("MonitoredSALShortFormBasicMode"); pushErr != nil {
 			return errors.Wrap(pushErr, "Error pushing for MonitoredSALShortFormBasicMode")

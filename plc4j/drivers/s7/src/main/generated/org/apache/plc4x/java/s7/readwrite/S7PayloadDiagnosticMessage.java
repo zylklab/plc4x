@@ -38,16 +38,16 @@ import org.apache.plc4x.java.spi.generation.*;
 public class S7PayloadDiagnosticMessage extends S7PayloadUserDataItem implements Message {
 
   // Accessors for discriminator values.
+  public Byte getCpuFunctionGroup() {
+    return (byte) 0x04;
+  }
+
   public Byte getCpuFunctionType() {
     return (byte) 0x00;
   }
 
   public Short getCpuSubfunction() {
     return (short) 0x03;
-  }
-
-  public Integer getDataLength() {
-    return 0;
   }
 
   // Properties.
@@ -62,6 +62,7 @@ public class S7PayloadDiagnosticMessage extends S7PayloadUserDataItem implements
   public S7PayloadDiagnosticMessage(
       DataTransportErrorCode returnCode,
       DataTransportSize transportSize,
+      int dataLength,
       int EventId,
       short PriorityClass,
       short ObNumber,
@@ -69,7 +70,7 @@ public class S7PayloadDiagnosticMessage extends S7PayloadUserDataItem implements
       int Info1,
       long Info2,
       DateAndTime TimeStamp) {
-    super(returnCode, transportSize);
+    super(returnCode, transportSize, dataLength);
     this.EventId = EventId;
     this.PriorityClass = PriorityClass;
     this.ObNumber = ObNumber;
@@ -112,7 +113,6 @@ public class S7PayloadDiagnosticMessage extends S7PayloadUserDataItem implements
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("S7PayloadDiagnosticMessage");
 
     // Simple Field (EventId)
@@ -175,11 +175,10 @@ public class S7PayloadDiagnosticMessage extends S7PayloadUserDataItem implements
   }
 
   public static S7PayloadUserDataItemBuilder staticParseS7PayloadUserDataItemBuilder(
-      ReadBuffer readBuffer, Byte cpuFunctionType, Short cpuSubfunction) throws ParseException {
+      ReadBuffer readBuffer, Byte cpuFunctionGroup, Byte cpuFunctionType, Short cpuSubfunction)
+      throws ParseException {
     readBuffer.pullContext("S7PayloadDiagnosticMessage");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     int EventId = readSimpleField("EventId", readUnsignedInt(readBuffer, 16));
@@ -233,11 +232,12 @@ public class S7PayloadDiagnosticMessage extends S7PayloadUserDataItem implements
     }
 
     public S7PayloadDiagnosticMessage build(
-        DataTransportErrorCode returnCode, DataTransportSize transportSize) {
+        DataTransportErrorCode returnCode, DataTransportSize transportSize, int dataLength) {
       S7PayloadDiagnosticMessage s7PayloadDiagnosticMessage =
           new S7PayloadDiagnosticMessage(
               returnCode,
               transportSize,
+              dataLength,
               EventId,
               PriorityClass,
               ObNumber,

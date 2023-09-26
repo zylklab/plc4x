@@ -44,10 +44,10 @@ public class COTPPacketData extends COTPPacket implements Message {
 
   // Properties.
   protected final boolean eot;
-  protected final short tpduRef;
+  protected final byte tpduRef;
 
   public COTPPacketData(
-      List<COTPParameter> parameters, S7Message payload, boolean eot, short tpduRef) {
+      List<COTPParameter> parameters, S7Message payload, boolean eot, byte tpduRef) {
     super(parameters, payload);
     this.eot = eot;
     this.tpduRef = tpduRef;
@@ -57,7 +57,7 @@ public class COTPPacketData extends COTPPacket implements Message {
     return eot;
   }
 
-  public short getTpduRef() {
+  public byte getTpduRef() {
     return tpduRef;
   }
 
@@ -65,14 +65,13 @@ public class COTPPacketData extends COTPPacket implements Message {
   protected void serializeCOTPPacketChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("COTPPacketData");
 
     // Simple Field (eot)
     writeSimpleField("eot", eot, writeBoolean(writeBuffer));
 
     // Simple Field (tpduRef)
-    writeSimpleField("tpduRef", tpduRef, writeUnsignedShort(writeBuffer, 7));
+    writeSimpleField("tpduRef", tpduRef, writeUnsignedByte(writeBuffer, 7));
 
     writeBuffer.popContext("COTPPacketData");
   }
@@ -101,13 +100,11 @@ public class COTPPacketData extends COTPPacket implements Message {
       ReadBuffer readBuffer, Integer cotpLen) throws ParseException {
     readBuffer.pullContext("COTPPacketData");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     boolean eot = readSimpleField("eot", readBoolean(readBuffer));
 
-    short tpduRef = readSimpleField("tpduRef", readUnsignedShort(readBuffer, 7));
+    byte tpduRef = readSimpleField("tpduRef", readUnsignedByte(readBuffer, 7));
 
     readBuffer.closeContext("COTPPacketData");
     // Create the instance
@@ -116,9 +113,9 @@ public class COTPPacketData extends COTPPacket implements Message {
 
   public static class COTPPacketDataBuilderImpl implements COTPPacket.COTPPacketBuilder {
     private final boolean eot;
-    private final short tpduRef;
+    private final byte tpduRef;
 
-    public COTPPacketDataBuilderImpl(boolean eot, short tpduRef) {
+    public COTPPacketDataBuilderImpl(boolean eot, byte tpduRef) {
       this.eot = eot;
       this.tpduRef = tpduRef;
     }

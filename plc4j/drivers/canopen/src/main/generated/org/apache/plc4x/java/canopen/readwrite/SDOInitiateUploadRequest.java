@@ -58,11 +58,10 @@ public class SDOInitiateUploadRequest extends SDORequest implements Message {
   protected void serializeSDORequestChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("SDOInitiateUploadRequest");
 
     // Reserved Field (reserved)
-    writeReservedField("reserved", (short) 0x00, writeUnsignedShort(writeBuffer, 5));
+    writeReservedField("reserved", (byte) 0x00, writeUnsignedByte(writeBuffer, 5));
 
     // Simple Field (address)
     writeSimpleField("address", address, new DataWriterComplexDefault<>(writeBuffer));
@@ -100,12 +99,10 @@ public class SDOInitiateUploadRequest extends SDORequest implements Message {
       ReadBuffer readBuffer, SDORequestCommand command) throws ParseException {
     readBuffer.pullContext("SDOInitiateUploadRequest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
-    Short reservedField0 =
-        readReservedField("reserved", readUnsignedShort(readBuffer, 5), (short) 0x00);
+    Byte reservedField0 =
+        readReservedField("reserved", readUnsignedByte(readBuffer, 5), (byte) 0x00);
 
     IndexAddress address =
         readSimpleField(

@@ -21,8 +21,10 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"github.com/apache/plc4x/plc4go/spi/utils"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"io"
 )
 
@@ -30,6 +32,7 @@ import (
 
 // BACnetConstructedDataElement is the corresponding interface of BACnetConstructedDataElement
 type BACnetConstructedDataElement interface {
+	fmt.Stringer
 	utils.LengthAware
 	utils.Serializable
 	// GetPeekedTagHeader returns PeekedTagHeader (property field)
@@ -159,7 +162,7 @@ func NewBACnetConstructedDataElement(peekedTagHeader BACnetTagHeader, applicatio
 }
 
 // Deprecated: use the interface for direct cast
-func CastBACnetConstructedDataElement(structType interface{}) BACnetConstructedDataElement {
+func CastBACnetConstructedDataElement(structType any) BACnetConstructedDataElement {
 	if casted, ok := structType.(BACnetConstructedDataElement); ok {
 		return casted
 	}
@@ -206,13 +209,15 @@ func (m *_BACnetConstructedDataElement) GetLengthInBytes(ctx context.Context) ui
 	return m.GetLengthInBits(ctx) / 8
 }
 
-func BACnetConstructedDataElementParse(theBytes []byte, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataElement, error) {
-	return BACnetConstructedDataElementParseWithBuffer(context.Background(), utils.NewReadBufferByteBased(theBytes), objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
+func BACnetConstructedDataElementParse(ctx context.Context, theBytes []byte, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataElement, error) {
+	return BACnetConstructedDataElementParseWithBuffer(ctx, utils.NewReadBufferByteBased(theBytes), objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 }
 
 func BACnetConstructedDataElementParseWithBuffer(ctx context.Context, readBuffer utils.ReadBuffer, objectTypeArgument BACnetObjectType, propertyIdentifierArgument BACnetPropertyIdentifier, arrayIndexArgument BACnetTagPayloadUnsignedInteger) (BACnetConstructedDataElement, error) {
 	positionAware := readBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pullErr := readBuffer.PullContext("BACnetConstructedDataElement"); pullErr != nil {
 		return nil, errors.Wrap(pullErr, "Error pulling for BACnetConstructedDataElement")
 	}
@@ -262,7 +267,7 @@ func BACnetConstructedDataElementParseWithBuffer(ctx context.Context, readBuffer
 		_val, _err := BACnetApplicationTagParseWithBuffer(ctx, readBuffer)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'applicationTag' field of BACnetConstructedDataElement")
@@ -284,7 +289,7 @@ func BACnetConstructedDataElementParseWithBuffer(ctx context.Context, readBuffer
 		_val, _err := BACnetContextTagParseWithBuffer(ctx, readBuffer, peekedTagNumber, BACnetDataType_UNKNOWN)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'contextTag' field of BACnetConstructedDataElement")
@@ -306,7 +311,7 @@ func BACnetConstructedDataElementParseWithBuffer(ctx context.Context, readBuffer
 		_val, _err := BACnetConstructedDataParseWithBuffer(ctx, readBuffer, peekedTagNumber, objectTypeArgument, propertyIdentifierArgument, arrayIndexArgument)
 		switch {
 		case errors.Is(_err, utils.ParseAssertError{}) || errors.Is(_err, io.EOF):
-			Plc4xModelLog.Debug().Err(_err).Msg("Resetting position because optional threw an error")
+			log.Debug().Err(_err).Msg("Resetting position because optional threw an error")
 			readBuffer.Reset(currentPos)
 		case _err != nil:
 			return nil, errors.Wrap(_err, "Error parsing 'constructedData' field of BACnetConstructedDataElement")
@@ -350,22 +355,32 @@ func (m *_BACnetConstructedDataElement) Serialize() ([]byte, error) {
 func (m *_BACnetConstructedDataElement) SerializeWithWriteBuffer(ctx context.Context, writeBuffer utils.WriteBuffer) error {
 	positionAware := writeBuffer
 	_ = positionAware
+	log := zerolog.Ctx(ctx)
+	_ = log
 	if pushErr := writeBuffer.PushContext("BACnetConstructedDataElement"); pushErr != nil {
 		return errors.Wrap(pushErr, "Error pushing for BACnetConstructedDataElement")
 	}
 	// Virtual field
+	peekedTagNumber := m.GetPeekedTagNumber()
+	_ = peekedTagNumber
 	if _peekedTagNumberErr := writeBuffer.WriteVirtual(ctx, "peekedTagNumber", m.GetPeekedTagNumber()); _peekedTagNumberErr != nil {
 		return errors.Wrap(_peekedTagNumberErr, "Error serializing 'peekedTagNumber' field")
 	}
 	// Virtual field
+	isApplicationTag := m.GetIsApplicationTag()
+	_ = isApplicationTag
 	if _isApplicationTagErr := writeBuffer.WriteVirtual(ctx, "isApplicationTag", m.GetIsApplicationTag()); _isApplicationTagErr != nil {
 		return errors.Wrap(_isApplicationTagErr, "Error serializing 'isApplicationTag' field")
 	}
 	// Virtual field
+	isConstructedData := m.GetIsConstructedData()
+	_ = isConstructedData
 	if _isConstructedDataErr := writeBuffer.WriteVirtual(ctx, "isConstructedData", m.GetIsConstructedData()); _isConstructedDataErr != nil {
 		return errors.Wrap(_isConstructedDataErr, "Error serializing 'isConstructedData' field")
 	}
 	// Virtual field
+	isContextTag := m.GetIsContextTag()
+	_ = isContextTag
 	if _isContextTagErr := writeBuffer.WriteVirtual(ctx, "isContextTag", m.GetIsContextTag()); _isContextTagErr != nil {
 		return errors.Wrap(_isContextTagErr, "Error serializing 'isContextTag' field")
 	}

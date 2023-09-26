@@ -22,6 +22,9 @@ package bacnetip
 import (
 	"context"
 	"fmt"
+	"github.com/apache/plc4x/plc4go/spi/options"
+	"github.com/apache/plc4x/plc4go/spi/transactions"
+	"github.com/rs/zerolog"
 	"time"
 
 	apiModel "github.com/apache/plc4x/plc4go/pkg/api/model"
@@ -37,13 +40,16 @@ import (
 type Reader struct {
 	invokeIdGenerator *InvokeIdGenerator
 	messageCodec      spi.MessageCodec
-	tm                *spi.RequestTransactionManager
+	tm                transactions.RequestTransactionManager
 
 	maxSegmentsAccepted   readWriteModel.MaxSegmentsAccepted
 	maxApduLengthAccepted readWriteModel.MaxApduLengthAccepted
+
+	log zerolog.Logger
 }
 
-func NewReader(invokeIdGenerator *InvokeIdGenerator, messageCodec spi.MessageCodec, tm *spi.RequestTransactionManager) *Reader {
+func NewReader(invokeIdGenerator *InvokeIdGenerator, messageCodec spi.MessageCodec, tm transactions.RequestTransactionManager, _options ...options.WithOption) *Reader {
+	customLogger := options.ExtractCustomLoggerOrDefaultToGlobal(_options...)
 	return &Reader{
 		invokeIdGenerator: invokeIdGenerator,
 		messageCodec:      messageCodec,
@@ -51,20 +57,18 @@ func NewReader(invokeIdGenerator *InvokeIdGenerator, messageCodec spi.MessageCod
 
 		maxSegmentsAccepted:   readWriteModel.MaxSegmentsAccepted_MORE_THAN_64_SEGMENTS,
 		maxApduLengthAccepted: readWriteModel.MaxApduLengthAccepted_NUM_OCTETS_1476,
+
+		log: customLogger,
 	}
 }
 
 func (m *Reader) Read(ctx context.Context, readRequest apiModel.PlcReadRequest) <-chan apiModel.PlcReadRequestResult {
 	// TODO: handle ctx
 	log.Trace().Msg("Reading")
-	result := make(chan apiModel.PlcReadRequestResult)
+	result := make(chan apiModel.PlcReadRequestResult, 1)
 	go func() {
 		if len(readRequest.GetTagNames()) == 0 {
-			result <- &spiModel.DefaultPlcReadRequestResult{
-				Request:  readRequest,
-				Response: nil,
-				Err:      errors.New("at least one field required"),
-			}
+			result <- spiModel.NewDefaultPlcReadRequestResult(readRequest, nil, errors.New("at least one field required"))
 			return
 		}
 		// create the service request
@@ -130,21 +134,20 @@ func (m *Reader) Read(ctx context.Context, readRequest apiModel.PlcReadRequest) 
 
 		// Start a new request-transaction (Is ended in the response-handler)
 		transaction := m.tm.StartTransaction()
-		transaction.Submit(func() {
-
+		transaction.Submit(func(transaction transactions.RequestTransaction) {
 			// Send the  over the wire
 			log.Trace().Msg("Send ")
 			if err := m.messageCodec.SendRequest(ctx, apdu, func(message spi.Message) bool {
 				bvlc, ok := message.(readWriteModel.BVLCExactly)
 				if !ok {
-					log.Debug().Msgf("Received strange type %T", bvlc)
+					log.Debug().Type("bvlc", bvlc).Msg("Received strange type")
 					return false
 				}
 				var npdu readWriteModel.NPDU
 				if npduRetriever, ok := bvlc.(interface{ GetNpdu() readWriteModel.NPDU }); ok {
 					npdu = npduRetriever.GetNpdu()
 				} else {
-					log.Debug().Msgf("bvlc has no way to give a npdu %T", bvlc)
+					log.Debug().Type("bvlc", bvlc).Msg("bvlc has no way to give a npdu")
 					return false
 				}
 				if npdu.GetControl().GetMessageTypeFieldPresent() {
@@ -168,30 +171,35 @@ func (m *Reader) Read(ctx context.Context, readRequest apiModel.PlcReadRequest) 
 				readResponse, err := m.ToPlc4xReadResponse(apdu, readRequest)
 
 				if err != nil {
-					result <- &spiModel.DefaultPlcReadRequestResult{
-						Request: readRequest,
-						Err:     errors.Wrap(err, "Error decoding response"),
-					}
+					result <- spiModel.NewDefaultPlcReadRequestResult(
+						readRequest,
+						nil,
+						errors.Wrap(err, "Error decoding response"),
+					)
 					return transaction.EndRequest()
 				}
-				result <- &spiModel.DefaultPlcReadRequestResult{
-					Request:  readRequest,
-					Response: readResponse,
-				}
+				result <- spiModel.NewDefaultPlcReadRequestResult(
+					readRequest,
+					readResponse,
+					nil,
+				)
 				return transaction.EndRequest()
 			}, func(err error) error {
-				result <- &spiModel.DefaultPlcReadRequestResult{
-					Request: readRequest,
-					Err:     errors.Wrap(err, "got timeout while waiting for response"),
-				}
+				result <- spiModel.NewDefaultPlcReadRequestResult(
+					readRequest,
+					nil,
+					errors.Wrap(err, "got timeout while waiting for response"),
+				)
 				return transaction.EndRequest()
 			}, time.Second*1); err != nil {
-				result <- &spiModel.DefaultPlcReadRequestResult{
-					Request:  readRequest,
-					Response: nil,
-					Err:      errors.Wrap(err, "error sending message"),
+				result <- spiModel.NewDefaultPlcReadRequestResult(
+					readRequest,
+					nil,
+					errors.Wrap(err, "error sending message"),
+				)
+				if err := transaction.FailRequest(errors.Errorf("timeout after %s", time.Second*1)); err != nil {
+					m.log.Debug().Err(err).Msg("Error failing request")
 				}
-				_ = transaction.EndRequest()
 			}
 		})
 	}()
@@ -236,11 +244,13 @@ func (m *Reader) ToPlc4xReadResponse(apdu readWriteModel.APDU, readRequest apiMo
 
 	// If the result contains any form of non-null error code, handle this instead.
 	if errorClass != nil {
-		log.Warn().Msgf("Got an unknown error response from the PLC. Error Class: %d, Error Code %d. "+
-			"We probably need to implement explicit handling for this, so please file a bug-report "+
-			"on https://issues.apache.org/jira/projects/PLC4X and ideally attach a WireShark dump "+
-			"containing a capture of the communication.",
-			errorClass, errorCode)
+		m.log.Warn().
+			Stringer("errorClass", errorClass).
+			Stringer("errorCode", errorCode).
+			Msg("Got an unknown error response from the PLC. Error Class: %d, Error Code %d. " +
+				"We probably need to implement explicit handling for this, so please file a bug-report " +
+				"on https://github.com/apache/plc4x/issues and ideally attach a WireShark dump " +
+				"containing a capture of the communication.")
 		for _, tagName := range readRequest.GetTagNames() {
 			responseCodes[tagName] = apiModel.PlcResponseCode_INTERNAL_ERROR
 			plcValues[tagName] = spiValues.NewPlcNULL()
@@ -248,11 +258,12 @@ func (m *Reader) ToPlc4xReadResponse(apdu readWriteModel.APDU, readRequest apiMo
 		return spiModel.NewDefaultPlcReadResponse(readRequest, responseCodes, plcValues), nil
 	}
 	if rejectReason != nil {
-		log.Warn().Msgf("Got an unknown error response from the PLC. Reject Reason %d. "+
-			"We probably need to implement explicit handling for this, so please file a bug-report "+
-			"on https://issues.apache.org/jira/projects/PLC4X and ideally attach a WireShark dump "+
-			"containing a capture of the communication.",
-			rejectReason)
+		m.log.Warn().
+			Stringer("rejectReason", rejectReason).
+			Msg("Got an unknown error response from the PLC. Error Class: %d, Error Code %d. " +
+				"We probably need to implement explicit handling for this, so please file a bug-report " +
+				"on https://github.com/apache/plc4x/issues and ideally attach a WireShark dump " +
+				"containing a capture of the communication.")
 		for _, tagName := range readRequest.GetTagNames() {
 			responseCodes[tagName] = apiModel.PlcResponseCode_INTERNAL_ERROR
 			plcValues[tagName] = spiValues.NewPlcNULL()
@@ -260,11 +271,12 @@ func (m *Reader) ToPlc4xReadResponse(apdu readWriteModel.APDU, readRequest apiMo
 		return spiModel.NewDefaultPlcReadResponse(readRequest, responseCodes, plcValues), nil
 	}
 	if abortReason != nil {
-		log.Warn().Msgf("Got an unknown error response from the PLC. Abort Reason %d. "+
-			"We probably need to implement explicit handling for this, so please file a bug-report "+
-			"on https://issues.apache.org/jira/projects/PLC4X and ideally attach a WireShark dump "+
-			"containing a capture of the communication.",
-			abortReason)
+		m.log.Warn().
+			Stringer("abortReason", abortReason).
+			Msg("Got an unknown error response from the PLC. Error Class: %d, Error Code %d. " +
+				"We probably need to implement explicit handling for this, so please file a bug-report " +
+				"on https://github.com/apache/plc4x/issues and ideally attach a WireShark dump " +
+				"containing a capture of the communication.")
 		for _, tagName := range readRequest.GetTagNames() {
 			responseCodes[tagName] = apiModel.PlcResponseCode_INTERNAL_ERROR
 			plcValues[tagName] = spiValues.NewPlcNULL()

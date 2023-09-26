@@ -42,8 +42,8 @@ public class ModbusPDUGetComEventCounterRequest extends ModbusPDU implements Mes
     return (boolean) false;
   }
 
-  public Short getFunctionFlag() {
-    return (short) 0x0B;
+  public Byte getFunctionFlag() {
+    return (byte) 0x0B;
   }
 
   public Boolean getResponse() {
@@ -58,7 +58,6 @@ public class ModbusPDUGetComEventCounterRequest extends ModbusPDU implements Mes
   protected void serializeModbusPDUChild(WriteBuffer writeBuffer) throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("ModbusPDUGetComEventCounterRequest");
 
     writeBuffer.popContext("ModbusPDUGetComEventCounterRequest");
@@ -82,8 +81,6 @@ public class ModbusPDUGetComEventCounterRequest extends ModbusPDU implements Mes
       ReadBuffer readBuffer, Boolean response) throws ParseException {
     readBuffer.pullContext("ModbusPDUGetComEventCounterRequest");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     readBuffer.closeContext("ModbusPDUGetComEventCounterRequest");

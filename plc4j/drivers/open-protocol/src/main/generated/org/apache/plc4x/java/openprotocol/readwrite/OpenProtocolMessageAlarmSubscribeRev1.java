@@ -39,12 +39,12 @@ public class OpenProtocolMessageAlarmSubscribeRev1 extends OpenProtocolMessageAl
     implements Message {
 
   // Accessors for discriminator values.
-  public Long getRevision() {
-    return (long) 1;
+  public Integer getRevision() {
+    return (int) 1;
   }
 
   public OpenProtocolMessageAlarmSubscribeRev1(
-      Long midRevision,
+      Integer midRevision,
       Short noAckFlag,
       Integer targetStationId,
       Integer targetSpindleId,
@@ -66,7 +66,6 @@ public class OpenProtocolMessageAlarmSubscribeRev1 extends OpenProtocolMessageAl
       throws SerializationException {
     PositionAware positionAware = writeBuffer;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
-    int startPos = positionAware.getPos();
     writeBuffer.pushContext("OpenProtocolMessageAlarmSubscribeRev1");
 
     writeBuffer.popContext("OpenProtocolMessageAlarmSubscribeRev1");
@@ -87,12 +86,10 @@ public class OpenProtocolMessageAlarmSubscribeRev1 extends OpenProtocolMessageAl
   }
 
   public static OpenProtocolMessageAlarmSubscribeBuilder
-      staticParseOpenProtocolMessageAlarmSubscribeBuilder(ReadBuffer readBuffer, Long revision)
+      staticParseOpenProtocolMessageAlarmSubscribeBuilder(ReadBuffer readBuffer, Integer revision)
           throws ParseException {
     readBuffer.pullContext("OpenProtocolMessageAlarmSubscribeRev1");
     PositionAware positionAware = readBuffer;
-    int startPos = positionAware.getPos();
-    int curPos;
     boolean _lastItem = ThreadLocalHelper.lastItemThreadLocal.get();
 
     readBuffer.closeContext("OpenProtocolMessageAlarmSubscribeRev1");
@@ -106,7 +103,7 @@ public class OpenProtocolMessageAlarmSubscribeRev1 extends OpenProtocolMessageAl
     public OpenProtocolMessageAlarmSubscribeRev1BuilderImpl() {}
 
     public OpenProtocolMessageAlarmSubscribeRev1 build(
-        Long midRevision,
+        Integer midRevision,
         Short noAckFlag,
         Integer targetStationId,
         Integer targetSpindleId,
