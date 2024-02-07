@@ -59,10 +59,12 @@ import org.apache.plc4x.java.api.messages.PlcSubscriptionEvent;
 import org.apache.plc4x.java.api.model.PlcTag;
 import org.apache.plc4x.java.api.types.PlcValueType;
 import org.apache.plc4x.java.spi.messages.DefaultPlcSubscriptionEvent;
-import org.apache.plc4x.nifi.subscription.Plc4xListenerDispatcher;
-import org.apache.plc4x.nifi.subscription.Plc4xSubscriptionType;
 import org.apache.plc4x.nifi.record.Plc4xWriter;
 import org.apache.plc4x.nifi.record.RecordPlc4xWriter;
+import org.apache.plc4x.nifi.subscription.Plc4xListenerDispatcher;
+import org.apache.plc4x.nifi.subscription.Plc4xSubscriptionType;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 @DefaultSchedule(period="0.1 sec")
 @Tags({"plc4x", "get", "input", "source", "listen", "record"})
@@ -133,7 +135,7 @@ public class Plc4xListenRecordProcessor extends BasePlc4xProcessor {
 
     @Override
     @OnScheduled
-    public void onScheduled(final ProcessContext context) {
+    public void onScheduled(final ProcessContext context) throws JsonProcessingException {
 		super.onScheduled(context);
 		subscriptionType = Plc4xSubscriptionType.valueOf(context.getProperty(PLC_SUBSCRIPTION_TYPE).getValue());
         cyclingPollingInterval = context.getProperty(PLC_SUBSCRIPTION_CYCLIC_POLLING_INTERVAL).asLong();

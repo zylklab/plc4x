@@ -19,6 +19,7 @@
 package org.apache.plc4x.nifi;
 
 import java.io.OutputStream;
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,19 +57,27 @@ import org.apache.plc4x.java.api.messages.PlcWriteRequest;
 import org.apache.plc4x.java.api.messages.PlcWriteResponse;
 import org.apache.plc4x.java.api.model.PlcTag;
 import org.apache.plc4x.java.api.types.PlcResponseCode;
+import org.apache.plc4x.java.spi.configuration.annotations.ConfigurationParameter;
 import org.apache.plc4x.java.utils.cache.CachedPlcConnectionManager;
 import org.apache.plc4x.nifi.address.AddressesAccessStrategy;
 import org.apache.plc4x.nifi.address.AddressesAccessUtils;
 import org.apache.plc4x.nifi.address.DynamicPropertyAccessStrategy;
 import org.apache.plc4x.nifi.record.Plc4xWriter;
 import org.apache.plc4x.nifi.record.SchemaCache;
+import org.apache.plc4x.nifi.util.Plc4xCommon;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public abstract class BasePlc4xProcessor extends AbstractProcessor {
 
     protected List<PropertyDescriptor> properties;
     protected Set<Relationship> relationships;
     protected volatile boolean debugEnabled;
+    protected boolean expressionLanguageInConnectionString = false;
+    protected String cachedConnectionString;
     protected Integer cacheSize = 0;
+    protected Map<String, String> driverConfiguration;
 
     protected final SchemaCache schemaCache = new SchemaCache(0);
     protected AddressesAccessStrategy addressAccessStrategy;
@@ -96,6 +105,15 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
         .addValidator(new Plc4xConnectionStringValidator())
         .build();
 	
+    public static final PropertyDescriptor PLC_DRIVER_CONFIGURATION = new PropertyDescriptor.Builder()
+        .name("plc4x-driver-configuration")
+        .displayName("Driver configuration")
+        .description("Options to be added to the PLC4X connection string. Options are driver specific. " +
+            "It's content must be a valid JSON after Expression Language is evaluated.")
+        .expressionLanguageSupported(ExpressionLanguageScope.VARIABLE_REGISTRY)
+        .addValidator(new Plc4xDriverConfigurationValidator())
+        .build();
+
     public static final PropertyDescriptor PLC_SCHEMA_CACHE_SIZE = new PropertyDescriptor.Builder()
         .name("plc4x-record-schema-cache-size")
         .displayName("Schema Cache Size")
@@ -143,6 +161,7 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
     	final List<PropertyDescriptor> properties = new ArrayList<>();
 
     	properties.add(PLC_CONNECTION_STRING);
+        properties.add(PLC_DRIVER_CONFIGURATION);
         properties.add(AddressesAccessUtils.PLC_ADDRESS_ACCESS_STRATEGY);
         properties.add(AddressesAccessUtils.ADDRESS_TEXT_PROPERTY);
         properties.add(AddressesAccessUtils.ADDRESS_FILE_PROPERTY);
@@ -163,7 +182,11 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
     }
     
     public String getConnectionString(ProcessContext context, FlowFile flowFile) {
-        return context.getProperty(PLC_CONNECTION_STRING).evaluateAttributeExpressions(flowFile).getValue();
+        if (cachedConnectionString != null) {
+            return cachedConnectionString;
+        }
+        String tmp = context.getProperty(PLC_CONNECTION_STRING).evaluateAttributeExpressions(flowFile).getValue();
+        return Plc4xCommon.updateConnectionStringWithDriverConfiguration(driverConfiguration, tmp);
     }
 
     public Long getTimeout(ProcessContext context, FlowFile flowFile) {
@@ -203,7 +226,7 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
 
 
     @OnScheduled
-    public void onScheduled(final ProcessContext context) {
+    public void onScheduled(final ProcessContext context) throws JsonProcessingException {
         Integer newCacheSize = context.getProperty(PLC_SCHEMA_CACHE_SIZE).evaluateAttributeExpressions().asInteger();
         if (!newCacheSize.equals(cacheSize)){
             schemaCache.restartCache(newCacheSize);
@@ -212,7 +235,32 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
         refreshConnectionManager();
         debugEnabled = getLogger().isDebugEnabled();
         addressAccessStrategy = AddressesAccessUtils.getAccessStrategy(context);
+
+        driverConfiguration = getDriverConfiguration(context);
+
+        // If connection string is fixed we can store configuration into the driver configuration
+        expressionLanguageInConnectionString = context.getProperty(PLC_CONNECTION_STRING).isExpressionLanguagePresent();
+
+        if (!expressionLanguageInConnectionString) {
+            driverConfiguration.putAll(
+               Plc4xCommon.getDriverConfiguration(context.getProperty(PLC_CONNECTION_STRING).getValue())
+            );
+            cachedConnectionString = getConnectionString(context, null);
+        }
     }
+
+    
+
+    protected static Map<String, String> getDriverConfiguration(ProcessContext context) throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        String value = context.getProperty(PLC_DRIVER_CONFIGURATION).getValue();
+        if (value == null || value.isBlank()) {
+            return new HashMap<>();
+        }
+        return mapper.readerForMapOf(String.class).readValue(value);
+    }
+
+
 
     @Override
     public boolean equals(Object o) {
@@ -321,7 +369,7 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
         for (String tagName : response.getTagNames()) {
             for (int i = 0; i < response.getNumberOfValues(tagName); i++) {
                 Object value = response.getObject(tagName, i);
-                attributes.put(tagName, String.valueOf(value));
+                attributes.put(tagName + "_" + i, String.valueOf(value));
             }
         }
         session.putAllAttributes(flowFile, attributes);
@@ -353,6 +401,63 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
                     .explanation(e.getMessage())
                     .valid(false)
                     .build();
+            }
+            return new ValidationResult.Builder().subject(subject)
+                .explanation("")
+                .valid(true)
+                .build();
+        }
+    }
+
+    protected static class Plc4xDriverConfigurationValidator implements Validator {
+        @Override
+        public ValidationResult validate(String subject, String input, ValidationContext context) {
+            DefaultPlcDriverManager manager = new DefaultPlcDriverManager();
+            
+            if (PLC_CONNECTION_STRING.isExpressionLanguageSupported() && context.isExpressionLanguagePresent(PLC_CONNECTION_STRING.getName())) {
+                return new ValidationResult.Builder().subject(subject).input(input)
+                    .explanation("Expression Language Present on connection string")
+                    .valid(true).build();
+            }
+            if (context.isExpressionLanguageSupported(subject) && context.isExpressionLanguagePresent(input)) {
+                return new ValidationResult.Builder().subject(subject).input(input)
+                    .explanation("Expression Language Present")
+                    .valid(true).build();
+            }
+            try {
+                PlcDriver driver =  manager.getDriverForUrl(context.getProperty(PLC_CONNECTION_STRING).getValue());
+
+                List<String> supportedConfigurations = new ArrayList<>();
+                for (Field field : driver.getConfigurationType().getDeclaredFields()) {
+                    ConfigurationParameter fieldConfiguration = field.getAnnotation(ConfigurationParameter.class);
+                    if (fieldConfiguration != null) {
+                        supportedConfigurations.add(fieldConfiguration.value());
+                    }
+                }
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, String> map = mapper.readerForMapOf(String.class).readValue(input);
+
+                for (String k : map.keySet()){
+                    if (!supportedConfigurations.contains(k)) {
+                        return new ValidationResult.Builder().subject(subject)
+                            .explanation(String.format("Driver configuration parameter %s is not included in supported parameters: %s", k, supportedConfigurations))
+                            .valid(false)
+                            .build();
+                    }
+                }
+            } catch (PlcConnectionException e) {
+                e.printStackTrace();
+                return new ValidationResult.Builder().subject(subject)
+                    .explanation(e.getMessage())
+                    .valid(false)
+                    .build();
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+                return new ValidationResult.Builder().subject(subject)
+                .explanation(e.getMessage())
+                .valid(false)
+                .build();
             }
             return new ValidationResult.Builder().subject(subject)
                 .explanation("")

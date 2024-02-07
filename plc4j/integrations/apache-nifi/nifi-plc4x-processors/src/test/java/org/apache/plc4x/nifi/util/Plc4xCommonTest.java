@@ -17,13 +17,14 @@
 
 package org.apache.plc4x.nifi.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -38,6 +39,7 @@ import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.util.Utf8;
 import org.apache.nifi.util.MockFlowFile;
+import org.junit.jupiter.api.Test;
 
 public class Plc4xCommonTest {
     public static final Map<String, Object> originalMap = new HashMap<>();
@@ -210,5 +212,52 @@ public class Plc4xCommonTest {
         }
 
         return out.toByteArray();
+    }
+
+
+    @Test
+    public void getDriverConfigurationTest() {
+        String from = "simulated://localhost:1234?keyStoreFile=/tmp/file&keyStorePassword=password&securityPolicy=Basic256&messageSecurity=SIGN_ENCRYPT";
+        Map<String, String> expected = new HashMap<>();
+        expected.put("keyStoreFile", "/tmp/file");
+        expected.put("keyStorePassword", "password");
+        expected.put("securityPolicy", "Basic256");
+        expected.put("messageSecurity", "SIGN_ENCRYPT");
+
+
+        Map<String, String> result = Plc4xCommon.getDriverConfiguration(from);
+
+        assertEquals(expected, result);
+    }
+
+    @Test
+    public void formatConfigurationTest() {
+        Map<String, String> from = new HashMap<>();
+        from.put("keyStoreFile", "/tmp/file");
+        from.put("keyStorePassword", "password");
+        from.put("securityPolicy", "Basic256");
+
+        
+        Map<String, String> driverConfig = new HashMap<>();
+        driverConfig.put("securityPolicy", "anything not related");
+        driverConfig.put("messageSecurity", "SIGN_ENCRYPT");
+
+        String expected = "?messageSecurity=SIGN_ENCRYPT&keyStorePassword=password&keyStoreFile=/tmp/file&securityPolicy=Basic256";
+
+
+        assertEquals(expected, Plc4xCommon.formatConfiguration(driverConfig, from));
+    }
+
+    @Test
+    public void updateConnectionStringWithDriverConfigurationTest() {
+        Map<String, String> driverConfig = new HashMap<>();
+        driverConfig.put("securityPolicy", "anything not related");
+        driverConfig.put("messageSecurity", "SIGN_ENCRYPT");
+
+        String from = "simulated://localhost:1234?keyStoreFile=/tmp/file&keyStorePassword=password&securityPolicy=Basic256&messageSecurity=SIGN_ENCRYPT";
+       
+        String expected = "simulated://localhost:1234?messageSecurity=SIGN_ENCRYPT&keyStorePassword=password&keyStoreFile=/tmp/file&securityPolicy=Basic256";
+
+        assertEquals(expected, Plc4xCommon.updateConnectionStringWithDriverConfiguration(driverConfig, from));
     }
 }

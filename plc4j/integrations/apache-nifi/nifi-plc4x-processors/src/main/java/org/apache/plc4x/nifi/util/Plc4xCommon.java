@@ -18,6 +18,7 @@
  */
 package org.apache.plc4x.nifi.util;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -194,6 +195,60 @@ public class Plc4xCommon {
         	return valueOriginal;
         }
     }
-	
+
+
+	public static Map<String, String> getDriverConfiguration(String connectionString) {
+        String[] tmp = connectionString.split("\\?", 2);
+
+		if (tmp.length == 1) {
+			return new HashMap<>();
+		}
+			
+		return getDriverConfigurationFromParameters(tmp[1]);
+	}
+
+    public static Map<String, String> getDriverConfigurationFromParameters(String connectionConfiguration) {
+        Map<String, String> result = new HashMap<>();
+
+        String[] fields = connectionConfiguration.split("&");
+        for (String field: fields) {
+            String[] fieldAndValue = field.split("=", 2);
+            result.put(fieldAndValue[0], fieldAndValue[1]);
+        }
+        return result;
+    }
+
+	public static String formatConfiguration(Map<String, String> driverConfiguration, Map<String, String> configuration) {
+		driverConfiguration.forEach((k,v) -> {
+			configuration.putIfAbsent(k, v);
+		});
+
+		if (configuration.size() == 0) {
+			return "";
+		}
+
+		String result = "?";
+		for(Map.Entry<String, String> field : configuration.entrySet()) {
+			result += field.getKey() + "=" + field.getValue() + "&";
+		}
+		return result.subSequence(0, result.length()-1).toString();
+	}
+
+
+	public static String updateConnectionStringWithDriverConfiguration(Map<String, String> driverConfiguration,
+			String connectionString) {
+
+        String[] tmp = connectionString.split("\\?", 2);
+
+		if (tmp.length == 1) {
+			return connectionString + formatConfiguration(driverConfiguration, new HashMap<>());
+		}
+			
+		Map<String, String> conf = getDriverConfiguration(connectionString);
+
+		return tmp[0] + formatConfiguration(driverConfiguration, conf);
+	}
+
 }
+
 
