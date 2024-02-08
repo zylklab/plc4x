@@ -107,11 +107,13 @@ public abstract class BasePlc4xProcessor extends AbstractProcessor {
 	
     public static final PropertyDescriptor PLC_DRIVER_CONFIGURATION = new PropertyDescriptor.Builder()
         .name("plc4x-driver-configuration")
-        .displayName("Driver configuration")
+        .displayName("Driver Configuration")
         .description("Options to be added to the PLC4X connection string. Options are driver specific. " +
             "It's content must be a valid JSON after Expression Language is evaluated.")
         .expressionLanguageSupported(ExpressionLanguageScope.VARIABLE_REGISTRY)
         .addValidator(new Plc4xDriverConfigurationValidator())
+        // TODO: is it sensitive?
+        .sensitive(true)
         .build();
 
     public static final PropertyDescriptor PLC_SCHEMA_CACHE_SIZE = new PropertyDescriptor.Builder()

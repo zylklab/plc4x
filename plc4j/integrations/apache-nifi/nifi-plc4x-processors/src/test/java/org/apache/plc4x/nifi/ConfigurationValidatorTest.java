@@ -8,7 +8,6 @@ import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -45,6 +44,27 @@ public class ConfigurationValidatorTest extends BasePlc4xProcessor {
 
         testRunner.assertValid();
         testRunner.run(NUMBER_OF_CALLS);
+    }
+
+
+    @Test
+    public void testInvalidConfiguration() throws JsonProcessingException {
+        testRunner = TestRunners.newTestRunner(this);
+        testRunner.setIncomingConnection(false);
+        testRunner.setValidateExpressionUsage(true);
+
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, String> options = new HashMap<>();
+        options.put("random parameter", "random value");
+
+        testRunner.setProperty(PLC_CONNECTION_STRING, "opcua:tcp://127.0.0.1:12686");
+        testRunner.setProperty(PLC_DRIVER_CONFIGURATION, mapper.writeValueAsString(options));
+        testRunner.setProperty(PLC_FUTURE_TIMEOUT_MILISECONDS, "1000");
+
+        testRunner.addConnection(REL_SUCCESS);
+        testRunner.addConnection(REL_FAILURE);
+
+        testRunner.assertNotValid();
     }
 
 
