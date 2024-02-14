@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *   https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -19,24 +19,16 @@
 
 package org.apache.plc4x.java.tools.ui.service;
 
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.plc4x.java.api.PlcDriver;
 import org.apache.plc4x.java.api.PlcDriverManager;
 import org.apache.plc4x.java.api.exceptions.PlcConnectionException;
 import org.apache.plc4x.java.api.messages.PlcDiscoveryRequest;
 import org.apache.plc4x.java.api.metadata.PlcDriverMetadata;
-import org.apache.plc4x.java.spi.configuration.ConfigurationFactory;
-import org.apache.plc4x.java.spi.configuration.annotations.ComplexConfigurationParameter;
-import org.apache.plc4x.java.spi.configuration.annotations.ConfigurationParameter;
-import org.apache.plc4x.java.spi.configuration.annotations.Required;
-import org.apache.plc4x.java.tools.ui.model.ConfigurationOption;
 import org.apache.plc4x.java.tools.ui.model.Device;
 import org.apache.plc4x.java.tools.ui.model.Driver;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Component
 public class DriverService {
@@ -53,24 +45,13 @@ public class DriverService {
 
     public List<Driver> getDriverList() {
         List<Driver> drivers = new ArrayList<>();
-        for (String protocolCode : driverManager.listDrivers()) {
+        for (String protocolCode : driverManager.listProtocolCodes()) {
             try {
                 PlcDriver driver = driverManager.getDriver(protocolCode);
                 PlcDriverMetadata metadata = driver.getMetadata();
-
-                // Get a description of all supported configuration options of the given driver.
-                Class<?> configurationType = driver.getConfigurationType();
-                Map<String, ConfigurationOption> configurationOptions = Arrays.stream(FieldUtils.getAllFields(configurationType))
-                    .filter(field -> (field.getAnnotation(ConfigurationParameter.class) != null) || (field.getAnnotation(ComplexConfigurationParameter.class) != null))
-                    .map(field -> new ConfigurationOption(field.getName(), field.getType().getTypeName(), field.isAnnotationPresent(Required.class), ConfigurationFactory.getDefaultValueFromAnnotation(field)))
-                    .collect(Collectors.toMap(
-                        ConfigurationOption::getName,
-                        Function.identity()
-                    ));
-
                 // TODO: Get a list of all directly supported transports and for each a list of the configuration options.
 
-                drivers.add(new Driver(protocolCode, driver.getProtocolName(), metadata.canDiscover(), configurationOptions, null));
+//                drivers.add(new Driver(protocolCode, driver.getProtocolName(), metadata.canDiscover(), metadata, null));
             } catch (Exception e) {
                 throw new RuntimeException("Error retrieving driver list", e);
             }
@@ -80,7 +61,7 @@ public class DriverService {
 
     public void discover(String protocolCode) {
         if(ALL_DRIVERS.equals(protocolCode)) {
-            for (String curProtocolCode : driverManager.listDrivers()) {
+            for (String curProtocolCode : driverManager.listProtocolCodes()) {
                 try {
                     if("modbus-tcp".equals(curProtocolCode)) {
                         continue;

@@ -40,6 +40,8 @@ import org.apache.plc4x.java.spi.values.PlcValueHandler;
 import org.apache.plc4x.java.spi.values.PlcList;
 import org.apache.plc4x.java.transport.can.CANTransport;
 
+import java.util.Optional;
+
 /**
  */
 public class CANOpenPlcDriver extends GeneratedDriverBase<Message> {
@@ -52,11 +54,6 @@ public class CANOpenPlcDriver extends GeneratedDriverBase<Message> {
     @Override
     public String getProtocolName() {
         return "CAN open";
-    }
-
-    @Override
-    public Class<? extends PlcConnectionConfiguration> getConfigurationType() {
-        return CANOpenConfiguration.class;
     }
 
     @Override
@@ -75,8 +72,13 @@ public class CANOpenPlcDriver extends GeneratedDriverBase<Message> {
     }
 
     @Override
-    protected String getDefaultTransport() {
-        return "socketcan";
+    protected Class<? extends PlcConnectionConfiguration> getConfigurationClass() {
+        return CANOpenConfiguration.class;
+    }
+
+    @Override
+    protected Optional<String> getDefaultTransportCode() {
+        return Optional.of("socketcan");
     }
 
     @Override
