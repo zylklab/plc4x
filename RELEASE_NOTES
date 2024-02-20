@@ -1,5 +1,18 @@
 ==============================================================
-(Unreleased) Apache PLC4X 0.12.0-SNAPSHOT
+(Unreleased) Apache PLC4X 0.13.0-SNAPSHOT
+==============================================================
+
+New Features
+------------
+
+Incompatible changes
+--------------------
+
+Bug Fixes
+---------
+
+==============================================================
+Apache PLC4X 0.12.0
 ==============================================================
 
 New Features
@@ -13,6 +26,8 @@ New Features
 - Build: Worked on making PLC4X provide reproducible builds.
 - Added "Ping" functionality to: ADS, EIP, KNX, Mock, Modbus
   and Simulated drivers.
+- The OPC-UA Java driver now support certificate-based
+  authentication and encryption.
 
 Incompatible changes
 --------------------
@@ -20,7 +35,12 @@ Incompatible changes
 - Java 8 is no longer officially supported and Java 11 is the
   new base-line.
 - Renamed the PlcDriverManager method `listDrivers` to
-  `listProtocolCodes`
+  `getProtocolCodes`
+- Renamed the PlcDriverMetadata method `canDiscover` to
+  `isDiscoverySupported`
+- Renamed the PlcConnectionMetadata methods `canRead`, `canWrite`
+  `canSubscribe` and `canBrowse` to `isReadSupported`,
+  `isWriteSupported`, `isSubscribeSupported` and `isBrowseSupported`
 - The configuration syntax for configuring transport-related
   config options in the connection-string was updated to be
   now prefixed with the transport name the option belongs to.

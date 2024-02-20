@@ -50,7 +50,7 @@ Thread.currentThread().setContextClassLoader(moduleClassloader)
 def plcDriverManager = new DefaultPlcDriverManager(moduleClassloader)
 
 // Process all driver information.
-for (final def protocolCode in plcDriverManager.listProtocolCodes()) {
+for (final def protocolCode in plcDriverManager.getProtocolCodes()) {
     def outputFile = new File(project.getBasedir(), "src/site/generated/" + protocolCode + ".adoc")
     // In order to re-generate this file, make sure it doesn't exist.
     if(outputFile.exists()) {
@@ -117,7 +117,9 @@ for (final def protocolCode in plcDriverManager.listProtocolCodes()) {
     if(!driver.metadata.supportedTransportCodes.empty) {
         printStream.println "5+|Transport config options:"
         for (final def transportCode in driver.metadata.supportedTransportCodes) {
-            printStream.println "5+| - `" + transportCode + "`"
+            printStream.println "5+|\n+++\n" +
+                "<h4>$transportCode</h4>\n" +
+                "+++"
             driver.metadata.getTransportConfigurationOptionMetadata(transportCode).map {
                 outputOptions(it.options, transportCode, printStream)
             }

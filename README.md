@@ -83,7 +83,7 @@ It also provides (Java) tools for usage inside an application:
 ## Getting started
 
 Depending on the programming language, the usage will differ, therefore please go to the
-[Getting Started](https://plc4x.apache.org/users/gettingstarted.html) on the PLC4X website to look up
+[Getting Started](https://plc4x.apache.org/users/getting-started/plc4j.html) on the PLC4X website to look up
 the language of choice.
 
 ### Java
@@ -209,7 +209,7 @@ In order to be able to build the Python module, you currently need to activate t
 In order to build everything the following command should work:
 
 ```
-./mvnw -P with-c,with-dotnet,with-go,with-java,with-python,with-sandbox,enable-all-checks install
+./mvnw -P with-c,with-dotnet,with-go,with-java,with-python,with-sandbox,enable-all-checks,update-generated-code install
 ```
 
 ## Community
